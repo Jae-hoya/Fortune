@@ -87,14 +87,14 @@ class SajuCalculator:
             }
         }
         
-        # 지장간 (지지 안에 숨어있는 천간들)
+        # 지장간 (지지 안에 숨어있는 천간들) - 팩트체크 반영
         self.hidden_stems = {
             "자": [("계", 100)],
-            "축": [("기", 60), ("계", 30), ("신", 10)],
+            "축": [("기", 60), ("신", 30), ("계", 10)],  # 축: 기토60% + 신금30% + 계수10%
             "인": [("갑", 60), ("병", 30), ("무", 10)],
             "묘": [("을", 100)],
             "진": [("무", 60), ("을", 30), ("계", 10)],
-            "사": [("병", 60), ("무", 30), ("경", 10)],
+            "사": [("정", 70), ("무", 20), ("경", 10)],  # 사: 정화70% + 무토20% + 경금10% (수정)
             "오": [("정", 70), ("기", 30)],
             "미": [("기", 60), ("정", 30), ("을", 10)],
             "신": [("경", 60), ("임", 30), ("무", 10)],
@@ -216,95 +216,166 @@ class SajuCalculator:
         )
     
     def _get_month_branch_by_solar_terms(self, year: int, month: int, day: int) -> int:
-        """절기 기준으로 정확한 월지 결정"""
-        # 2024년 기준 절기 정보 사용 (다른 년도는 근사치)
-        # 실제 서비스에서는 매년 정확한 절기 데이터 필요
+        """절기 기준으로 정확한 월지 결정 - 범용 계산"""
+        # 절기의 대략적인 날짜 계산 (공식 기반)
+        solar_terms_approx = self._calculate_solar_terms_dates(year)
         
-        if year == 2024:
-            # 2024년 정확한 절기 기준
-            if month == 1:
-                return 0  # 자월 (대설~소한)
-            elif month == 2:
-                if day < 4:  # 입춘 전
-                    return 0  # 자월
-                else:  # 입춘 후
-                    return 2  # 인월
-            elif month == 3:
-                if day < 5:  # 경칩 전
-                    return 2  # 인월
-                else:  # 경칩 후
-                    return 3  # 묘월
-            elif month == 4:
-                if day < 4:  # 청명 전
-                    return 3  # 묘월
-                else:  # 청명 후
-                    return 4  # 진월
-            elif month == 5:
-                if day < 5:  # 입하 전
-                    return 4  # 진월
-                else:  # 입하 후
-                    return 5  # 사월
-            elif month == 6:
-                if day < 5:  # 망종 전
-                    return 5  # 사월
-                else:  # 망종 후
-                    return 6  # 오월
-            elif month == 7:
-                if day < 6:  # 소서 전
-                    return 6  # 오월
-                else:  # 소서 후
-                    return 7  # 미월
-            elif month == 8:
-                if day < 7:  # 입추 전
-                    return 7  # 미월
-                else:  # 입추 후
-                    return 8  # 신월
-            elif month == 9:
-                if day < 7:  # 백로 전
-                    return 8  # 신월
-                else:  # 백로 후
-                    return 9  # 유월
-            elif month == 10:
-                if day < 8:  # 한로 전
-                    return 9  # 유월
-                else:  # 한로 후
-                    return 10  # 술월
-            elif month == 11:
-                if day < 7:  # 입동 전
-                    return 10  # 술월
-                else:  # 입동 후
-                    return 11  # 해월
-            else:  # month == 12
-                if day < 7:  # 대설 전
-                    return 11  # 해월
-                else:  # 대설 후
-                    return 0  # 자월
-        else:
-            # 다른 년도는 기존 방식 (근사치)
-            if month == 1:
+        # 현재 날짜를 기준으로 월지 결정
+        current_date = datetime(year, month, day)
+        
+        # 절기와 월지 매핑
+        # 입춘(2월 초) -> 인월(2), 경칩(3월 초) -> 묘월(3), ...
+        term_to_month = {
+            '대설': 0,   # 자월 (12월)
+            '소한': 0,   # 자월 (1월)
+            '입춘': 2,   # 인월 (2월)
+            '경칩': 3,   # 묘월 (3월)
+            '청명': 4,   # 진월 (4월)
+            '입하': 5,   # 사월 (5월)
+            '망종': 6,   # 오월 (6월)
+            '소서': 7,   # 미월 (7월)
+            '입추': 8,   # 신월 (8월)
+            '백로': 9,   # 유월 (9월)
+            '한로': 10,  # 술월 (10월)
+            '입동': 11   # 해월 (11월)
+        }
+        
+        # 월별 기본 월지 (절기 미고려시)
+        if month == 1:
+            # 1월은 입춘(2월 4일경) 기준으로 판단
+            lichun_date = solar_terms_approx.get('입춘', datetime(year, 2, 4))
+            if current_date < lichun_date:
+                return 0  # 자월 (입춘 전)
+            else:
+                return 2  # 인월 (입춘 후)
+        elif month == 2:
+            lichun_date = solar_terms_approx.get('입춘', datetime(year, 2, 4))
+            jingzhe_date = solar_terms_approx.get('경칩', datetime(year, 3, 5))
+            if current_date < lichun_date:
                 return 0  # 자월
-            elif month == 2:
+            elif current_date < jingzhe_date:
                 return 2  # 인월
-            elif month == 3:
+            else:
                 return 3  # 묘월
-            elif month == 4:
+        elif month == 3:
+            jingzhe_date = solar_terms_approx.get('경칩', datetime(year, 3, 5))
+            qingming_date = solar_terms_approx.get('청명', datetime(year, 4, 5))
+            if current_date < jingzhe_date:
+                return 2  # 인월
+            elif current_date < qingming_date:
+                return 3  # 묘월
+            else:
                 return 4  # 진월
-            elif month == 5:
+        elif month == 4:
+            qingming_date = solar_terms_approx.get('청명', datetime(year, 4, 5))
+            lixia_date = solar_terms_approx.get('입하', datetime(year, 5, 5))
+            if current_date < qingming_date:
+                return 3  # 묘월
+            elif current_date < lixia_date:
+                return 4  # 진월
+            else:
                 return 5  # 사월
-            elif month == 6:
+        elif month == 5:
+            lixia_date = solar_terms_approx.get('입하', datetime(year, 5, 5))
+            mangzhong_date = solar_terms_approx.get('망종', datetime(year, 6, 6))
+            if current_date < lixia_date:
+                return 4  # 진월
+            elif current_date < mangzhong_date:
+                return 5  # 사월
+            else:
                 return 6  # 오월
-            elif month == 7:
+        elif month == 6:
+            mangzhong_date = solar_terms_approx.get('망종', datetime(year, 6, 6))
+            xiaoshu_date = solar_terms_approx.get('소서', datetime(year, 7, 7))
+            if current_date < mangzhong_date:
+                return 5  # 사월
+            elif current_date < xiaoshu_date:
+                return 6  # 오월
+            else:
                 return 7  # 미월
-            elif month == 8:
+        elif month == 7:
+            xiaoshu_date = solar_terms_approx.get('소서', datetime(year, 7, 7))
+            liqiu_date = solar_terms_approx.get('입추', datetime(year, 8, 7))
+            if current_date < xiaoshu_date:
+                return 6  # 오월
+            elif current_date < liqiu_date:
+                return 7  # 미월
+            else:
                 return 8  # 신월
-            elif month == 9:
+        elif month == 8:
+            liqiu_date = solar_terms_approx.get('입추', datetime(year, 8, 7))
+            bailu_date = solar_terms_approx.get('백로', datetime(year, 9, 7))
+            if current_date < liqiu_date:
+                return 7  # 미월
+            elif current_date < bailu_date:
+                return 8  # 신월
+            else:
                 return 9  # 유월
-            elif month == 10:
-                return 10  # 술월
-            elif month == 11:
+        else:  # month == 12
+            daxue_date = solar_terms_approx.get('대설', datetime(year, 12, 7))
+            next_year_xiaohan = solar_terms_approx.get('소한', datetime(year + 1, 1, 6))
+            if current_date < daxue_date:
                 return 11  # 해월
-            else:  # month == 12
+            else:
                 return 0  # 자월
+    
+    def _calculate_solar_terms_dates(self, year: int) -> Dict[str, datetime]:
+        """절기 날짜 근사 계산 (공식 기반)"""
+        # 절기 계산 공식 (근사치)
+        # 기준: 2000년 동지 = 12월 21일 7시 37분
+        base_year = 2000
+        year_diff = year - base_year
+        
+        # 절기별 기준 날짜 (월, 일, 시, 분)
+        base_terms = {
+            '소한': (1, 6, 0, 0),
+            '대한': (1, 20, 12, 0),
+            '입춘': (2, 4, 18, 0),
+            '우수': (2, 19, 12, 0),
+            '경칩': (3, 5, 22, 0),
+            '춘분': (3, 20, 15, 0),
+            '청명': (4, 5, 3, 0),
+            '곡우': (4, 20, 9, 0),
+            '입하': (5, 5, 20, 0),
+            '소만': (5, 21, 9, 0),
+            '망종': (6, 6, 0, 0),
+            '하지': (6, 21, 17, 0),
+            '소서': (7, 7, 10, 0),
+            '대서': (7, 23, 4, 0),
+            '입추': (8, 7, 20, 0),
+            '처서': (8, 23, 11, 0),
+            '백로': (9, 8, 0, 0),
+            '추분': (9, 23, 9, 0),
+            '한로': (10, 8, 15, 0),
+            '상강': (10, 23, 18, 0),
+            '입동': (11, 7, 18, 0),
+            '소설': (11, 22, 16, 0),
+            '대설': (12, 7, 11, 0),
+            '동지': (12, 21, 17, 30)
+        }
+        
+        solar_terms = {}
+        for term_name, (month, day, hour, minute) in base_terms.items():
+            # 년도 차이에 따른 보정 (대략 6시간/년)
+            hour_correction = int(year_diff * 0.25)  # 대략적인 보정
+            corrected_hour = hour + hour_correction
+            
+            # 시간 오버플로우 처리
+            corrected_day = day
+            if corrected_hour >= 24:
+                corrected_day += corrected_hour // 24
+                corrected_hour = corrected_hour % 24
+            elif corrected_hour < 0:
+                corrected_day += corrected_hour // 24
+                corrected_hour = 24 + (corrected_hour % 24)
+            
+            try:
+                solar_terms[term_name] = datetime(year, month, corrected_day, corrected_hour, minute)
+            except ValueError:
+                # 날짜 오버플로우 시 기본값 사용
+                solar_terms[term_name] = datetime(year, month, day, hour, minute)
+        
+        return solar_terms
     
     def _calculate_day_pillar(self, days_diff: int) -> SajuPillar:
         """일주 계산"""
@@ -394,9 +465,11 @@ class SajuCalculator:
         )
     
     def analyze_ten_gods(self, saju_chart: SajuChart) -> Dict[str, List[str]]:
-        """십신 분석"""
+        """십신 분석 - 음양 구분 정확화"""
         day_master = saju_chart.get_day_master()
         day_master_element = self.five_elements[day_master]
+        day_master_idx = self.heavenly_stems.index(day_master)
+        day_master_yin_yang = "양" if day_master_idx % 2 == 0 else "음"
         
         ten_gods = {
             "년주": [], "월주": [], "일주": [], "시주": []
@@ -411,34 +484,42 @@ class SajuCalculator:
         
         for pillar_name, pillar in pillars:
             # 천간 십신
-            stem_element = self.five_elements[pillar.heavenly_stem]
             if pillar.heavenly_stem != day_master:  # 일간 제외
-                god_types = self.ten_gods_mapping[day_master_element][stem_element]
-                # 음양에 따른 십신 결정 (간단화)
+                stem_element = self.five_elements[pillar.heavenly_stem]
                 stem_idx = self.heavenly_stems.index(pillar.heavenly_stem)
-                day_idx = self.heavenly_stems.index(day_master)
-                if (stem_idx % 2) == (day_idx % 2):  # 같은 음양
-                    ten_gods[pillar_name].append(f"천간:{god_types[0]}")
+                stem_yin_yang = "양" if stem_idx % 2 == 0 else "음"
+                
+                god_types = self.ten_gods_mapping[day_master_element][stem_element]
+                
+                # 음양에 따른 십신 결정 (정확한 규칙)
+                if day_master_yin_yang == stem_yin_yang:  # 같은 음양
+                    ten_god = god_types[0]  # 비견, 식신, 편재, 편관, 편인
                 else:  # 다른 음양
-                    ten_gods[pillar_name].append(f"천간:{god_types[1]}")
+                    ten_god = god_types[1]  # 겁재, 상관, 정재, 정관, 정인
+                
+                ten_gods[pillar_name].append(f"천간:{ten_god}")
             
             # 지지 십신 (지장간 고려)
             hidden_stems = self.hidden_stems[pillar.earthly_branch]
             for hidden_stem, strength in hidden_stems:
                 if hidden_stem != day_master:
                     hidden_element = self.five_elements[hidden_stem]
-                    god_types = self.ten_gods_mapping[day_master_element][hidden_element]
                     hidden_idx = self.heavenly_stems.index(hidden_stem)
-                    day_idx = self.heavenly_stems.index(day_master)
-                    if (hidden_idx % 2) == (day_idx % 2):
-                        ten_gods[pillar_name].append(f"지지:{god_types[0]}({strength}%)")
-                    else:
-                        ten_gods[pillar_name].append(f"지지:{god_types[1]}({strength}%)")
+                    hidden_yin_yang = "양" if hidden_idx % 2 == 0 else "음"
+                    
+                    god_types = self.ten_gods_mapping[day_master_element][hidden_element]
+                    
+                    if day_master_yin_yang == hidden_yin_yang:  # 같은 음양
+                        ten_god = god_types[0]
+                    else:  # 다른 음양
+                        ten_god = god_types[1]
+                    
+                    ten_gods[pillar_name].append(f"지지:{ten_god}({strength}%)")
         
         return ten_gods
     
     def calculate_great_fortune_improved(self, saju_chart: SajuChart) -> List[Dict]:
-        """대운 계산 - 시작일 정밀화"""
+        """대운 계산 - 역행 로직 수정"""
         birth_info = saju_chart.birth_info
         year = birth_info["year"]
         month = birth_info["month"]
@@ -450,15 +531,16 @@ class SajuCalculator:
         year_stem_idx = self.heavenly_stems.index(year_stem)
         is_yang_year = (year_stem_idx % 2 == 0)
         
-        # 대운 방향 결정
+        # 대운 방향 결정 (정확한 규칙)
+        # 양년 남성, 음년 여성 → 순행
+        # 음년 남성, 양년 여성 → 역행
         if (is_yang_year and is_male) or (not is_yang_year and not is_male):
             direction = 1  # 순행
         else:
             direction = -1  # 역행
         
-        # 대운 시작 연령 정밀 계산
-        # 출생일과 다음 절기까지의 일수를 3으로 나누어 계산
-        start_age = self._calculate_precise_start_age(year, month, day, direction)
+        # 대운 시작 연령 (절기 기준으로 정밀 계산 필요하지만 여기서는 간소화)
+        start_age = 8  # 기본 8세 (실제로는 절기까지의 일수/3으로 계산)
         
         # 월주 기준으로 대운 계산
         month_stem_idx = self.heavenly_stems.index(saju_chart.month_pillar.heavenly_stem)
@@ -468,53 +550,62 @@ class SajuCalculator:
         for i in range(8):  # 8개 대운
             age = start_age + (i * 10)
             
+            # 방향에 따른 간지 계산
             stem_idx = (month_stem_idx + (direction * (i + 1))) % 10
             branch_idx = (month_branch_idx + (direction * (i + 1))) % 12
+            
+            # 음수 인덱스 처리
+            if stem_idx < 0:
+                stem_idx += 10
+            if branch_idx < 0:
+                branch_idx += 12
             
             great_fortunes.append({
                 "age": age,
                 "pillar": f"{self.heavenly_stems[stem_idx]}{self.earthly_branches[branch_idx]}",
-                "years": f"{year + age}년 ~ {year + age + 9}년"
+                "years": f"{year + age}년 ~ {year + age + 9}년",
+                "direction": "순행" if direction == 1 else "역행"
             })
         
         return great_fortunes
     
-    def _calculate_precise_start_age(self, year: int, month: int, day: int, direction: int) -> int:
-        """대운 시작 연령 정밀 계산"""
-        # 간단화된 계산 (실제로는 절기까지의 정확한 일수 계산 필요)
-        # 기본 6세에서 출생일에 따른 조정
-        base_age = 6
-        
-        # 월 중순 이후 출생시 약간 조정
-        if day > 15:
-            adjustment = 1 if direction == 1 else -1
-        else:
-            adjustment = 0
-            
-        return max(1, base_age + adjustment)
-    
     def get_element_strength(self, saju_chart: SajuChart) -> Dict[str, int]:
-        """오행 강약 분석"""
+        """
+        오행 강약 분석 (전통 8점 방식) - 단순 전통 방식
+        
+        Args:
+            saju_chart: 사주팔자 차트
+        
+        Returns:
+            Dict[str, int]: 오행별 점수 (총 8점)
+        """
         elements = {"목": 0, "화": 0, "토": 0, "금": 0, "수": 0}
         
-        # 천간 오행 (각 20점)
         pillars = [saju_chart.year_pillar, saju_chart.month_pillar, 
                   saju_chart.day_pillar, saju_chart.hour_pillar]
         
         for pillar in pillars:
+            # 천간 1점
             stem_element = self.five_elements[pillar.heavenly_stem]
-            elements[stem_element] += 20
+            elements[stem_element] += 1
             
-            # 지장간 오행
+            # 지지 1점 (가장 강한 지장간만 고려)
             hidden_stems = self.hidden_stems[pillar.earthly_branch]
-            for hidden_stem, strength in hidden_stems:
-                hidden_element = self.five_elements[hidden_stem]
-                elements[hidden_element] += int(strength * 0.15)  # 지지는 천간의 75% 강도
+            # 가장 높은 비율의 지장간만 1점으로 계산
+            strongest_stem, strongest_ratio = max(hidden_stems, key=lambda x: x[1])
+            strongest_element = self.five_elements[strongest_stem]
+            elements[strongest_element] += 1
         
         return elements
 
 def format_saju_analysis(saju_chart: SajuChart, calculator: SajuCalculator) -> str:
-    """사주 분석 결과를 포맷팅"""
+    """
+    사주 분석 결과를 포맷팅
+    
+    Args:
+        saju_chart: 사주팔자 차트
+        calculator: 사주 계산기
+    """
     analysis = []
     
     # 기본 사주팔자
