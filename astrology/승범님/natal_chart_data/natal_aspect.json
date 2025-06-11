@@ -1,0 +1,3780 @@
+{
+    "3000001": {
+        "6000003": {
+            "active": 3000001,
+            "passive": 6000003,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -6.707052009256472,
+                "formatted": "-06\u00b042'25\"",
+                "direction": "-",
+                "degrees": 6,
+                "minutes": 42,
+                "seconds": 25
+            },
+            "difference": {
+                "raw": 6.707052009256472,
+                "formatted": "06\u00b042'25\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 42,
+                "seconds": 25
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "3000002": {
+        "6000004": {
+            "active": 3000002,
+            "passive": 6000004,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -6.707052009256472,
+                "formatted": "-06\u00b042'25\"",
+                "direction": "-",
+                "degrees": 6,
+                "minutes": 42,
+                "seconds": 25
+            },
+            "difference": {
+                "raw": 6.707052009256472,
+                "formatted": "06\u00b042'25\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 42,
+                "seconds": 25
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "3000003": {
+        "6000007": {
+            "active": 3000003,
+            "passive": 6000007,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -7.055846488527493,
+                "formatted": "-07\u00b003'21\"",
+                "direction": "-",
+                "degrees": 7,
+                "minutes": 3,
+                "seconds": 21
+            },
+            "difference": {
+                "raw": 7.055846488527493,
+                "formatted": "07\u00b003'21\"",
+                "direction": "+",
+                "degrees": 7,
+                "minutes": 3,
+                "seconds": 21
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000001": {
+            "active": 3000003,
+            "passive": 4000001,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -8.242828031622878,
+                "formatted": "-08\u00b014'34\"",
+                "direction": "-",
+                "degrees": 8,
+                "minutes": 14,
+                "seconds": 34
+            },
+            "difference": {
+                "raw": 8.242828031622878,
+                "formatted": "08\u00b014'34\"",
+                "direction": "+",
+                "degrees": 8,
+                "minutes": 14,
+                "seconds": 34
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "3000004": {
+        "4000007": {
+            "active": 3000004,
+            "passive": 4000007,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -8.98667180313339,
+                "formatted": "-08\u00b059'12\"",
+                "direction": "-",
+                "degrees": 8,
+                "minutes": 59,
+                "seconds": 12
+            },
+            "difference": {
+                "raw": 8.98667180313339,
+                "formatted": "08\u00b059'12\"",
+                "direction": "+",
+                "degrees": 8,
+                "minutes": 59,
+                "seconds": 12
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000010": {
+            "active": 3000004,
+            "passive": 4000010,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 5.065635342235851,
+                "formatted": "05\u00b003'56\"",
+                "direction": "+",
+                "degrees": 5,
+                "minutes": 3,
+                "seconds": 56
+            },
+            "difference": {
+                "raw": 5.065635342235851,
+                "formatted": "05\u00b003'56\"",
+                "direction": "+",
+                "degrees": 5,
+                "minutes": 3,
+                "seconds": 56
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "6000003": {
+        "3000001": {
+            "active": 3000001,
+            "passive": 6000003,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -6.707052009256472,
+                "formatted": "-06\u00b042'25\"",
+                "direction": "-",
+                "degrees": 6,
+                "minutes": 42,
+                "seconds": 25
+            },
+            "difference": {
+                "raw": 6.707052009256472,
+                "formatted": "06\u00b042'25\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 42,
+                "seconds": 25
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000001": {
+            "active": 4000001,
+            "passive": 6000003,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 88.9661130701957,
+                "formatted": "88\u00b057'58\"",
+                "direction": "+",
+                "degrees": 88,
+                "minutes": 57,
+                "seconds": 58
+            },
+            "difference": {
+                "raw": -1.0338869298042965,
+                "formatted": "-01\u00b002'02\"",
+                "direction": "-",
+                "degrees": 1,
+                "minutes": 2,
+                "seconds": 2
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000002": {
+            "active": 4000002,
+            "passive": 6000003,
+            "type": "Quincunx",
+            "aspect": 150.0,
+            "orb": 3.0,
+            "distance": {
+                "raw": -147.36300833769351,
+                "formatted": "-147\u00b021'47\"",
+                "direction": "-",
+                "degrees": 147,
+                "minutes": 21,
+                "seconds": 47
+            },
+            "difference": {
+                "raw": -2.6369916623064853,
+                "formatted": "-02\u00b038'13\"",
+                "direction": "-",
+                "degrees": 2,
+                "minutes": 38,
+                "seconds": 13
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000003": {
+            "active": 4000003,
+            "passive": 6000003,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 96.41424667024008,
+                "formatted": "96\u00b024'51\"",
+                "direction": "+",
+                "degrees": 96,
+                "minutes": 24,
+                "seconds": 51
+            },
+            "difference": {
+                "raw": 6.414246670240075,
+                "formatted": "06\u00b024'51\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 24,
+                "seconds": 51
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000004": {
+            "active": 4000004,
+            "passive": 6000003,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 120.45017840081623,
+                "formatted": "120\u00b027'01\"",
+                "direction": "+",
+                "degrees": 120,
+                "minutes": 27,
+                "seconds": 1
+            },
+            "difference": {
+                "raw": 0.4501784008162275,
+                "formatted": "00\u00b027'01\"",
+                "direction": "+",
+                "degrees": 0,
+                "minutes": 27,
+                "seconds": 1
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000006": {
+            "active": 4000006,
+            "passive": 6000003,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 116.48042449241652,
+                "formatted": "116\u00b028'50\"",
+                "direction": "+",
+                "degrees": 116,
+                "minutes": 28,
+                "seconds": 50
+            },
+            "difference": {
+                "raw": -3.5195755075834825,
+                "formatted": "-03\u00b031'10\"",
+                "direction": "-",
+                "degrees": 3,
+                "minutes": 31,
+                "seconds": 10
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000007": {
+            "active": 4000007,
+            "passive": 6000003,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -90.29004315829377,
+                "formatted": "-90\u00b017'24\"",
+                "direction": "-",
+                "degrees": 90,
+                "minutes": 17,
+                "seconds": 24
+            },
+            "difference": {
+                "raw": 0.2900431582937699,
+                "formatted": "00\u00b017'24\"",
+                "direction": "+",
+                "degrees": 0,
+                "minutes": 17,
+                "seconds": 24
+            },
+            "movement": {
+                "applicative": false,
+                "exact": true,
+                "separative": false,
+                "formatted": "Exact"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "6000004": {
+        "3000002": {
+            "active": 3000002,
+            "passive": 6000004,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -6.707052009256472,
+                "formatted": "-06\u00b042'25\"",
+                "direction": "-",
+                "degrees": 6,
+                "minutes": 42,
+                "seconds": 25
+            },
+            "difference": {
+                "raw": 6.707052009256472,
+                "formatted": "06\u00b042'25\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 42,
+                "seconds": 25
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000001": {
+            "active": 4000001,
+            "passive": 6000004,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -91.03388692980428,
+                "formatted": "-91\u00b002'02\"",
+                "direction": "-",
+                "degrees": 91,
+                "minutes": 2,
+                "seconds": 2
+            },
+            "difference": {
+                "raw": 1.0338869298042823,
+                "formatted": "01\u00b002'02\"",
+                "direction": "+",
+                "degrees": 1,
+                "minutes": 2,
+                "seconds": 2
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000003": {
+            "active": 4000003,
+            "passive": 6000004,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -83.58575332975994,
+                "formatted": "-83\u00b035'09\"",
+                "direction": "-",
+                "degrees": 83,
+                "minutes": 35,
+                "seconds": 9
+            },
+            "difference": {
+                "raw": -6.414246670240061,
+                "formatted": "-06\u00b024'51\"",
+                "direction": "-",
+                "degrees": 6,
+                "minutes": 24,
+                "seconds": 51
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000004": {
+            "active": 4000004,
+            "passive": 6000004,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -59.54982159918376,
+                "formatted": "-59\u00b032'59\"",
+                "direction": "-",
+                "degrees": 59,
+                "minutes": 32,
+                "seconds": 59
+            },
+            "difference": {
+                "raw": -0.4501784008162417,
+                "formatted": "-00\u00b027'01\"",
+                "direction": "-",
+                "degrees": 0,
+                "minutes": 27,
+                "seconds": 1
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000006": {
+            "active": 4000006,
+            "passive": 6000004,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -63.519575507583454,
+                "formatted": "-63\u00b031'10\"",
+                "direction": "-",
+                "degrees": 63,
+                "minutes": 31,
+                "seconds": 10
+            },
+            "difference": {
+                "raw": 3.519575507583454,
+                "formatted": "03\u00b031'10\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 31,
+                "seconds": 10
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000007": {
+            "active": 4000007,
+            "passive": 6000004,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 89.70995684170623,
+                "formatted": "89\u00b042'36\"",
+                "direction": "+",
+                "degrees": 89,
+                "minutes": 42,
+                "seconds": 36
+            },
+            "difference": {
+                "raw": -0.2900431582937699,
+                "formatted": "-00\u00b017'24\"",
+                "direction": "-",
+                "degrees": 0,
+                "minutes": 17,
+                "seconds": 24
+            },
+            "movement": {
+                "applicative": false,
+                "exact": true,
+                "separative": false,
+                "formatted": "Exact"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000008": {
+            "active": 6000004,
+            "passive": 4000008,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -5.144106657837881,
+                "formatted": "-05\u00b008'39\"",
+                "direction": "-",
+                "degrees": 5,
+                "minutes": 8,
+                "seconds": 39
+            },
+            "difference": {
+                "raw": 5.144106657837881,
+                "formatted": "05\u00b008'39\"",
+                "direction": "+",
+                "degrees": 5,
+                "minutes": 8,
+                "seconds": 39
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "6000010": {
+        "4000002": {
+            "active": 4000002,
+            "passive": 6000010,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 95.67316507945219,
+                "formatted": "95\u00b040'23\"",
+                "direction": "+",
+                "degrees": 95,
+                "minutes": 40,
+                "seconds": 23
+            },
+            "difference": {
+                "raw": 5.67316507945219,
+                "formatted": "05\u00b040'23\"",
+                "direction": "+",
+                "degrees": 5,
+                "minutes": 40,
+                "seconds": 23
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000004": {
+            "active": 4000004,
+            "passive": 6000010,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 3.486351817961932,
+                "formatted": "03\u00b029'11\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 29,
+                "seconds": 11
+            },
+            "difference": {
+                "raw": 3.486351817961932,
+                "formatted": "03\u00b029'11\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 29,
+                "seconds": 11
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000006": {
+            "active": 4000006,
+            "passive": 6000010,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -0.48340209043777804,
+                "formatted": "-00\u00b029'00\"",
+                "direction": "-",
+                "degrees": 0,
+                "minutes": 29,
+                "seconds": 0
+            },
+            "difference": {
+                "raw": 0.48340209043777804,
+                "formatted": "00\u00b029'00\"",
+                "direction": "+",
+                "degrees": 0,
+                "minutes": 29,
+                "seconds": 0
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000007": {
+            "active": 4000007,
+            "passive": 6000010,
+            "type": "Quincunx",
+            "aspect": 150.0,
+            "orb": 3.0,
+            "distance": {
+                "raw": 152.7461302588519,
+                "formatted": "152\u00b044'46\"",
+                "direction": "+",
+                "degrees": 152,
+                "minutes": 44,
+                "seconds": 46
+            },
+            "difference": {
+                "raw": 2.746130258851906,
+                "formatted": "02\u00b044'46\"",
+                "direction": "+",
+                "degrees": 2,
+                "minutes": 44,
+                "seconds": 46
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "6000007": {
+        "3000003": {
+            "active": 3000003,
+            "passive": 6000007,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -7.055846488527493,
+                "formatted": "-07\u00b003'21\"",
+                "direction": "-",
+                "degrees": 7,
+                "minutes": 3,
+                "seconds": 21
+            },
+            "difference": {
+                "raw": 7.055846488527493,
+                "formatted": "07\u00b003'21\"",
+                "direction": "+",
+                "degrees": 7,
+                "minutes": 3,
+                "seconds": 21
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000001": {
+            "active": 6000007,
+            "passive": 4000001,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -1.186981543095385,
+                "formatted": "-01\u00b011'13\"",
+                "direction": "-",
+                "degrees": 1,
+                "minutes": 11,
+                "seconds": 13
+            },
+            "difference": {
+                "raw": 1.186981543095385,
+                "formatted": "01\u00b011'13\"",
+                "direction": "+",
+                "degrees": 1,
+                "minutes": 11,
+                "seconds": 13
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000002": {
+            "active": 4000002,
+            "passive": 6000007,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 124.85786013520615,
+                "formatted": "124\u00b051'28\"",
+                "direction": "+",
+                "degrees": 124,
+                "minutes": 51,
+                "seconds": 28
+            },
+            "difference": {
+                "raw": 4.857860135206153,
+                "formatted": "04\u00b051'28\"",
+                "direction": "+",
+                "degrees": 4,
+                "minutes": 51,
+                "seconds": 28
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000003": {
+            "active": 6000007,
+            "passive": 4000003,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -8.635115143139728,
+                "formatted": "-08\u00b038'06\"",
+                "direction": "-",
+                "degrees": 8,
+                "minutes": 38,
+                "seconds": 6
+            },
+            "difference": {
+                "raw": 8.635115143139728,
+                "formatted": "08\u00b038'06\"",
+                "direction": "+",
+                "degrees": 8,
+                "minutes": 38,
+                "seconds": 6
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "4000001": {
+        "3000003": {
+            "active": 3000003,
+            "passive": 4000001,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -8.242828031622878,
+                "formatted": "-08\u00b014'34\"",
+                "direction": "-",
+                "degrees": 8,
+                "minutes": 14,
+                "seconds": 34
+            },
+            "difference": {
+                "raw": 8.242828031622878,
+                "formatted": "08\u00b014'34\"",
+                "direction": "+",
+                "degrees": 8,
+                "minutes": 14,
+                "seconds": 34
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000003": {
+            "active": 4000001,
+            "passive": 6000003,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 88.9661130701957,
+                "formatted": "88\u00b057'58\"",
+                "direction": "+",
+                "degrees": 88,
+                "minutes": 57,
+                "seconds": 58
+            },
+            "difference": {
+                "raw": -1.0338869298042965,
+                "formatted": "-01\u00b002'02\"",
+                "direction": "-",
+                "degrees": 1,
+                "minutes": 2,
+                "seconds": 2
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000004": {
+            "active": 4000001,
+            "passive": 6000004,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -91.03388692980428,
+                "formatted": "-91\u00b002'02\"",
+                "direction": "-",
+                "degrees": 91,
+                "minutes": 2,
+                "seconds": 2
+            },
+            "difference": {
+                "raw": 1.0338869298042823,
+                "formatted": "01\u00b002'02\"",
+                "direction": "+",
+                "degrees": 1,
+                "minutes": 2,
+                "seconds": 2
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000007": {
+            "active": 6000007,
+            "passive": 4000001,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -1.186981543095385,
+                "formatted": "-01\u00b011'13\"",
+                "direction": "-",
+                "degrees": 1,
+                "minutes": 11,
+                "seconds": 13
+            },
+            "difference": {
+                "raw": 1.186981543095385,
+                "formatted": "01\u00b011'13\"",
+                "direction": "+",
+                "degrees": 1,
+                "minutes": 11,
+                "seconds": 13
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000002": {
+            "active": 4000002,
+            "passive": 4000001,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 123.6708785921108,
+                "formatted": "123\u00b040'15\"",
+                "direction": "+",
+                "degrees": 123,
+                "minutes": 40,
+                "seconds": 15
+            },
+            "difference": {
+                "raw": 3.670878592110796,
+                "formatted": "03\u00b040'15\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 40,
+                "seconds": 15
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000003": {
+            "active": 4000003,
+            "passive": 4000001,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 7.448133600044372,
+                "formatted": "07\u00b026'53\"",
+                "direction": "+",
+                "degrees": 7,
+                "minutes": 26,
+                "seconds": 53
+            },
+            "difference": {
+                "raw": 7.448133600044372,
+                "formatted": "07\u00b026'53\"",
+                "direction": "+",
+                "degrees": 7,
+                "minutes": 26,
+                "seconds": 53
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000007": {
+            "active": 4000001,
+            "passive": 4000007,
+            "type": "Opposition",
+            "aspect": 180.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 179.2561562284895,
+                "formatted": "179\u00b015'22\"",
+                "direction": "+",
+                "degrees": 179,
+                "minutes": 15,
+                "seconds": 22
+            },
+            "difference": {
+                "raw": -0.7438437715105124,
+                "formatted": "-00\u00b044'38\"",
+                "direction": "-",
+                "degrees": 0,
+                "minutes": 44,
+                "seconds": 38
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000008": {
+            "active": 4000001,
+            "passive": 4000008,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -96.17799358764216,
+                "formatted": "-96\u00b010'41\"",
+                "direction": "-",
+                "degrees": 96,
+                "minutes": 10,
+                "seconds": 41
+            },
+            "difference": {
+                "raw": 6.177993587642163,
+                "formatted": "06\u00b010'41\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 10,
+                "seconds": 41
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "5000001": {
+            "active": 4000001,
+            "passive": 5000001,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 85.35153579483703,
+                "formatted": "85\u00b021'06\"",
+                "direction": "+",
+                "degrees": 85,
+                "minutes": 21,
+                "seconds": 6
+            },
+            "difference": {
+                "raw": -4.648464205162966,
+                "formatted": "-04\u00b038'54\"",
+                "direction": "-",
+                "degrees": 4,
+                "minutes": 38,
+                "seconds": 54
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "4000002": {
+        "6000003": {
+            "active": 4000002,
+            "passive": 6000003,
+            "type": "Quincunx",
+            "aspect": 150.0,
+            "orb": 3.0,
+            "distance": {
+                "raw": -147.36300833769351,
+                "formatted": "-147\u00b021'47\"",
+                "direction": "-",
+                "degrees": 147,
+                "minutes": 21,
+                "seconds": 47
+            },
+            "difference": {
+                "raw": -2.6369916623064853,
+                "formatted": "-02\u00b038'13\"",
+                "direction": "-",
+                "degrees": 2,
+                "minutes": 38,
+                "seconds": 13
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000010": {
+            "active": 4000002,
+            "passive": 6000010,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 95.67316507945219,
+                "formatted": "95\u00b040'23\"",
+                "direction": "+",
+                "degrees": 95,
+                "minutes": 40,
+                "seconds": 23
+            },
+            "difference": {
+                "raw": 5.67316507945219,
+                "formatted": "05\u00b040'23\"",
+                "direction": "+",
+                "degrees": 5,
+                "minutes": 40,
+                "seconds": 23
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000007": {
+            "active": 4000002,
+            "passive": 6000007,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 124.85786013520615,
+                "formatted": "124\u00b051'28\"",
+                "direction": "+",
+                "degrees": 124,
+                "minutes": 51,
+                "seconds": 28
+            },
+            "difference": {
+                "raw": 4.857860135206153,
+                "formatted": "04\u00b051'28\"",
+                "direction": "+",
+                "degrees": 4,
+                "minutes": 51,
+                "seconds": 28
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000001": {
+            "active": 4000002,
+            "passive": 4000001,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 123.6708785921108,
+                "formatted": "123\u00b040'15\"",
+                "direction": "+",
+                "degrees": 123,
+                "minutes": 40,
+                "seconds": 15
+            },
+            "difference": {
+                "raw": 3.670878592110796,
+                "formatted": "03\u00b040'15\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 40,
+                "seconds": 15
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000003": {
+            "active": 4000002,
+            "passive": 4000003,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 116.2227449920664,
+                "formatted": "116\u00b013'22\"",
+                "direction": "+",
+                "degrees": 116,
+                "minutes": 13,
+                "seconds": 22
+            },
+            "difference": {
+                "raw": -3.7772550079336042,
+                "formatted": "-03\u00b046'38\"",
+                "direction": "-",
+                "degrees": 3,
+                "minutes": 46,
+                "seconds": 38
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000004": {
+            "active": 4000002,
+            "passive": 4000004,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 92.18681326149027,
+                "formatted": "92\u00b011'13\"",
+                "direction": "+",
+                "degrees": 92,
+                "minutes": 11,
+                "seconds": 13
+            },
+            "difference": {
+                "raw": 2.186813261490272,
+                "formatted": "02\u00b011'13\"",
+                "direction": "+",
+                "degrees": 2,
+                "minutes": 11,
+                "seconds": 13
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000006": {
+            "active": 4000002,
+            "passive": 4000006,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 96.15656716988997,
+                "formatted": "96\u00b009'24\"",
+                "direction": "+",
+                "degrees": 96,
+                "minutes": 9,
+                "seconds": 24
+            },
+            "difference": {
+                "raw": 6.156567169889968,
+                "formatted": "06\u00b009'24\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 9,
+                "seconds": 24
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000007": {
+            "active": 4000002,
+            "passive": 4000007,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -57.072965179399716,
+                "formatted": "-57\u00b004'23\"",
+                "direction": "-",
+                "degrees": 57,
+                "minutes": 4,
+                "seconds": 23
+            },
+            "difference": {
+                "raw": -2.9270348206002836,
+                "formatted": "-02\u00b055'37\"",
+                "direction": "-",
+                "degrees": 2,
+                "minutes": 55,
+                "seconds": 37
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000011": {
+            "active": 4000002,
+            "passive": 4000011,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -99.06814217054256,
+                "formatted": "-99\u00b004'05\"",
+                "direction": "-",
+                "degrees": 99,
+                "minutes": 4,
+                "seconds": 5
+            },
+            "difference": {
+                "raw": 9.068142170542558,
+                "formatted": "09\u00b004'05\"",
+                "direction": "+",
+                "degrees": 9,
+                "minutes": 4,
+                "seconds": 5
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "5000001": {
+            "active": 4000002,
+            "passive": 5000001,
+            "type": "Quincunx",
+            "aspect": 150.0,
+            "orb": 3.0,
+            "distance": {
+                "raw": -150.97758561305218,
+                "formatted": "-150\u00b058'39\"",
+                "direction": "-",
+                "degrees": 150,
+                "minutes": 58,
+                "seconds": 39
+            },
+            "difference": {
+                "raw": 0.9775856130521845,
+                "formatted": "00\u00b058'39\"",
+                "direction": "+",
+                "degrees": 0,
+                "minutes": 58,
+                "seconds": 39
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "4000003": {
+        "6000003": {
+            "active": 4000003,
+            "passive": 6000003,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 96.41424667024008,
+                "formatted": "96\u00b024'51\"",
+                "direction": "+",
+                "degrees": 96,
+                "minutes": 24,
+                "seconds": 51
+            },
+            "difference": {
+                "raw": 6.414246670240075,
+                "formatted": "06\u00b024'51\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 24,
+                "seconds": 51
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000004": {
+            "active": 4000003,
+            "passive": 6000004,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -83.58575332975994,
+                "formatted": "-83\u00b035'09\"",
+                "direction": "-",
+                "degrees": 83,
+                "minutes": 35,
+                "seconds": 9
+            },
+            "difference": {
+                "raw": -6.414246670240061,
+                "formatted": "-06\u00b024'51\"",
+                "direction": "-",
+                "degrees": 6,
+                "minutes": 24,
+                "seconds": 51
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000007": {
+            "active": 6000007,
+            "passive": 4000003,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -8.635115143139728,
+                "formatted": "-08\u00b038'06\"",
+                "direction": "-",
+                "degrees": 8,
+                "minutes": 38,
+                "seconds": 6
+            },
+            "difference": {
+                "raw": 8.635115143139728,
+                "formatted": "08\u00b038'06\"",
+                "direction": "+",
+                "degrees": 8,
+                "minutes": 38,
+                "seconds": 6
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000001": {
+            "active": 4000003,
+            "passive": 4000001,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 7.448133600044372,
+                "formatted": "07\u00b026'53\"",
+                "direction": "+",
+                "degrees": 7,
+                "minutes": 26,
+                "seconds": 53
+            },
+            "difference": {
+                "raw": 7.448133600044372,
+                "formatted": "07\u00b026'53\"",
+                "direction": "+",
+                "degrees": 7,
+                "minutes": 26,
+                "seconds": 53
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000002": {
+            "active": 4000002,
+            "passive": 4000003,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 116.2227449920664,
+                "formatted": "116\u00b013'22\"",
+                "direction": "+",
+                "degrees": 116,
+                "minutes": 13,
+                "seconds": 22
+            },
+            "difference": {
+                "raw": -3.7772550079336042,
+                "formatted": "-03\u00b046'38\"",
+                "direction": "-",
+                "degrees": 3,
+                "minutes": 46,
+                "seconds": 38
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000007": {
+            "active": 4000003,
+            "passive": 4000007,
+            "type": "Opposition",
+            "aspect": 180.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -173.2957101714661,
+                "formatted": "-173\u00b017'45\"",
+                "direction": "-",
+                "degrees": 173,
+                "minutes": 17,
+                "seconds": 45
+            },
+            "difference": {
+                "raw": -6.704289828533888,
+                "formatted": "-06\u00b042'15\"",
+                "direction": "-",
+                "degrees": 6,
+                "minutes": 42,
+                "seconds": 15
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000008": {
+            "active": 4000003,
+            "passive": 4000008,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -88.72985998759782,
+                "formatted": "-88\u00b043'47\"",
+                "direction": "-",
+                "degrees": 88,
+                "minutes": 43,
+                "seconds": 47
+            },
+            "difference": {
+                "raw": -1.2701400124021802,
+                "formatted": "-01\u00b016'13\"",
+                "direction": "-",
+                "degrees": 1,
+                "minutes": 16,
+                "seconds": 13
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000009": {
+            "active": 4000003,
+            "passive": 4000009,
+            "type": "Quincunx",
+            "aspect": 150.0,
+            "orb": 3.0,
+            "distance": {
+                "raw": -152.5821941447349,
+                "formatted": "-152\u00b034'56\"",
+                "direction": "-",
+                "degrees": 152,
+                "minutes": 34,
+                "seconds": 56
+            },
+            "difference": {
+                "raw": 2.582194144734899,
+                "formatted": "02\u00b034'56\"",
+                "direction": "+",
+                "degrees": 2,
+                "minutes": 34,
+                "seconds": 56
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "5000001": {
+            "active": 4000003,
+            "passive": 5000001,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 92.7996693948814,
+                "formatted": "92\u00b047'59\"",
+                "direction": "+",
+                "degrees": 92,
+                "minutes": 47,
+                "seconds": 59
+            },
+            "difference": {
+                "raw": 2.7996693948814055,
+                "formatted": "02\u00b047'59\"",
+                "direction": "+",
+                "degrees": 2,
+                "minutes": 47,
+                "seconds": 59
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "4000004": {
+        "6000003": {
+            "active": 4000004,
+            "passive": 6000003,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 120.45017840081623,
+                "formatted": "120\u00b027'01\"",
+                "direction": "+",
+                "degrees": 120,
+                "minutes": 27,
+                "seconds": 1
+            },
+            "difference": {
+                "raw": 0.4501784008162275,
+                "formatted": "00\u00b027'01\"",
+                "direction": "+",
+                "degrees": 0,
+                "minutes": 27,
+                "seconds": 1
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000004": {
+            "active": 4000004,
+            "passive": 6000004,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -59.54982159918376,
+                "formatted": "-59\u00b032'59\"",
+                "direction": "-",
+                "degrees": 59,
+                "minutes": 32,
+                "seconds": 59
+            },
+            "difference": {
+                "raw": -0.4501784008162417,
+                "formatted": "-00\u00b027'01\"",
+                "direction": "-",
+                "degrees": 0,
+                "minutes": 27,
+                "seconds": 1
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000010": {
+            "active": 4000004,
+            "passive": 6000010,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 3.486351817961932,
+                "formatted": "03\u00b029'11\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 29,
+                "seconds": 11
+            },
+            "difference": {
+                "raw": 3.486351817961932,
+                "formatted": "03\u00b029'11\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 29,
+                "seconds": 11
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000002": {
+            "active": 4000002,
+            "passive": 4000004,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 92.18681326149027,
+                "formatted": "92\u00b011'13\"",
+                "direction": "+",
+                "degrees": 92,
+                "minutes": 11,
+                "seconds": 13
+            },
+            "difference": {
+                "raw": 2.186813261490272,
+                "formatted": "02\u00b011'13\"",
+                "direction": "+",
+                "degrees": 2,
+                "minutes": 11,
+                "seconds": 13
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000006": {
+            "active": 4000006,
+            "passive": 4000004,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -3.9697539083996958,
+                "formatted": "-03\u00b058'11\"",
+                "direction": "-",
+                "degrees": 3,
+                "minutes": 58,
+                "seconds": 11
+            },
+            "difference": {
+                "raw": 3.9697539083996958,
+                "formatted": "03\u00b058'11\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 58,
+                "seconds": 11
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000007": {
+            "active": 4000007,
+            "passive": 4000004,
+            "type": "Quincunx",
+            "aspect": 150.0,
+            "orb": 3.0,
+            "distance": {
+                "raw": 149.25977844089,
+                "formatted": "149\u00b015'35\"",
+                "direction": "+",
+                "degrees": 149,
+                "minutes": 15,
+                "seconds": 35
+            },
+            "difference": {
+                "raw": -0.7402215591100116,
+                "formatted": "-00\u00b044'25\"",
+                "direction": "-",
+                "degrees": 0,
+                "minutes": 44,
+                "seconds": 25
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000008": {
+            "active": 4000004,
+            "passive": 4000008,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -64.69392825702164,
+                "formatted": "-64\u00b041'38\"",
+                "direction": "-",
+                "degrees": 64,
+                "minutes": 41,
+                "seconds": 38
+            },
+            "difference": {
+                "raw": 4.693928257021639,
+                "formatted": "04\u00b041'38\"",
+                "direction": "+",
+                "degrees": 4,
+                "minutes": 41,
+                "seconds": 38
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000009": {
+            "active": 4000004,
+            "passive": 4000009,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -128.54626241415878,
+                "formatted": "-128\u00b032'47\"",
+                "direction": "-",
+                "degrees": 128,
+                "minutes": 32,
+                "seconds": 47
+            },
+            "difference": {
+                "raw": 8.546262414158775,
+                "formatted": "08\u00b032'47\"",
+                "direction": "+",
+                "degrees": 8,
+                "minutes": 32,
+                "seconds": 47
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "5000001": {
+            "active": 4000004,
+            "passive": 5000001,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 116.83560112545756,
+                "formatted": "116\u00b050'08\"",
+                "direction": "+",
+                "degrees": 116,
+                "minutes": 50,
+                "seconds": 8
+            },
+            "difference": {
+                "raw": -3.1643988745424423,
+                "formatted": "-03\u00b009'52\"",
+                "direction": "-",
+                "degrees": 3,
+                "minutes": 9,
+                "seconds": 52
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "4000006": {
+        "6000003": {
+            "active": 4000006,
+            "passive": 6000003,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 116.48042449241652,
+                "formatted": "116\u00b028'50\"",
+                "direction": "+",
+                "degrees": 116,
+                "minutes": 28,
+                "seconds": 50
+            },
+            "difference": {
+                "raw": -3.5195755075834825,
+                "formatted": "-03\u00b031'10\"",
+                "direction": "-",
+                "degrees": 3,
+                "minutes": 31,
+                "seconds": 10
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000004": {
+            "active": 4000006,
+            "passive": 6000004,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -63.519575507583454,
+                "formatted": "-63\u00b031'10\"",
+                "direction": "-",
+                "degrees": 63,
+                "minutes": 31,
+                "seconds": 10
+            },
+            "difference": {
+                "raw": 3.519575507583454,
+                "formatted": "03\u00b031'10\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 31,
+                "seconds": 10
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000010": {
+            "active": 4000006,
+            "passive": 6000010,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -0.48340209043777804,
+                "formatted": "-00\u00b029'00\"",
+                "direction": "-",
+                "degrees": 0,
+                "minutes": 29,
+                "seconds": 0
+            },
+            "difference": {
+                "raw": 0.48340209043777804,
+                "formatted": "00\u00b029'00\"",
+                "direction": "+",
+                "degrees": 0,
+                "minutes": 29,
+                "seconds": 0
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000002": {
+            "active": 4000002,
+            "passive": 4000006,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 96.15656716988997,
+                "formatted": "96\u00b009'24\"",
+                "direction": "+",
+                "degrees": 96,
+                "minutes": 9,
+                "seconds": 24
+            },
+            "difference": {
+                "raw": 6.156567169889968,
+                "formatted": "06\u00b009'24\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 9,
+                "seconds": 24
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000004": {
+            "active": 4000006,
+            "passive": 4000004,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -3.9697539083996958,
+                "formatted": "-03\u00b058'11\"",
+                "direction": "-",
+                "degrees": 3,
+                "minutes": 58,
+                "seconds": 11
+            },
+            "difference": {
+                "raw": 3.9697539083996958,
+                "formatted": "03\u00b058'11\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 58,
+                "seconds": 11
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "5000001": {
+            "active": 4000006,
+            "passive": 5000001,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 112.86584721705785,
+                "formatted": "112\u00b051'57\"",
+                "direction": "+",
+                "degrees": 112,
+                "minutes": 51,
+                "seconds": 57
+            },
+            "difference": {
+                "raw": -7.134152782942152,
+                "formatted": "-07\u00b008'03\"",
+                "direction": "-",
+                "degrees": 7,
+                "minutes": 8,
+                "seconds": 3
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "4000007": {
+        "3000004": {
+            "active": 3000004,
+            "passive": 4000007,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -8.98667180313339,
+                "formatted": "-08\u00b059'12\"",
+                "direction": "-",
+                "degrees": 8,
+                "minutes": 59,
+                "seconds": 12
+            },
+            "difference": {
+                "raw": 8.98667180313339,
+                "formatted": "08\u00b059'12\"",
+                "direction": "+",
+                "degrees": 8,
+                "minutes": 59,
+                "seconds": 12
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000003": {
+            "active": 4000007,
+            "passive": 6000003,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -90.29004315829377,
+                "formatted": "-90\u00b017'24\"",
+                "direction": "-",
+                "degrees": 90,
+                "minutes": 17,
+                "seconds": 24
+            },
+            "difference": {
+                "raw": 0.2900431582937699,
+                "formatted": "00\u00b017'24\"",
+                "direction": "+",
+                "degrees": 0,
+                "minutes": 17,
+                "seconds": 24
+            },
+            "movement": {
+                "applicative": false,
+                "exact": true,
+                "separative": false,
+                "formatted": "Exact"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000004": {
+            "active": 4000007,
+            "passive": 6000004,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 89.70995684170623,
+                "formatted": "89\u00b042'36\"",
+                "direction": "+",
+                "degrees": 89,
+                "minutes": 42,
+                "seconds": 36
+            },
+            "difference": {
+                "raw": -0.2900431582937699,
+                "formatted": "-00\u00b017'24\"",
+                "direction": "-",
+                "degrees": 0,
+                "minutes": 17,
+                "seconds": 24
+            },
+            "movement": {
+                "applicative": false,
+                "exact": true,
+                "separative": false,
+                "formatted": "Exact"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "6000010": {
+            "active": 4000007,
+            "passive": 6000010,
+            "type": "Quincunx",
+            "aspect": 150.0,
+            "orb": 3.0,
+            "distance": {
+                "raw": 152.7461302588519,
+                "formatted": "152\u00b044'46\"",
+                "direction": "+",
+                "degrees": 152,
+                "minutes": 44,
+                "seconds": 46
+            },
+            "difference": {
+                "raw": 2.746130258851906,
+                "formatted": "02\u00b044'46\"",
+                "direction": "+",
+                "degrees": 2,
+                "minutes": 44,
+                "seconds": 46
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000001": {
+            "active": 4000001,
+            "passive": 4000007,
+            "type": "Opposition",
+            "aspect": 180.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 179.2561562284895,
+                "formatted": "179\u00b015'22\"",
+                "direction": "+",
+                "degrees": 179,
+                "minutes": 15,
+                "seconds": 22
+            },
+            "difference": {
+                "raw": -0.7438437715105124,
+                "formatted": "-00\u00b044'38\"",
+                "direction": "-",
+                "degrees": 0,
+                "minutes": 44,
+                "seconds": 38
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000002": {
+            "active": 4000002,
+            "passive": 4000007,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -57.072965179399716,
+                "formatted": "-57\u00b004'23\"",
+                "direction": "-",
+                "degrees": 57,
+                "minutes": 4,
+                "seconds": 23
+            },
+            "difference": {
+                "raw": -2.9270348206002836,
+                "formatted": "-02\u00b055'37\"",
+                "direction": "-",
+                "degrees": 2,
+                "minutes": 55,
+                "seconds": 37
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000003": {
+            "active": 4000003,
+            "passive": 4000007,
+            "type": "Opposition",
+            "aspect": 180.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -173.2957101714661,
+                "formatted": "-173\u00b017'45\"",
+                "direction": "-",
+                "degrees": 173,
+                "minutes": 17,
+                "seconds": 45
+            },
+            "difference": {
+                "raw": -6.704289828533888,
+                "formatted": "-06\u00b042'15\"",
+                "direction": "-",
+                "degrees": 6,
+                "minutes": 42,
+                "seconds": 15
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000004": {
+            "active": 4000007,
+            "passive": 4000004,
+            "type": "Quincunx",
+            "aspect": 150.0,
+            "orb": 3.0,
+            "distance": {
+                "raw": 149.25977844089,
+                "formatted": "149\u00b015'35\"",
+                "direction": "+",
+                "degrees": 149,
+                "minutes": 15,
+                "seconds": 35
+            },
+            "difference": {
+                "raw": -0.7402215591100116,
+                "formatted": "-00\u00b044'25\"",
+                "direction": "-",
+                "degrees": 0,
+                "minutes": 44,
+                "seconds": 25
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000008": {
+            "active": 4000007,
+            "passive": 4000008,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 84.56585018386829,
+                "formatted": "84\u00b033'57\"",
+                "direction": "+",
+                "degrees": 84,
+                "minutes": 33,
+                "seconds": 57
+            },
+            "difference": {
+                "raw": -5.434149816131708,
+                "formatted": "-05\u00b026'03\"",
+                "direction": "-",
+                "degrees": 5,
+                "minutes": 26,
+                "seconds": 3
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "5000001": {
+            "active": 4000007,
+            "passive": 5000001,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -93.90462043365244,
+                "formatted": "-93\u00b054'17\"",
+                "direction": "-",
+                "degrees": 93,
+                "minutes": 54,
+                "seconds": 17
+            },
+            "difference": {
+                "raw": 3.9046204336524397,
+                "formatted": "03\u00b054'17\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 54,
+                "seconds": 17
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "4000008": {
+        "6000004": {
+            "active": 6000004,
+            "passive": 4000008,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -5.144106657837881,
+                "formatted": "-05\u00b008'39\"",
+                "direction": "-",
+                "degrees": 5,
+                "minutes": 8,
+                "seconds": 39
+            },
+            "difference": {
+                "raw": 5.144106657837881,
+                "formatted": "05\u00b008'39\"",
+                "direction": "+",
+                "degrees": 5,
+                "minutes": 8,
+                "seconds": 39
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000001": {
+            "active": 4000001,
+            "passive": 4000008,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -96.17799358764216,
+                "formatted": "-96\u00b010'41\"",
+                "direction": "-",
+                "degrees": 96,
+                "minutes": 10,
+                "seconds": 41
+            },
+            "difference": {
+                "raw": 6.177993587642163,
+                "formatted": "06\u00b010'41\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 10,
+                "seconds": 41
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000003": {
+            "active": 4000003,
+            "passive": 4000008,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -88.72985998759782,
+                "formatted": "-88\u00b043'47\"",
+                "direction": "-",
+                "degrees": 88,
+                "minutes": 43,
+                "seconds": 47
+            },
+            "difference": {
+                "raw": -1.2701400124021802,
+                "formatted": "-01\u00b016'13\"",
+                "direction": "-",
+                "degrees": 1,
+                "minutes": 16,
+                "seconds": 13
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000004": {
+            "active": 4000004,
+            "passive": 4000008,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -64.69392825702164,
+                "formatted": "-64\u00b041'38\"",
+                "direction": "-",
+                "degrees": 64,
+                "minutes": 41,
+                "seconds": 38
+            },
+            "difference": {
+                "raw": 4.693928257021639,
+                "formatted": "04\u00b041'38\"",
+                "direction": "+",
+                "degrees": 4,
+                "minutes": 41,
+                "seconds": 38
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000007": {
+            "active": 4000007,
+            "passive": 4000008,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 84.56585018386829,
+                "formatted": "84\u00b033'57\"",
+                "direction": "+",
+                "degrees": 84,
+                "minutes": 33,
+                "seconds": 57
+            },
+            "difference": {
+                "raw": -5.434149816131708,
+                "formatted": "-05\u00b026'03\"",
+                "direction": "-",
+                "degrees": 5,
+                "minutes": 26,
+                "seconds": 3
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000009": {
+            "active": 4000009,
+            "passive": 4000008,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": 63.85233415713708,
+                "formatted": "63\u00b051'08\"",
+                "direction": "+",
+                "degrees": 63,
+                "minutes": 51,
+                "seconds": 8
+            },
+            "difference": {
+                "raw": 3.8523341571370793,
+                "formatted": "03\u00b051'08\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 51,
+                "seconds": 8
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000011": {
+            "active": 4000008,
+            "passive": 4000011,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -126.56102717501116,
+                "formatted": "-126\u00b033'40\"",
+                "direction": "-",
+                "degrees": 126,
+                "minutes": 33,
+                "seconds": 40
+            },
+            "difference": {
+                "raw": 6.561027175011162,
+                "formatted": "06\u00b033'40\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 33,
+                "seconds": 40
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "5000001": {
+            "active": 5000001,
+            "passive": 4000008,
+            "type": "Opposition",
+            "aspect": 180.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 178.4704706175208,
+                "formatted": "178\u00b028'14\"",
+                "direction": "+",
+                "degrees": 178,
+                "minutes": 28,
+                "seconds": 14
+            },
+            "difference": {
+                "raw": -1.529529382479211,
+                "formatted": "-01\u00b031'46\"",
+                "direction": "-",
+                "degrees": 1,
+                "minutes": 31,
+                "seconds": 46
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "4000009": {
+        "4000003": {
+            "active": 4000003,
+            "passive": 4000009,
+            "type": "Quincunx",
+            "aspect": 150.0,
+            "orb": 3.0,
+            "distance": {
+                "raw": -152.5821941447349,
+                "formatted": "-152\u00b034'56\"",
+                "direction": "-",
+                "degrees": 152,
+                "minutes": 34,
+                "seconds": 56
+            },
+            "difference": {
+                "raw": 2.582194144734899,
+                "formatted": "02\u00b034'56\"",
+                "direction": "+",
+                "degrees": 2,
+                "minutes": 34,
+                "seconds": 56
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000004": {
+            "active": 4000004,
+            "passive": 4000009,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -128.54626241415878,
+                "formatted": "-128\u00b032'47\"",
+                "direction": "-",
+                "degrees": 128,
+                "minutes": 32,
+                "seconds": 47
+            },
+            "difference": {
+                "raw": 8.546262414158775,
+                "formatted": "08\u00b032'47\"",
+                "direction": "+",
+                "degrees": 8,
+                "minutes": 32,
+                "seconds": 47
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000008": {
+            "active": 4000009,
+            "passive": 4000008,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": 63.85233415713708,
+                "formatted": "63\u00b051'08\"",
+                "direction": "+",
+                "degrees": 63,
+                "minutes": 51,
+                "seconds": 8
+            },
+            "difference": {
+                "raw": 3.8523341571370793,
+                "formatted": "03\u00b051'08\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 51,
+                "seconds": 8
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000010": {
+            "active": 4000009,
+            "passive": 4000010,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -6.661208881361972,
+                "formatted": "-06\u00b039'40\"",
+                "direction": "-",
+                "degrees": 6,
+                "minutes": 39,
+                "seconds": 40
+            },
+            "difference": {
+                "raw": 6.661208881361972,
+                "formatted": "06\u00b039'40\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 39,
+                "seconds": 40
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": false,
+                "dissociate": true,
+                "formatted": "Dissociate"
+            }
+        },
+        "4000011": {
+            "active": 4000009,
+            "passive": 4000011,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -62.708693017874054,
+                "formatted": "-62\u00b042'31\"",
+                "direction": "-",
+                "degrees": 62,
+                "minutes": 42,
+                "seconds": 31
+            },
+            "difference": {
+                "raw": 2.7086930178740545,
+                "formatted": "02\u00b042'31\"",
+                "direction": "+",
+                "degrees": 2,
+                "minutes": 42,
+                "seconds": 31
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "5000001": {
+            "active": 5000001,
+            "passive": 4000009,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 114.61813646038368,
+                "formatted": "114\u00b037'05\"",
+                "direction": "+",
+                "degrees": 114,
+                "minutes": 37,
+                "seconds": 5
+            },
+            "difference": {
+                "raw": -5.381863539616319,
+                "formatted": "-05\u00b022'55\"",
+                "direction": "-",
+                "degrees": 5,
+                "minutes": 22,
+                "seconds": 55
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    },
+    "4000010": {
+        "3000004": {
+            "active": 3000004,
+            "passive": 4000010,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 5.065635342235851,
+                "formatted": "05\u00b003'56\"",
+                "direction": "+",
+                "degrees": 5,
+                "minutes": 3,
+                "seconds": 56
+            },
+            "difference": {
+                "raw": 5.065635342235851,
+                "formatted": "05\u00b003'56\"",
+                "direction": "+",
+                "degrees": 5,
+                "minutes": 3,
+                "seconds": 56
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000009": {
+            "active": 4000009,
+            "passive": 4000010,
+            "type": "Conjunction",
+            "aspect": 0.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -6.661208881361972,
+                "formatted": "-06\u00b039'40\"",
+                "direction": "-",
+                "degrees": 6,
+                "minutes": 39,
+                "seconds": 40
+            },
+            "difference": {
+                "raw": 6.661208881361972,
+                "formatted": "06\u00b039'40\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 39,
+                "seconds": 40
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": false,
+                "dissociate": true,
+                "formatted": "Dissociate"
+            }
+        },
+        "4000011": {
+            "active": 4000010,
+            "passive": 4000011,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -56.04748413651208,
+                "formatted": "-56\u00b002'51\"",
+                "direction": "-",
+                "degrees": 56,
+                "minutes": 2,
+                "seconds": 51
+            },
+            "difference": {
+                "raw": -3.9525158634879176,
+                "formatted": "-03\u00b057'09\"",
+                "direction": "-",
+                "degrees": 3,
+                "minutes": 57,
+                "seconds": 9
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": false,
+                "dissociate": true,
+                "formatted": "Dissociate"
+            }
+        }
+    },
+    "4000011": {
+        "4000002": {
+            "active": 4000002,
+            "passive": 4000011,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -99.06814217054256,
+                "formatted": "-99\u00b004'05\"",
+                "direction": "-",
+                "degrees": 99,
+                "minutes": 4,
+                "seconds": 5
+            },
+            "difference": {
+                "raw": 9.068142170542558,
+                "formatted": "09\u00b004'05\"",
+                "direction": "+",
+                "degrees": 9,
+                "minutes": 4,
+                "seconds": 5
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000008": {
+            "active": 4000008,
+            "passive": 4000011,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -126.56102717501116,
+                "formatted": "-126\u00b033'40\"",
+                "direction": "-",
+                "degrees": 126,
+                "minutes": 33,
+                "seconds": 40
+            },
+            "difference": {
+                "raw": 6.561027175011162,
+                "formatted": "06\u00b033'40\"",
+                "direction": "+",
+                "degrees": 6,
+                "minutes": 33,
+                "seconds": 40
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000009": {
+            "active": 4000009,
+            "passive": 4000011,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -62.708693017874054,
+                "formatted": "-62\u00b042'31\"",
+                "direction": "-",
+                "degrees": 62,
+                "minutes": 42,
+                "seconds": 31
+            },
+            "difference": {
+                "raw": 2.7086930178740545,
+                "formatted": "02\u00b042'31\"",
+                "direction": "+",
+                "degrees": 2,
+                "minutes": 42,
+                "seconds": 31
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000010": {
+            "active": 4000010,
+            "passive": 4000011,
+            "type": "Sextile",
+            "aspect": 60.0,
+            "orb": 6.0,
+            "distance": {
+                "raw": -56.04748413651208,
+                "formatted": "-56\u00b002'51\"",
+                "direction": "-",
+                "degrees": 56,
+                "minutes": 2,
+                "seconds": 51
+            },
+            "difference": {
+                "raw": -3.9525158634879176,
+                "formatted": "-03\u00b057'09\"",
+                "direction": "-",
+                "degrees": 3,
+                "minutes": 57,
+                "seconds": 9
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": false,
+                "dissociate": true,
+                "formatted": "Dissociate"
+            }
+        }
+    },
+    "5000001": {
+        "4000001": {
+            "active": 4000001,
+            "passive": 5000001,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 85.35153579483703,
+                "formatted": "85\u00b021'06\"",
+                "direction": "+",
+                "degrees": 85,
+                "minutes": 21,
+                "seconds": 6
+            },
+            "difference": {
+                "raw": -4.648464205162966,
+                "formatted": "-04\u00b038'54\"",
+                "direction": "-",
+                "degrees": 4,
+                "minutes": 38,
+                "seconds": 54
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000002": {
+            "active": 4000002,
+            "passive": 5000001,
+            "type": "Quincunx",
+            "aspect": 150.0,
+            "orb": 3.0,
+            "distance": {
+                "raw": -150.97758561305218,
+                "formatted": "-150\u00b058'39\"",
+                "direction": "-",
+                "degrees": 150,
+                "minutes": 58,
+                "seconds": 39
+            },
+            "difference": {
+                "raw": 0.9775856130521845,
+                "formatted": "00\u00b058'39\"",
+                "direction": "+",
+                "degrees": 0,
+                "minutes": 58,
+                "seconds": 39
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000003": {
+            "active": 4000003,
+            "passive": 5000001,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 92.7996693948814,
+                "formatted": "92\u00b047'59\"",
+                "direction": "+",
+                "degrees": 92,
+                "minutes": 47,
+                "seconds": 59
+            },
+            "difference": {
+                "raw": 2.7996693948814055,
+                "formatted": "02\u00b047'59\"",
+                "direction": "+",
+                "degrees": 2,
+                "minutes": 47,
+                "seconds": 59
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000004": {
+            "active": 4000004,
+            "passive": 5000001,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 116.83560112545756,
+                "formatted": "116\u00b050'08\"",
+                "direction": "+",
+                "degrees": 116,
+                "minutes": 50,
+                "seconds": 8
+            },
+            "difference": {
+                "raw": -3.1643988745424423,
+                "formatted": "-03\u00b009'52\"",
+                "direction": "-",
+                "degrees": 3,
+                "minutes": 9,
+                "seconds": 52
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000006": {
+            "active": 4000006,
+            "passive": 5000001,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 112.86584721705785,
+                "formatted": "112\u00b051'57\"",
+                "direction": "+",
+                "degrees": 112,
+                "minutes": 51,
+                "seconds": 57
+            },
+            "difference": {
+                "raw": -7.134152782942152,
+                "formatted": "-07\u00b008'03\"",
+                "direction": "-",
+                "degrees": 7,
+                "minutes": 8,
+                "seconds": 3
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000007": {
+            "active": 4000007,
+            "passive": 5000001,
+            "type": "Square",
+            "aspect": 90.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": -93.90462043365244,
+                "formatted": "-93\u00b054'17\"",
+                "direction": "-",
+                "degrees": 93,
+                "minutes": 54,
+                "seconds": 17
+            },
+            "difference": {
+                "raw": 3.9046204336524397,
+                "formatted": "03\u00b054'17\"",
+                "direction": "+",
+                "degrees": 3,
+                "minutes": 54,
+                "seconds": 17
+            },
+            "movement": {
+                "applicative": true,
+                "exact": false,
+                "separative": false,
+                "formatted": "Applicative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000008": {
+            "active": 5000001,
+            "passive": 4000008,
+            "type": "Opposition",
+            "aspect": 180.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 178.4704706175208,
+                "formatted": "178\u00b028'14\"",
+                "direction": "+",
+                "degrees": 178,
+                "minutes": 28,
+                "seconds": 14
+            },
+            "difference": {
+                "raw": -1.529529382479211,
+                "formatted": "-01\u00b031'46\"",
+                "direction": "-",
+                "degrees": 1,
+                "minutes": 31,
+                "seconds": 46
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        },
+        "4000009": {
+            "active": 5000001,
+            "passive": 4000009,
+            "type": "Trine",
+            "aspect": 120.0,
+            "orb": 10.0,
+            "distance": {
+                "raw": 114.61813646038368,
+                "formatted": "114\u00b037'05\"",
+                "direction": "+",
+                "degrees": 114,
+                "minutes": 37,
+                "seconds": 5
+            },
+            "difference": {
+                "raw": -5.381863539616319,
+                "formatted": "-05\u00b022'55\"",
+                "direction": "-",
+                "degrees": 5,
+                "minutes": 22,
+                "seconds": 55
+            },
+            "movement": {
+                "applicative": false,
+                "exact": false,
+                "separative": true,
+                "formatted": "Separative"
+            },
+            "condition": {
+                "associate": true,
+                "dissociate": false,
+                "formatted": "Associate"
+            }
+        }
+    }
+}
