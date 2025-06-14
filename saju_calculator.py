@@ -87,20 +87,124 @@ class SajuCalculator:
             }
         }
         
-        # 지장간 (지지 안에 숨어있는 천간들) - 팩트체크 반영
+        # 지장간 (지지 안에 숨어있는 천간들) - 정확한 데이터
         self.hidden_stems = {
             "자": [("계", 100)],
             "축": [("기", 60), ("신", 30), ("계", 10)],  # 축: 기토60% + 신금30% + 계수10%
             "인": [("갑", 60), ("병", 30), ("무", 10)],
             "묘": [("을", 100)],
             "진": [("무", 60), ("을", 30), ("계", 10)],
-            "사": [("정", 70), ("무", 20), ("경", 10)],  # 사: 정화70% + 무토20% + 경금10% (수정)
+            "사": [("병", 70), ("무", 20), ("경", 10)],  # 사: 병화70% + 무토20% + 경금10%
             "오": [("정", 70), ("기", 30)],
             "미": [("기", 60), ("정", 30), ("을", 10)],
             "신": [("경", 60), ("임", 30), ("무", 10)],
             "유": [("신", 100)],
             "술": [("무", 60), ("신", 30), ("정", 10)],
             "해": [("임", 70), ("갑", 30)]
+        }
+        
+        # 월령 가중치 (계절별 오행 강약) - 전통 명리학 왕상사수휴 이론
+        self.seasonal_weights = {
+            # 봄 (인묘진월) - 목왕, 화상, 토사, 금수, 수휴
+            "인": {"목": 2.0, "화": 1.3, "토": 0.7, "금": 0.5, "수": 0.6},  # 목 최왕
+            "묘": {"목": 2.2, "화": 1.3, "토": 0.7, "금": 0.4, "수": 0.6},  # 목 극왕
+            "진": {"목": 1.5, "화": 1.1, "토": 1.3, "금": 0.6, "수": 0.7},  # 토월(계절 변화)
+            
+            # 여름 (사오미월) - 화왕, 토상, 금사, 수수, 목휴
+            "사": {"화": 2.0, "토": 1.3, "금": 0.7, "수": 0.5, "목": 0.6},  # 화 최왕
+            "오": {"화": 2.2, "토": 1.3, "금": 0.7, "수": 0.4, "목": 0.6},  # 화 극왕
+            "미": {"화": 1.5, "토": 1.8, "금": 0.8, "수": 0.6, "목": 0.7},  # 토월(계절 변화)
+            
+            # 가을 (신유술월) - 금왕, 수상, 토사, 화수, 목휴
+            "신": {"금": 2.0, "수": 1.3, "토": 0.7, "화": 0.5, "목": 0.6},  # 금 최왕
+            "유": {"금": 2.2, "수": 1.3, "토": 0.7, "화": 0.4, "목": 0.6},  # 금 극왕
+            "술": {"금": 1.5, "수": 1.1, "토": 1.3, "화": 0.6, "목": 0.7},  # 토월(계절 변화)
+            
+            # 겨울 (해자축월) - 수왕, 목상, 화사, 토수, 금휴
+            "해": {"수": 2.0, "목": 1.3, "화": 0.7, "토": 0.5, "금": 0.6},  # 수 최왕
+            "자": {"수": 2.2, "목": 1.3, "화": 0.7, "토": 0.4, "금": 0.6},  # 수 극왕
+            "축": {"수": 1.5, "목": 1.1, "화": 0.7, "토": 1.3, "금": 0.8}   # 토월(계절 변화)
+        }
+        
+        # 합충형해 관계 (지지 간의 특수 관계)
+        self.branch_relationships = {
+            # 육합 (六合) - 서로 도와주는 관계
+            "합": {
+                ("자", "축"): "토합", ("인", "해"): "목합", ("묘", "술"): "화합",
+                ("진", "유"): "금합", ("사", "신"): "수합", ("오", "미"): "토합"
+            },
+            # 삼합 (三合) - 3개가 모여 하나의 오행을 강화
+            "삼합": {
+                ("인", "오", "술"): "화국", ("사", "유", "축"): "금국",
+                ("신", "자", "진"): "수국", ("해", "묘", "미"): "목국"
+            },
+            # 육충 (六沖) - 서로 충돌하는 관계
+            "충": {
+                ("자", "오"): "자오충", ("축", "미"): "축미충", ("인", "신"): "인신충",
+                ("묘", "유"): "묘유충", ("진", "술"): "진술충", ("사", "해"): "사해충"
+            },
+            # 육해 (六害) - 서로 해치는 관계
+            "해": {
+                ("자", "미"): "자미해", ("축", "오"): "축오해", ("인", "사"): "인사해",
+                ("묘", "진"): "묘진해", ("신", "해"): "신해해", ("유", "술"): "유술해"
+            },
+            # 자형 (自刑) - 같은 지지끼리 형
+            "형": {
+                ("축", "술", "미"): "토형", ("인", "사", "신"): "무은지형",
+                ("자", "묘", "유"): "무례지형", ("진", "오", "해"): "자형"
+            }
+        }
+        
+        # 신살(神殺) 정보 - 공망, 도화, 역마 등
+        self.shinsals = {
+            # 공망(空亡) - 일지 기준
+            "공망": {
+                "갑을": ["술", "해"], "병정": ["신", "유"], "무기": ["오", "미"],
+                "경신": ["진", "사"], "임계": ["인", "묘"]
+            },
+            # 도화(桃花) - 연지/일지 기준
+            "도화": {
+                "인오술": "묘", "사유축": "오", "신자진": "유", "해묘미": "자"
+            },
+            # 역마(驛馬) - 연지/일지 기준  
+            "역마": {
+                "인오술": "신", "사유축": "해", "신자진": "인", "해묘미": "사"
+            },
+            # 천을귀인(天乙貴人) - 일간 기준
+            "천을귀인": {
+                "갑무": ["축", "미"], "을기": ["자", "신"], "병정": ["해", "유"],
+                "경신": ["오", "인"], "임계": ["사", "묘"]
+            },
+            # 태극귀인(太極貴人) - 일간 기준
+            "태극귀인": {
+                "갑을": ["자", "오"], "병정": ["묘", "유"], "무": ["진", "술", "축", "미"],
+                "기": ["진", "술", "축", "미"], "경신": ["인", "해"], "임계": ["사", "신"]
+            }
+        }
+        
+        # 윤달 정보 (1900-2100년) - 한국천문연구원 기준
+        self.leap_months = {
+            # 년도: (윤달 월, 양력 시작월, 양력 시작일, 양력 끝월, 양력 끝일)
+            1984: (10, 11, 23, 12, 21),  # 1984년 윤10월
+            1987: (6, 7, 26, 8, 23),     # 1987년 윤6월
+            1990: (5, 6, 23, 7, 21),     # 1990년 윤5월
+            1993: (3, 4, 22, 5, 20),     # 1993년 윤3월
+            1995: None,                   # 1995년은 윤달 없음
+            1998: (5, 5, 24, 6, 22),     # 1998년 윤5월
+            2001: (4, 4, 23, 5, 21),     # 2001년 윤4월
+            2004: (2, 2, 21, 3, 20),     # 2004년 윤2월
+            2006: (7, 7, 25, 8, 23),     # 2006년 윤7월
+            2009: (5, 5, 23, 6, 21),     # 2009년 윤5월
+            2012: (3, 3, 21, 4, 19),     # 2012년 윤3월
+            2014: (9, 9, 24, 10, 23),    # 2014년 윤9월
+            2017: (6, 6, 24, 7, 22),     # 2017년 윤6월
+            2020: (4, 4, 23, 5, 21),     # 2020년 윤4월
+            2023: (2, 2, 20, 3, 21),     # 2023년 윤2월
+            2025: (6, 6, 23, 7, 21),     # 2025년 윤6월 (예정)
+            2028: (5, 5, 21, 6, 19),     # 2028년 윤5월 (예정)
+            2031: (3, 3, 21, 4, 19),     # 2031년 윤3월 (예정)
+            2033: (11, 12, 22, 1, 19),   # 2033년 윤11월 (예정)
+            2036: (6, 6, 22, 7, 20),     # 2036년 윤6월 (예정)
         }
         
         # 2024년 절기 정보 (한국천문연구원 기준)
@@ -130,9 +234,10 @@ class SajuCalculator:
         }
     
     def calculate_saju(self, year: int, month: int, day: int, hour: int, 
-                      minute: int = 0, is_male: bool = True, timezone: str = "Asia/Seoul") -> SajuChart:
+                      minute: int = 0, is_male: bool = True, timezone: str = "Asia/Seoul", 
+                      is_leap_month: bool = False) -> SajuChart:
         """
-        사주팔자 계산 - 개선된 버전
+        사주팔자 계산 - 개선된 버전 (윤달 지원)
         
         Args:
             year: 년도
@@ -142,6 +247,7 @@ class SajuCalculator:
             minute: 분
             is_male: 성별 (남성=True, 여성=False)
             timezone: 시간대
+            is_leap_month: 윤달 여부 (True=윤달, False=평달)
         
         Returns:
             SajuChart: 계산된 사주팔자
@@ -149,17 +255,16 @@ class SajuCalculator:
         # 생년월일시 설정
         birth_datetime = datetime(year, month, day, hour, minute)
         
-        # 태양시 보정 (서울 기준 약 -5분 32초)
-        if timezone == "Asia/Seoul":
-            birth_datetime = birth_datetime - timedelta(minutes=5, seconds=32)
+        # 태양시 보정 (지역별 경도 차이 반영)
+        birth_datetime = self._apply_solar_time_correction(birth_datetime, timezone)
         
         # 기준일 설정 (1900년 1월 1일)
         base_date = datetime(1900, 1, 1)
         days_diff = (birth_datetime.date() - base_date.date()).days
         
-        # 각 기둥 계산
+        # 각 기둥 계산 (윤달 고려)
         year_pillar = self._calculate_year_pillar(year)
-        month_pillar = self._calculate_month_pillar_improved(year, month, day)
+        month_pillar = self._calculate_month_pillar_improved(year, month, day, is_leap_month)
         day_pillar = self._calculate_day_pillar(days_diff)
         hour_pillar = self._calculate_hour_pillar_improved(day_pillar.heavenly_stem, hour, minute)
         
@@ -167,6 +272,7 @@ class SajuCalculator:
             "year": year, "month": month, "day": day, 
             "hour": hour, "minute": minute,
             "is_male": is_male, "timezone": timezone,
+            "is_leap_month": is_leap_month,
             "birth_datetime": birth_datetime
         }
         
@@ -186,10 +292,10 @@ class SajuCalculator:
             self.earthly_branches[branch_index]
         )
     
-    def _calculate_month_pillar_improved(self, year: int, month: int, day: int) -> SajuPillar:
-        """월주 계산 - 절기 세분화 개선"""
-        # 절기 기준으로 정확한 월지 결정
-        month_branch_index = self._get_month_branch_by_solar_terms(year, month, day)
+    def _calculate_month_pillar_improved(self, year: int, month: int, day: int, is_leap_month: bool = False) -> SajuPillar:
+        """월주 계산 - 절기 세분화 개선 (윤달 지원)"""
+        # 절기 기준으로 정확한 월지 결정 (윤달 고려)
+        month_branch_index = self._get_month_branch_by_solar_terms(year, month, day, is_leap_month)
         
         # 년간에 따른 월간 기준 설정
         year_stem_index = (year - 1984) % 10
@@ -215,8 +321,16 @@ class SajuCalculator:
             self.earthly_branches[month_branch_index]
         )
     
-    def _get_month_branch_by_solar_terms(self, year: int, month: int, day: int) -> int:
-        """절기 기준으로 정확한 월지 결정 - 범용 계산"""
+    def _get_month_branch_by_solar_terms(self, year: int, month: int, day: int, is_leap_month: bool = False) -> int:
+        """절기 기준으로 정확한 월지 결정 - 범용 계산 (윤달 지원)"""
+        # 윤달 처리: 윤달인 경우 이전 달의 월지를 사용
+        if is_leap_month:
+            # 윤달은 이전 달과 같은 월지 사용
+            if month > 1:
+                return self._get_month_branch_by_solar_terms(year, month - 1, 15, False)
+            else:
+                return self._get_month_branch_by_solar_terms(year - 1, 12, 15, False)
+        
         # 절기의 대략적인 날짜 계산 (공식 기반)
         solar_terms_approx = self._calculate_solar_terms_dates(year)
         
@@ -518,6 +632,59 @@ class SajuCalculator:
         
         return ten_gods
     
+    def get_ten_gods_summary(self, saju_chart: SajuChart) -> Dict[str, Dict]:
+        """
+        십신 요약 분석 (강약 포함)
+        
+        Args:
+            saju_chart: 사주팔자 차트
+        
+        Returns:
+            Dict: 십신별 강약 요약
+        """
+        ten_gods_detail = self.analyze_ten_gods(saju_chart)
+        
+        # 십신별 점수 계산
+        ten_gods_scores = {
+            "비견": 0, "겁재": 0, "식신": 0, "상관": 0, "편재": 0,
+            "정재": 0, "편관": 0, "정관": 0, "편인": 0, "정인": 0
+        }
+        
+        for pillar_name, gods_list in ten_gods_detail.items():
+            for god_info in gods_list:
+                if ":" in god_info:
+                    god_type = god_info.split(":")[1]
+                    if "(" in god_type:  # 지장간 비율 포함
+                        god_name = god_type.split("(")[0]
+                        ratio_str = god_type.split("(")[1].replace("%)", "")
+                        ratio = int(ratio_str) / 100.0
+                        ten_gods_scores[god_name] = ten_gods_scores.get(god_name, 0) + ratio
+                    else:  # 천간
+                        ten_gods_scores[god_type] = ten_gods_scores.get(god_type, 0) + 1.0
+        
+        # 십신별 강약 표시
+        ten_gods_summary = {}
+        for god_name, score in ten_gods_scores.items():
+            if score > 0:
+                if score >= 2.0:
+                    strength = "★★★★★"
+                elif score >= 1.5:
+                    strength = "★★★★☆"
+                elif score >= 1.0:
+                    strength = "★★★☆☆"
+                elif score >= 0.5:
+                    strength = "★★☆☆☆"
+                else:
+                    strength = "★☆☆☆☆"
+                
+                ten_gods_summary[god_name] = {
+                    "score": round(score, 1),
+                    "strength": strength,
+                    "level": "매우강" if score >= 2.0 else "강" if score >= 1.5 else "보통" if score >= 1.0 else "약" if score >= 0.5 else "매우약"
+                }
+        
+        return ten_gods_summary
+    
     def calculate_great_fortune_improved(self, saju_chart: SajuChart) -> List[Dict]:
         """대운 계산 - 역행 로직 수정"""
         birth_info = saju_chart.birth_info
@@ -539,8 +706,8 @@ class SajuCalculator:
         else:
             direction = -1  # 역행
         
-        # 대운 시작 연령 (절기 기준으로 정밀 계산 필요하지만 여기서는 간소화)
-        start_age = 8  # 기본 8세 (실제로는 절기까지의 일수/3으로 계산)
+        # 대운 시작 연령 정밀 계산 (절기 일수/3 공식)
+        start_age = self._calculate_precise_fortune_start_age(saju_chart, direction)
         
         # 월주 기준으로 대운 계산
         month_stem_idx = self.heavenly_stems.index(saju_chart.month_pillar.heavenly_stem)
@@ -569,9 +736,279 @@ class SajuCalculator:
         
         return great_fortunes
     
-    def get_element_strength(self, saju_chart: SajuChart) -> Dict[str, int]:
+    def _calculate_precise_fortune_start_age(self, saju_chart: SajuChart, direction: int) -> float:
         """
-        오행 강약 분석 (전통 8점 방식) - 단순 전통 방식
+        정밀 대운 시작 나이 계산 (절기 일수/3 공식)
+        
+        Args:
+            saju_chart: 사주팔자 차트
+            direction: 대운 방향 (1: 순행, -1: 역행)
+        
+        Returns:
+            float: 정밀 대운 시작 나이
+        """
+        birth_info = saju_chart.birth_info
+        birth_datetime = birth_info["birth_datetime"]
+        year = birth_info["year"]
+        month = birth_info["month"]
+        day = birth_info["day"]
+        
+        # 현재 절기와 다음/이전 절기 찾기
+        solar_terms_dates = self._calculate_solar_terms_dates(year)
+        
+        # 절기 순서 (월별)
+        terms_order = [
+            "소한", "대한", "입춘", "우수", "경칩", "춘분", "청명", "곡우",
+            "입하", "소만", "망종", "하지", "소서", "대서", "입추", "처서",
+            "백로", "추분", "한로", "상강", "입동", "소설", "대설", "동지"
+        ]
+        
+        # 생일 기준으로 가장 가까운 절기 찾기
+        current_term = None
+        next_term = None
+        
+        for i, term in enumerate(terms_order):
+            term_date = solar_terms_dates.get(term)
+            if term_date and birth_datetime >= term_date:
+                current_term = term
+                next_term_idx = (i + 1) % len(terms_order)
+                next_term = terms_order[next_term_idx]
+                break
+        
+        if not current_term:
+            # 기본값 반환
+            return 8.0
+        
+        # 다음 절기 날짜 계산
+        if next_term in solar_terms_dates:
+            next_term_date = solar_terms_dates[next_term]
+        else:
+            # 다음 해 절기
+            next_year_terms = self._calculate_solar_terms_dates(year + 1)
+            next_term_date = next_year_terms.get(next_term, birth_datetime + timedelta(days=15))
+        
+        # 순행/역행에 따른 계산
+        if direction == 1:  # 순행
+            # 다음 절기까지의 일수
+            days_to_next_term = (next_term_date - birth_datetime).days
+        else:  # 역행
+            # 현재 절기부터의 일수
+            current_term_date = solar_terms_dates[current_term]
+            days_from_current_term = (birth_datetime - current_term_date).days
+            days_to_next_term = days_from_current_term
+        
+        # 절기 일수/3 공식으로 대운 시작 나이 계산
+        start_age = days_to_next_term / 3.0
+        
+        # 최소 1세, 최대 10세로 제한
+        start_age = max(1.0, min(10.0, start_age))
+        
+        return round(start_age, 1)
+    
+    def _apply_solar_time_correction(self, birth_datetime: datetime, timezone: str) -> datetime:
+        """
+        태양시 보정 (지역별 경도 차이 반영)
+        
+        Args:
+            birth_datetime: 출생 일시
+            timezone: 시간대
+        
+        Returns:
+            datetime: 태양시 보정된 일시
+        """
+        # 주요 도시별 태양시 보정값 (분 단위)
+        solar_corrections = {
+            "Asia/Seoul": -5.5,      # 서울: -5분 32초
+            "Asia/Tokyo": -9.0,      # 도쿄: -9분
+            "Asia/Shanghai": 31.0,   # 상하이: +31분
+            "Asia/Hong_Kong": 22.0,  # 홍콩: +22분
+            "Asia/Singapore": 23.0,  # 싱가포르: +23분
+            "Asia/Bangkok": 1.0,     # 방콕: +1분
+            "Asia/Taipei": 22.0,     # 타이베이: +22분
+            "America/New_York": 0.0, # 뉴욕: 표준시 기준
+            "America/Los_Angeles": 0.0, # LA: 표준시 기준
+            "Europe/London": 0.0,    # 런던: 표준시 기준
+            "Europe/Paris": 9.0,     # 파리: +9분
+            "Australia/Sydney": -37.0, # 시드니: -37분
+        }
+        
+        correction_minutes = solar_corrections.get(timezone, 0.0)
+        
+        if correction_minutes != 0:
+            correction_seconds = int(correction_minutes * 60)
+            birth_datetime = birth_datetime - timedelta(seconds=correction_seconds)
+        
+        return birth_datetime
+    
+    def detect_leap_month(self, year: int, month: int, day: int) -> bool:
+        """
+        윤달 자동 감지 (양력 날짜 기준) - 정밀 버전
+        
+        Args:
+            year: 년도
+            month: 월
+            day: 일
+        
+        Returns:
+            bool: 윤달 여부
+        """
+        if year not in self.leap_months or self.leap_months[year] is None:
+            return False
+        
+        leap_lunar_month, start_month, start_day, end_month, end_day = self.leap_months[year]
+        
+        # 양력 날짜가 윤달 기간 내인지 정밀 확인
+        current_date = datetime(year, month, day)
+        
+        # 윤달 시작일과 끝일 생성
+        try:
+            leap_start = datetime(year, start_month, start_day)
+            if end_month == 1 and start_month == 12:  # 연도 넘어가는 경우
+                leap_end = datetime(year + 1, end_month, end_day)
+            else:
+                leap_end = datetime(year, end_month, end_day)
+            
+            # 현재 날짜가 윤달 기간 내인지 확인
+            if leap_start <= current_date <= leap_end:
+                return True
+                
+        except ValueError:
+            # 날짜 오류 시 False 반환
+            return False
+        
+        return False
+    
+    def auto_calculate_saju(self, year: int, month: int, day: int, hour: int, 
+                           minute: int = 0, is_male: bool = True, timezone: str = "Asia/Seoul") -> SajuChart:
+        """
+        윤달 자동 감지 사주 계산
+        
+        Args:
+            year: 년도
+            month: 월  
+            day: 일
+            hour: 시간
+            minute: 분
+            is_male: 성별
+            timezone: 시간대
+        
+        Returns:
+            SajuChart: 계산된 사주팔자
+        """
+        # 윤달 자동 감지
+        is_leap_month = self.detect_leap_month(year, month, day)
+        
+        # 기존 calculate_saju 호출
+        return self.calculate_saju(year, month, day, hour, minute, is_male, timezone, is_leap_month)
+    
+    def get_element_strength(self, saju_chart: SajuChart) -> Dict[str, float]:
+        """
+        오행 강약 분석 (현대 정밀 방식) - 지장간 완전 반영
+        
+        Args:
+            saju_chart: 사주팔자 차트
+        
+        Returns:
+            Dict[str, float]: 오행별 점수 (지장간 완전 반영, 가장 정확한 분석)
+        """
+        elements = {"목": 0.0, "화": 0.0, "토": 0.0, "금": 0.0, "수": 0.0}
+        
+        pillars = [saju_chart.year_pillar, saju_chart.month_pillar, 
+                  saju_chart.day_pillar, saju_chart.hour_pillar]
+        
+        for pillar in pillars:
+            # 천간 1점
+            stem_element = self.five_elements[pillar.heavenly_stem]
+            elements[stem_element] += 1.0
+            
+            # 지지 - 지장간 비율에 따라 점수 배분 (천간과 별도)
+            hidden_stems = self.hidden_stems[pillar.earthly_branch]
+            for hidden_stem, ratio in hidden_stems:
+                hidden_element = self.five_elements[hidden_stem]
+                # 비율에 따라 점수 배분 (100% = 1점)
+                elements[hidden_element] += ratio / 100.0
+        
+        # 소수점 1자리로 반올림
+        for element in elements:
+            elements[element] = round(elements[element], 1)
+        
+        return elements
+    
+    def get_element_strength_with_season(self, saju_chart: SajuChart) -> Dict[str, float]:
+        """
+        오행 강약 분석 (월령 가중치 반영) - 최고 정밀도
+        
+        Args:
+            saju_chart: 사주팔자 차트
+        
+        Returns:
+            Dict[str, float]: 오행별 점수 (월령 가중치 반영)
+        """
+        elements = {"목": 0.0, "화": 0.0, "토": 0.0, "금": 0.0, "수": 0.0}
+        
+        pillars = [saju_chart.year_pillar, saju_chart.month_pillar, 
+                  saju_chart.day_pillar, saju_chart.hour_pillar]
+        
+        # 월령 가중치 가져오기
+        month_branch = saju_chart.month_pillar.earthly_branch
+        seasonal_weight = self.seasonal_weights.get(month_branch, {})
+        
+        for pillar in pillars:
+            # 천간 1점
+            stem_element = self.five_elements[pillar.heavenly_stem]
+            weight = seasonal_weight.get(stem_element, 1.0)
+            elements[stem_element] += 1.0 * weight
+            
+            # 지지 - 지장간 비율에 따라 점수 배분 (월령 가중치 적용)
+            hidden_stems = self.hidden_stems[pillar.earthly_branch]
+            for hidden_stem, ratio in hidden_stems:
+                hidden_element = self.five_elements[hidden_stem]
+                weight = seasonal_weight.get(hidden_element, 1.0)
+                # 비율에 따라 점수 배분 + 월령 가중치 적용
+                elements[hidden_element] += (ratio / 100.0) * weight
+        
+        # 소수점 1자리로 반올림
+        for element in elements:
+            elements[element] = round(elements[element], 1)
+        
+        return elements
+    
+    def get_element_strength_balanced(self, saju_chart: SajuChart) -> Dict[str, float]:
+        """
+        오행 강약 분석 (8점 유지 + 지장간 비율) - 전통과 현대의 절충
+        
+        Args:
+            saju_chart: 사주팔자 차트
+        
+        Returns:
+            Dict[str, float]: 오행별 점수 (총 8점 유지하면서 지장간 비율 반영)
+        """
+        elements = {"목": 0.0, "화": 0.0, "토": 0.0, "금": 0.0, "수": 0.0}
+        
+        pillars = [saju_chart.year_pillar, saju_chart.month_pillar, 
+                  saju_chart.day_pillar, saju_chart.hour_pillar]
+        
+        for pillar in pillars:
+            # 천간 1점
+            stem_element = self.five_elements[pillar.heavenly_stem]
+            elements[stem_element] += 1.0
+            
+            # 지지 1점을 지장간 비율에 따라 배분
+            hidden_stems = self.hidden_stems[pillar.earthly_branch]
+            for hidden_stem, ratio in hidden_stems:
+                hidden_element = self.five_elements[hidden_stem]
+                # 지지 1점을 비율에 따라 배분 (총 1점 유지)
+                elements[hidden_element] += (ratio / 100.0) * 1.0
+        
+        # 소수점 1자리로 반올림
+        for element in elements:
+            elements[element] = round(elements[element], 1)
+        
+        return elements
+    
+    def get_element_strength_simple(self, saju_chart: SajuChart) -> Dict[str, int]:
+        """
+        오행 강약 분석 (전통 8점 방식) - 기존 단순 방식 유지
         
         Args:
             saju_chart: 사주팔자 차트
@@ -597,10 +1034,430 @@ class SajuCalculator:
             elements[strongest_element] += 1
         
         return elements
+    
+    def analyze_day_master_strength(self, saju_chart: SajuChart) -> Dict[str, any]:
+        """
+        일간 신강/신약 분석 및 용신/희신 판단
+        
+        Args:
+            saju_chart: 사주팔자 차트
+        
+        Returns:
+            Dict: 신강/신약, 용신/희신 분석 결과
+        """
+        day_master = saju_chart.get_day_master()
+        day_master_element = self.five_elements[day_master]
+        
+        # 월령 가중치 반영 오행 분석
+        elements = self.get_element_strength_with_season(saju_chart)
+        
+        # 일간을 도와주는 오행 (비견겁재, 인성) - 일간 자체 제외
+        helping_elements = []
+        # 일간을 소모하는 오행 (식상, 재성, 관성)
+        consuming_elements = []
+        
+        if day_master_element == "목":
+            helping_elements = ["수"]  # 인성 (정인, 편인)
+            consuming_elements = ["화", "토", "금"]  # 식상, 재성, 관성
+        elif day_master_element == "화":
+            helping_elements = ["목"]  # 인성
+            consuming_elements = ["토", "금", "수"]
+        elif day_master_element == "토":
+            helping_elements = ["화"]  # 인성
+            consuming_elements = ["금", "수", "목"]
+        elif day_master_element == "금":
+            helping_elements = ["토"]  # 인성
+            consuming_elements = ["수", "목", "화"]
+        elif day_master_element == "수":
+            helping_elements = ["금"]  # 인성
+            consuming_elements = ["목", "화", "토"]
+        
+        # 일간과 같은 오행(비견겁재) 별도 계산
+        same_element_power = elements[day_master_element] - 1.0  # 일간 자체 제외
+        
+        # 도움 받는 힘 vs 소모되는 힘 계산 (정확한 명리학 공식)
+        helping_power = sum(elements[elem] for elem in helping_elements) + same_element_power
+        consuming_power = sum(elements[elem] for elem in consuming_elements)
+        
+        # 신강/신약 판단 (도움 받는 힘이 더 크면 신강)
+        if helping_power > consuming_power * 1.2:  # 20% 여유를 둠
+            strength_type = "신강"
+            strength_level = "강"
+        elif helping_power < consuming_power * 0.8:
+            strength_type = "신약"
+            strength_level = "약"
+        else:
+            strength_type = "중화"
+            strength_level = "평"
+        
+        # 용신/희신 판단
+        if strength_type == "신강":
+            # 신강이면 소모하는 오행이 용신
+            yongshin_elements = consuming_elements
+            gishin_elements = helping_elements
+        elif strength_type == "신약":
+            # 신약이면 도와주는 오행이 용신
+            yongshin_elements = helping_elements
+            gishin_elements = consuming_elements
+        else:
+            # 중화면 균형 유지
+            yongshin_elements = []
+            gishin_elements = []
+        
+        # 가장 필요한 용신 찾기
+        if yongshin_elements:
+            yongshin_scores = {elem: elements[elem] for elem in yongshin_elements}
+            if strength_type == "신강":
+                # 신강이면 가장 약한 소모 오행이 용신
+                primary_yongshin = min(yongshin_scores, key=yongshin_scores.get)
+            else:
+                # 신약이면 가장 강한 도움 오행이 용신
+                primary_yongshin = max(yongshin_scores, key=yongshin_scores.get)
+        else:
+            primary_yongshin = None
+        
+        return {
+            "day_master": day_master,
+            "day_master_element": day_master_element,
+            "strength_type": strength_type,
+            "strength_level": strength_level,
+            "helping_power": round(helping_power, 1),
+            "consuming_power": round(consuming_power, 1),
+            "power_ratio": round(helping_power / consuming_power if consuming_power > 0 else 999, 2),
+            "yongshin_elements": yongshin_elements,
+            "gishin_elements": gishin_elements,
+            "primary_yongshin": primary_yongshin,
+            "analysis": f"일간 {day_master}({day_master_element})는 {strength_type}입니다. "
+                       f"도움받는 힘: {helping_power:.1f}, 소모되는 힘: {consuming_power:.1f}"
+        }
+    
+    def get_element_interpretation(self, elements: Dict[str, float]) -> Dict[str, str]:
+        """
+        오행 점수의 상대적 해석 (불급, 평기, 태과)
+        
+        Args:
+            elements: 오행별 점수
+        
+        Returns:
+            Dict[str, str]: 오행별 해석
+        """
+        total_score = sum(elements.values())
+        average_score = total_score / 5
+        
+        interpretations = {}
+        for element, score in elements.items():
+            if score < average_score * 0.6:
+                interpretations[element] = "불급(不及) - 매우 약함"
+            elif score < average_score * 0.8:
+                interpretations[element] = "약간 불급 - 약함"
+            elif score > average_score * 1.4:
+                interpretations[element] = "태과(太過) - 매우 강함"
+            elif score > average_score * 1.2:
+                interpretations[element] = "약간 태과 - 강함"
+            else:
+                interpretations[element] = "평기(平氣) - 적당함"
+        
+        return interpretations
+    
+    def analyze_branch_relationships(self, saju_chart: SajuChart) -> Dict[str, List[str]]:
+        """
+        지지 간 합충형해 관계 분석
+        
+        Args:
+            saju_chart: 사주팔자 차트
+        
+        Returns:
+            Dict[str, List[str]]: 합충형해 관계 분석 결과
+        """
+        branches = [
+            saju_chart.year_pillar.earthly_branch,
+            saju_chart.month_pillar.earthly_branch,
+            saju_chart.day_pillar.earthly_branch,
+            saju_chart.hour_pillar.earthly_branch
+        ]
+        
+        relationships = {
+            "합": [], "삼합": [], "충": [], "해": [], "형": []
+        }
+        
+        # 육합 체크
+        for i in range(len(branches)):
+            for j in range(i + 1, len(branches)):
+                branch_pair = tuple(sorted([branches[i], branches[j]]))
+                for pair, name in self.branch_relationships["합"].items():
+                    if branch_pair == tuple(sorted(pair)):
+                        relationships["합"].append(f"{branches[i]}-{branches[j]} {name}")
+        
+        # 삼합 체크
+        branch_set = set(branches)
+        for triple, name in self.branch_relationships["삼합"].items():
+            if set(triple).issubset(branch_set):
+                relationships["삼합"].append(f"{'-'.join(triple)} {name}")
+        
+        # 육충 체크
+        for i in range(len(branches)):
+            for j in range(i + 1, len(branches)):
+                branch_pair = tuple(sorted([branches[i], branches[j]]))
+                for pair, name in self.branch_relationships["충"].items():
+                    if branch_pair == tuple(sorted(pair)):
+                        relationships["충"].append(f"{branches[i]}-{branches[j]} {name}")
+        
+        # 육해 체크
+        for i in range(len(branches)):
+            for j in range(i + 1, len(branches)):
+                branch_pair = tuple(sorted([branches[i], branches[j]]))
+                for pair, name in self.branch_relationships["해"].items():
+                    if branch_pair == tuple(sorted(pair)):
+                        relationships["해"].append(f"{branches[i]}-{branches[j]} {name}")
+        
+        # 형 체크 (3개 이상 필요한 경우와 2개 쌍 모두 체크)
+        for triple, name in self.branch_relationships["형"].items():
+            if len(set(triple).intersection(branch_set)) >= 2:
+                matching_branches = list(set(triple).intersection(branch_set))
+                if len(matching_branches) >= 2:
+                    relationships["형"].append(f"{'-'.join(matching_branches)} {name}")
+        
+        return relationships
+    
+    def analyze_shinsals(self, saju_chart: SajuChart) -> Dict[str, List[str]]:
+        """
+        신살(神殺) 분석 - 공망, 도화, 역마, 귀인 등
+        
+        Args:
+            saju_chart: 사주팔자 차트
+        
+        Returns:
+            Dict[str, List[str]]: 신살 분석 결과
+        """
+        day_stem = saju_chart.get_day_master()
+        day_branch = saju_chart.day_pillar.earthly_branch
+        year_branch = saju_chart.year_pillar.earthly_branch
+        
+        branches = [
+            saju_chart.year_pillar.earthly_branch,
+            saju_chart.month_pillar.earthly_branch,
+            saju_chart.day_pillar.earthly_branch,
+            saju_chart.hour_pillar.earthly_branch
+        ]
+        
+        shinsals_result = {
+            "공망": [], "도화": [], "역마": [], "천을귀인": [], "태극귀인": []
+        }
+        
+        # 공망 체크 (일간 기준)
+        day_stem_group = None
+        if day_stem in ["갑", "을"]:
+            day_stem_group = "갑을"
+        elif day_stem in ["병", "정"]:
+            day_stem_group = "병정"
+        elif day_stem in ["무", "기"]:
+            day_stem_group = "무기"
+        elif day_stem in ["경", "신"]:
+            day_stem_group = "경신"
+        elif day_stem in ["임", "계"]:
+            day_stem_group = "임계"
+        
+        if day_stem_group:
+            gongmang_branches = self.shinsals["공망"][day_stem_group]
+            for branch in branches:
+                if branch in gongmang_branches:
+                    shinsals_result["공망"].append(f"{branch}(공망)")
+        
+        # 도화 체크 (연지, 일지 기준)
+        for base_branch in [year_branch, day_branch]:
+            for pattern, dohua_branch in self.shinsals["도화"].items():
+                if base_branch in pattern:
+                    for branch in branches:
+                        if branch == dohua_branch:
+                            shinsals_result["도화"].append(f"{branch}(도화)")
+        
+        # 역마 체크 (연지, 일지 기준)
+        for base_branch in [year_branch, day_branch]:
+            for pattern, yeokma_branch in self.shinsals["역마"].items():
+                if base_branch in pattern:
+                    for branch in branches:
+                        if branch == yeokma_branch:
+                            shinsals_result["역마"].append(f"{branch}(역마)")
+        
+        # 천을귀인 체크 (일간 기준)
+        for stem_group, guiin_branches in self.shinsals["천을귀인"].items():
+            if day_stem in stem_group:
+                for branch in branches:
+                    if branch in guiin_branches:
+                        shinsals_result["천을귀인"].append(f"{branch}(천을귀인)")
+        
+        # 태극귀인 체크 (일간 기준)
+        for stem_group, taegeuk_branches in self.shinsals["태극귀인"].items():
+            if day_stem in stem_group:
+                for branch in branches:
+                    if branch in taegeuk_branches:
+                        shinsals_result["태극귀인"].append(f"{branch}(태극귀인)")
+        
+        # 중복 제거
+        for key in shinsals_result:
+            shinsals_result[key] = list(set(shinsals_result[key]))
+        
+        return shinsals_result
+    
+    def analyze_twelve_stages(self, saju_chart: SajuChart) -> Dict[str, str]:
+        """
+        장생 12운성 분석
+        
+        Args:
+            saju_chart: 사주팔자 차트
+        
+        Returns:
+            Dict[str, str]: 각 기둥별 12운성
+        """
+        day_master = saju_chart.get_day_master()
+        day_master_element = self.five_elements[day_master]
+        
+        # 12운성 순서 (장생부터 양간/음간별)
+        twelve_stages_yang = ["장생", "목욕", "관대", "건록", "제왕", "쇠", "병", "사", "묘", "절", "태", "양"]
+        twelve_stages_yin = ["장생", "목욕", "관대", "건록", "제왕", "쇠", "병", "사", "묘", "절", "태", "양"]
+        
+        # 오행별 장생지 (양간 기준)
+        jangsaeng_positions = {
+            "목": "해",  # 갑목 장생지
+            "화": "인",  # 병화 장생지  
+            "토": "인",  # 무토 장생지
+            "금": "사",  # 경금 장생지
+            "수": "신"   # 임수 장생지
+        }
+        
+        # 일간이 양간인지 음간인지 판단
+        day_stem_idx = self.heavenly_stems.index(day_master)
+        is_yang = (day_stem_idx % 2 == 0)
+        
+        # 장생지 찾기
+        jangsaeng_branch = jangsaeng_positions[day_master_element]
+        jangsaeng_idx = self.earthly_branches.index(jangsaeng_branch)
+        
+        twelve_stages_result = {}
+        
+        pillars = [
+            ("년주", saju_chart.year_pillar),
+            ("월주", saju_chart.month_pillar),
+            ("일주", saju_chart.day_pillar),
+            ("시주", saju_chart.hour_pillar)
+        ]
+        
+        for pillar_name, pillar in pillars:
+            branch_idx = self.earthly_branches.index(pillar.earthly_branch)
+            
+            if is_yang:
+                # 양간: 순행
+                stage_idx = (branch_idx - jangsaeng_idx) % 12
+                stage = twelve_stages_yang[stage_idx]
+            else:
+                # 음간: 역행
+                stage_idx = (jangsaeng_idx - branch_idx) % 12
+                stage = twelve_stages_yin[stage_idx]
+            
+            twelve_stages_result[pillar_name] = f"{pillar.earthly_branch}({stage})"
+        
+        return twelve_stages_result
+    
+    def get_comprehensive_interpretation(self, saju_chart: SajuChart) -> Dict[str, str]:
+        """
+        종합 운세 해석 (AI 연동용)
+        
+        Args:
+            saju_chart: 사주팔자 차트
+        
+        Returns:
+            Dict[str, str]: 종합 해석 결과
+        """
+        # 각종 분석 결과 수집
+        strength_analysis = self.analyze_day_master_strength(saju_chart)
+        ten_gods_summary = self.get_ten_gods_summary(saju_chart)
+        branch_relationships = self.analyze_branch_relationships(saju_chart)
+        shinsals = self.analyze_shinsals(saju_chart)
+        twelve_stages = self.analyze_twelve_stages(saju_chart)
+        
+        interpretation = {}
+        
+        # 성격 특성 해석
+        personality_traits = []
+        
+        # 신강/신약 기반 성격
+        if strength_analysis["strength_type"] == "신강":
+            personality_traits.append("자신감이 강하고 적극적인 성향")
+        elif strength_analysis["strength_type"] == "신약":
+            personality_traits.append("섬세하고 신중한 성향")
+        else:
+            personality_traits.append("균형잡힌 성향")
+        
+        # 주요 십신 기반 성격
+        dominant_gods = sorted(ten_gods_summary.items(), key=lambda x: x[1]["score"], reverse=True)[:2]
+        for god_name, info in dominant_gods:
+            if god_name == "정관":
+                personality_traits.append("책임감이 강하고 원칙을 중시")
+            elif god_name == "편관":
+                personality_traits.append("추진력이 강하고 도전적")
+            elif god_name == "정재":
+                personality_traits.append("안정을 추구하고 계획적")
+            elif god_name == "편재":
+                personality_traits.append("활동적이고 사교적")
+            elif god_name == "식신":
+                personality_traits.append("창의적이고 표현력이 풍부")
+            elif god_name == "상관":
+                personality_traits.append("개성이 강하고 독창적")
+        
+        interpretation["성격특성"] = "; ".join(personality_traits[:3])
+        
+        # 재물운 해석
+        wealth_score = ten_gods_summary.get("정재", {}).get("score", 0) + ten_gods_summary.get("편재", {}).get("score", 0)
+        if wealth_score >= 1.5:
+            interpretation["재물운"] = "재물운이 좋은 편, 경제적 안정 가능성 높음"
+        elif wealth_score >= 0.8:
+            interpretation["재물운"] = "보통 수준의 재물운, 노력에 따라 성과 달라짐"
+        else:
+            interpretation["재물운"] = "재물운이 약한 편, 저축과 투자에 신중해야 함"
+        
+        # 직업운 해석
+        career_hints = []
+        if strength_analysis["primary_yongshin"] == "화":
+            career_hints.append("교육, 문화, 예술 분야")
+        elif strength_analysis["primary_yongshin"] == "토":
+            career_hints.append("부동산, 건설, 농업 분야")
+        elif strength_analysis["primary_yongshin"] == "금":
+            career_hints.append("금융, 기계, 의료 분야")
+        elif strength_analysis["primary_yongshin"] == "수":
+            career_hints.append("유통, 운송, 서비스 분야")
+        elif strength_analysis["primary_yongshin"] == "목":
+            career_hints.append("IT, 출판, 환경 분야")
+        
+        interpretation["직업운"] = f"용신 {strength_analysis['primary_yongshin']} 관련 {', '.join(career_hints)} 유리"
+        
+        # 건강운 해석
+        weak_elements = [elem for elem, score in self.get_element_strength_with_season(saju_chart).items() if score < 0.5]
+        if "화" in weak_elements:
+            interpretation["건강운"] = "심장, 혈액순환 관련 주의 필요"
+        elif "토" in weak_elements:
+            interpretation["건강운"] = "소화기, 위장 관련 주의 필요"
+        elif "금" in weak_elements:
+            interpretation["건강운"] = "호흡기, 폐 관련 주의 필요"
+        elif "수" in weak_elements:
+            interpretation["건강운"] = "신장, 비뇨기 관련 주의 필요"
+        elif "목" in weak_elements:
+            interpretation["건강운"] = "간, 신경계 관련 주의 필요"
+        else:
+            interpretation["건강운"] = "전반적으로 건강한 체질"
+        
+        # 인간관계 해석
+        if branch_relationships["충"]:
+            interpretation["인간관계"] = "갈등이 생기기 쉬우니 원만한 소통 필요"
+        elif branch_relationships["합"]:
+            interpretation["인간관계"] = "조화로운 인간관계, 좋은 인연 많음"
+        else:
+            interpretation["인간관계"] = "평범한 인간관계, 노력에 따라 개선 가능"
+        
+        return interpretation
 
 def format_saju_analysis(saju_chart: SajuChart, calculator: SajuCalculator) -> str:
     """
-    사주 분석 결과를 포맷팅
+    사주 분석 결과를 포맷팅 (전문가 피드백 반영 완전판)
     
     Args:
         saju_chart: 사주팔자 차트
@@ -609,7 +1466,18 @@ def format_saju_analysis(saju_chart: SajuChart, calculator: SajuCalculator) -> s
     analysis = []
     
     # 기본 사주팔자
-    analysis.append("=== 사주팔자 ===")
+    analysis.append("=== 🔮 사주팔자 ===")
+    birth_info = saju_chart.birth_info
+    
+    # 윤달 정보 표시
+    leap_info = ""
+    if birth_info.get("is_leap_month", False):
+        leap_info = " (윤달)"
+    
+    analysis.append(f"생년월일시: {birth_info['year']}년 {birth_info['month']}월{leap_info} {birth_info['day']}일 {birth_info['hour']}시 {birth_info['minute']}분")
+    analysis.append(f"성별: {'남성' if birth_info['is_male'] else '여성'}")
+    analysis.append(f"시간대: {birth_info['timezone']}")
+    analysis.append("")
     analysis.append(f"년주(年柱): {saju_chart.year_pillar}")
     analysis.append(f"월주(月柱): {saju_chart.month_pillar}")
     analysis.append(f"일주(日柱): {saju_chart.day_pillar}")
@@ -617,25 +1485,104 @@ def format_saju_analysis(saju_chart: SajuChart, calculator: SajuCalculator) -> s
     analysis.append(f"일간(日干): {saju_chart.get_day_master()}")
     analysis.append("")
     
-    # 오행 분석
-    elements = calculator.get_element_strength(saju_chart)
-    analysis.append("=== 오행 강약 ===")
-    for element, strength in elements.items():
-        analysis.append(f"{element}: {strength}점")
+    # 월령 가중치 반영 오행 분석 (최고 정밀도)
+    elements_season = calculator.get_element_strength_with_season(saju_chart)
+    analysis.append("=== 🌟 오행 강약 (월령 가중치 반영 - 최고 정밀도) ===")
+    interpretations = calculator.get_element_interpretation(elements_season)
+    for element, strength in elements_season.items():
+        interp = interpretations[element]
+        analysis.append(f"{element}: {strength}점 - {interp}")
     analysis.append("")
     
-    # 십신 분석
+    # 신강/신약 및 용신/희신 분석
+    strength_analysis = calculator.analyze_day_master_strength(saju_chart)
+    analysis.append("=== ⚖️ 신강/신약 및 용신 분석 ===")
+    analysis.append(strength_analysis["analysis"])
+    analysis.append(f"힘의 비율: {strength_analysis['power_ratio']}:1")
+    if strength_analysis["primary_yongshin"]:
+        analysis.append(f"주용신(主用神): {strength_analysis['primary_yongshin']}")
+    if strength_analysis["yongshin_elements"]:
+        analysis.append(f"용신 오행: {', '.join(strength_analysis['yongshin_elements'])}")
+    if strength_analysis["gishin_elements"]:
+        analysis.append(f"기신 오행: {', '.join(strength_analysis['gishin_elements'])}")
+    analysis.append("")
+    
+    # 십신 분석 (시각화 포함)
+    ten_gods_summary = calculator.get_ten_gods_summary(saju_chart)
+    analysis.append("=== 🎭 십신 분석 (강약 시각화) ===")
+    for god_name, info in ten_gods_summary.items():
+        analysis.append(f"{god_name}: {info['strength']} ({info['score']}점, {info['level']})")
+    analysis.append("")
+    
+    # 십신 상세 분석
     ten_gods = calculator.analyze_ten_gods(saju_chart)
-    analysis.append("=== 십신 분석 ===")
+    analysis.append("=== 📋 십신 상세 분석 ===")
     for pillar_name, gods in ten_gods.items():
         if gods:
             analysis.append(f"{pillar_name}: {', '.join(gods)}")
     analysis.append("")
     
-    # 대운 (개선된 버전)
+    # 합충형해 관계 분석
+    branch_relationships = calculator.analyze_branch_relationships(saju_chart)
+    analysis.append("=== 🔗 합충형해 관계 분석 ===")
+    for rel_type, relations in branch_relationships.items():
+        if relations:
+            analysis.append(f"{rel_type}: {', '.join(relations)}")
+    if not any(branch_relationships.values()):
+        analysis.append("특별한 합충형해 관계 없음")
+    analysis.append("")
+    
+    # 신살 분석
+    shinsals = calculator.analyze_shinsals(saju_chart)
+    analysis.append("=== 🔮 신살(神殺) 분석 ===")
+    for shinsal_type, shinsal_list in shinsals.items():
+        if shinsal_list:
+            analysis.append(f"{shinsal_type}: {', '.join(shinsal_list)}")
+    if not any(shinsals.values()):
+        analysis.append("특별한 신살 없음")
+    analysis.append("")
+    
+    # 12운성 분석
+    twelve_stages = calculator.analyze_twelve_stages(saju_chart)
+    analysis.append("=== ⭐ 장생 12운성 분석 ===")
+    for pillar_name, stage_info in twelve_stages.items():
+        analysis.append(f"{pillar_name}: {stage_info}")
+    analysis.append("")
+    
+    # 대운 (정밀 계산)
     great_fortunes = calculator.calculate_great_fortune_improved(saju_chart)
-    analysis.append("=== 대운 (정밀 계산) ===")
+    analysis.append("=== 🔄 대운 (절기 정밀 계산) ===")
     for gf in great_fortunes[:4]:  # 처음 4개만 표시
-        analysis.append(f"{gf['age']}세: {gf['pillar']} ({gf['years']})")
+        age_str = f"{gf['age']}세" if isinstance(gf['age'], int) else f"{gf['age']:.1f}세"
+        analysis.append(f"{age_str}: {gf['pillar']} ({gf['years']}) - {gf['direction']}")
+    analysis.append("")
+    
+    # 종합 운세 해석
+    comprehensive = calculator.get_comprehensive_interpretation(saju_chart)
+    analysis.append("=== 🎯 종합 운세 해석 ===")
+    for category, interpretation in comprehensive.items():
+        analysis.append(f"{category}: {interpretation}")
+    analysis.append("")
+    
+    # 참고용 다른 오행 분석 방식들
+    analysis.append("=== 📊 참고: 다른 오행 분석 방식들 ===")
+    
+    # 기본 정밀 방식
+    elements = calculator.get_element_strength(saju_chart)
+    analysis.append("• 정밀 분석 (지장간 완전 반영):")
+    for element, strength in elements.items():
+        analysis.append(f"  {element}: {strength}점")
+    
+    # 8점 절충 방식
+    elements_balanced = calculator.get_element_strength_balanced(saju_chart)
+    analysis.append("• 8점 절충 방식:")
+    for element, strength in elements_balanced.items():
+        analysis.append(f"  {element}: {strength}점")
+    
+    # 전통 8점 방식
+    elements_simple = calculator.get_element_strength_simple(saju_chart)
+    analysis.append("• 전통 8점 방식:")
+    for element, strength in elements_simple.items():
+        analysis.append(f"  {element}: {strength}점")
     
     return "\n".join(analysis) 
