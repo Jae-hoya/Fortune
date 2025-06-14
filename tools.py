@@ -476,7 +476,7 @@ class ToolManager:
             except Exception as e:
                 # 에러 시 기본 RAG 검색으로 폴백
                 return search_saju_knowledge.func(query)
-
+        
         return [search_saju_knowledge, smart_search_saju]
     
     def _parse_birth_info(self, birth_info: str) -> Dict:
