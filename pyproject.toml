@@ -2,7 +2,7 @@
 name = "fortune-ai"
 version = "0.1.1"
 description = "Ultimate LangChain Tutorial written in Korean by TeddyNote."
-authors = ["teddy <teddylee777@gmail.com>"]
+authors = ["MinhyeongL <minhyung0123@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 package-mode = false
