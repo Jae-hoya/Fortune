@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Dict, List
 from dataclasses import dataclass
+import re # 정규표현식 모듈 import
 
 # --- 사주 관련 클래스 ---
 @dataclass
@@ -59,6 +60,7 @@ class SajuCalculator:
         self.DAY_PILLAR_BASE_STEM = 5  # 무
         self.DAY_PILLAR_BASE_BRANCH = 1  # 축
         self.DAY_PILLAR_BASE_DAYS = (datetime(1995, 8, 26) - datetime(1900, 1, 1)).days
+        self.monthly_stems = ["병", "정", "무", "기", "경", "신", "임", "계", "갑", "을"]
 
     def calculate_saju(self, year: int, month: int, day: int, hour: int, minute: int = 0, is_male: bool = True) -> SajuChart:
         # 대한민국 출생자 전용: 무조건 -32분 1초 보정
@@ -85,36 +87,36 @@ class SajuCalculator:
         return SajuPillar(self.heavenly_stems[stem_index], self.earthly_branches[branch_index])
 
     def _calculate_month_pillar_improved(self, year: int, month: int, day: int) -> SajuPillar:
-        month_branch_index = self._get_month_branch_by_solar_terms(month)
+        month_branch_index = self._get_month_branch_by_solar_terms(year, month, day)    
         year_stem_index = (year - 1984) % 10
-        if year_stem_index in [0, 5]:
-            month_stem_base = 2
-        elif year_stem_index in [1, 6]:
-            month_stem_base = 4
-        elif year_stem_index in [2, 7]:
-            month_stem_base = 6
-        elif year_stem_index in [3, 8]:
-            month_stem_base = 8
-        else:
-            month_stem_base = 0
-        month_offset = (month_branch_index - 2) % 12
-        month_stem_index = (month_stem_base + month_offset) % 10
-        return SajuPillar(self.heavenly_stems[month_stem_index], self.earthly_branches[month_branch_index])
+        # 해의 천간별 월간 시작 인덱스 표
+        month_stem_base_table = [2, 4, 6, 8, 0, 2, 4, 6, 8, 0]  # 0:갑, 1:을, 2:병, 3:정, 4:무, 5:기, 6:경, 7:신, 8:임, 9:계
+        month_stem_base = month_stem_base_table[year_stem_index]
+        month_stem_index = (month_stem_base + ((month_branch_index + 12 - 2) % 12)) % 10
+        month_stem = self.heavenly_stems[month_stem_index]
+        return SajuPillar(month_stem, self.earthly_branches[month_branch_index])
 
-    def _get_month_branch_by_solar_terms(self, month: int) -> int:
-        # 실제 만세력에서는 절기 시작일로 보정, 여기선 단순화(월→지지)
-        if month == 1: return 0
-        elif month == 2: return 2
-        elif month == 3: return 3
-        elif month == 4: return 4
-        elif month == 5: return 5
-        elif month == 6: return 6
-        elif month == 7: return 7
-        elif month == 8: return 8
-        elif month == 9: return 9
-        elif month == 10: return 10
-        elif month == 11: return 11
-        else: return 0
+    def _get_month_branch_by_solar_terms(self, year: int, month: int, day: int) -> int:
+        solar_terms = [
+            (2, 4, 2),   # 입춘: 2월 4일 → 인(2)
+            (3, 6, 3),   # 경칩: 3월 6일 → 묘(3)
+            (4, 5, 4),   # 청명: 4월 5일 → 진(4)
+            (5, 6, 5),   # 입하: 5월 6일 → 사(5)
+            (6, 6, 6),   # 망종: 6월 6일 → 오(6)
+            (7, 7, 7),   # 소서: 7월 7일 → 미(7)
+            (8, 8, 8),   # 입추: 8월 8일 → 신(8)
+            (9, 8, 9),   # 백로: 9월 8일 → 유(9)
+            (10, 8, 10), # 한로: 10월 8일 → 술(10)
+            (11, 7, 11), # 입동: 11월 7일 → 해(11)
+            (12, 7, 0),  # 대설: 12월 7일 → 자(0)
+            (1, 6, 1),   # 소한: 1월 6일 → 축(1)
+        ]
+        m, d = month, day
+        for i in range(len(solar_terms)):
+            sm, sd, idx = solar_terms[i]
+            if (m, d) < (sm, sd):
+                return solar_terms[i-1][2] if i > 0 else solar_terms[-1][2]
+        return solar_terms[-2][2]
 
     def _calculate_day_pillar(self, days_diff: int) -> SajuPillar:
         base_stem = (self.DAY_PILLAR_BASE_STEM - self.DAY_PILLAR_BASE_DAYS) % 10
@@ -270,7 +272,7 @@ def calculate_saju_tool(
     is_male: bool = True
 ) -> str:
     """
-    대한민국(서울/부산/대전 등) 출생자 기준, 생년월일·시간·성별을 입력받아 사주팔자 해석을 반환합니다.
+    대한민국 출생자 기준, 생년월일·시간·성별을 입력받아 사주팔자 해석을 반환합니다.
     """
     chart = saju_calculator.calculate_saju(
         year=year,
@@ -281,3 +283,75 @@ def calculate_saju_tool(
         is_male=is_male
     )
     return format_saju_analysis(chart, saju_calculator)
+
+# -------------------- 아래 부분이 수정된 코드입니다 --------------------
+
+def parse_input(text: str) -> Dict:
+    """사용자의 자연어 입력에서 사주 정보(년, 월, 일, 시, 분, 성별)를 추출합니다."""
+    
+    numbers = [int(n) for n in re.findall(r'\d+', text)]
+    is_male = not ("여" in text or "여자" in text)
+
+    try:
+        params = {
+            "year": numbers[0],
+            "month": numbers[1],
+            "day": numbers[2],
+            "hour": numbers[3] if len(numbers) > 3 else 0,
+            "minute": numbers[4] if len(numbers) > 4 else 0,
+            "is_male": is_male,
+        }
+        if ("오후" in text or "pm" in text.lower()) and params["hour"] <= 12:
+            params["hour"] += 12
+            if params["hour"] == 24:
+                params["hour"] = 12
+        if ("오전" in text or "am" in text.lower()) and params["hour"] == 12:
+            params["hour"] = 0
+        return params
+    except IndexError:
+        return None
+
+def main():
+    """사용자 입력을 받아 사주 분석을 수행하는 메인 함수"""
+    print("="*50)
+    print("사주 분석 프로그램을 시작합니다.")
+    print("생년월일시와 성별을 문장으로 입력해 주세요.")
+    print("예: 1995년 8월 26일 오후 3시 30분 남자 사주 알려줘")
+    print("예: 2002년 1월 5일 7시 여자")
+    print("프로그램을 종료하려면 '종료' 또는 'exit'를 입력하세요.")
+    print("="*50)
+
+    while True:
+        try:
+            question = input("\n[질문 입력] > ")
+        except KeyboardInterrupt:
+            print("\n프로그램을 종료합니다.")
+            break
+        
+        if question.lower().strip() in ["종료", "exit", "quit"]:
+            print("프로그램을 종료합니다.")
+            break
+            
+        if not question:
+            continue
+
+        saju_params = parse_input(question)
+
+        if saju_params is None:
+            print("\n[오류] 입력 형식을 확인해 주세요. '년, 월, 일' 정보가 필요합니다.")
+            print("예: 1995년 3월 28일 12시 30분 남자")
+            continue
+
+        try:
+            print("\n⏳ 사주를 분석하는 중입니다...")
+            print("-" * 25)
+            # 파싱된 딕셔너리를 invoke에 직접 전달하여 오류 해결
+            analysis_result = calculate_saju_tool.invoke(saju_params)
+            print(analysis_result)
+            print("-" * 25)
+        except Exception as e:
+            print(f"\n[오류] 사주 분석 중 문제가 발생했습니다: {e}")
+
+
+if __name__ == '__main__':
+    main()
