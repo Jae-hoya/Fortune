@@ -8,7 +8,7 @@ import torch
 # 환경 변수 로드
 load_dotenv()
 
-def get_openai_llm(model_name: str = "gpt-4o-mini"):
+def get_openai_llm(model_name: str = "gpt-4.1-mini"):
     """
     OpenAI 기반 LLM 모델을 초기화합니다.
     

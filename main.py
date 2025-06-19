@@ -59,7 +59,7 @@ class FortuneAgentSystem:
         """LLM 모델 설정"""
         if self.use_openai:
             print("🤖 OpenAI 모델 초기화 중...")
-            self.llm = get_openai_llm("gpt-4o-mini")
+            self.llm = get_openai_llm("gpt-4.1-mini")
         else:
             print("🤖 Gemini 모델 초기화 중...")
             self.llm = get_gemini_llm("gemini-2.0-flash")
@@ -285,7 +285,7 @@ class FortuneAgentSystem:
         tool_info = self.tool_manager.get_tool_info()
         
         print("\n=== FortuneAI Agent 시스템 정보 ===")
-        print(f"🤖 LLM 모델: {'OpenAI GPT-4o-mini' if self.use_openai else 'Google Gemini 2.0 Flash'}")
+        print(f"🤖 LLM 모델: {'OpenAI GPT-4.1-mini' if self.use_openai else 'Google Gemini 2.0 Flash'}")
         print(f"🛠️ 활성화된 도구 수: {tool_info['total_tools']}개")
         print(f"🔧 RAG 도구: {'활성화' if tool_info['rag_enabled'] else '비활성화'}")
         print(f"🌐 웹 검색: {'활성화' if tool_info['web_enabled'] else '비활성화'}")

@@ -784,6 +784,25 @@ class ToolManager:
         """모든 활성화된 도구들 반환"""
         return self.tools
     
+    @property
+    def calendar_tools(self) -> List[Tool]:
+        """사주 계산 도구들 반환"""
+        return self._get_calendar_tools()
+    
+    @property  
+    def rag_tools(self) -> List[Tool]:
+        """RAG 검색 도구들 반환"""
+        return self._get_rag_tools()
+    
+    @property
+    def web_tools(self) -> List[Tool]:
+        """웹 검색 도구들 반환"""
+        return self._get_web_tools()
+    
+    def get_all_tools(self) -> List[Tool]:
+        """모든 활성화된 도구들 반환 (get_tools와 동일)"""
+        return self.tools
+    
     def get_tool_info(self) -> Dict[str, Any]:
         """도구 정보 반환"""
         return {
