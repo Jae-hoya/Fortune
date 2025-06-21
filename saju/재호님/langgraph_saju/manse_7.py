@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from typing import Dict, List
 from dataclasses import dataclass
-import re # 정규표현식 모듈 import
+import re 
+
+# http://xn--vj1b09xs1b16ct2c.com/share/calendar/?selboxDirect=&y=1995&m=8&d=16
 
 # --- 사주 관련 클래스 ---
 @dataclass
@@ -21,6 +23,7 @@ class SajuChart:
     age: int
     korean_age: int
     current_datetime: str
+    is_leap_month: bool  # 윤달 여부 추가
 
     def get_day_master(self) -> str:
         return self.day_pillar.heavenly_stem
@@ -65,6 +68,24 @@ class SajuCalculator:
         self.DAY_PILLAR_BASE_BRANCH = 1  # 축
         self.DAY_PILLAR_BASE_DAYS = (datetime(1995, 8, 26) - datetime(1900, 1, 1)).days
         self.monthly_stems = ["병", "정", "무", "기", "경", "신", "임", "계", "갑", "을"]
+        
+        # 윤달 정보 (1900-2100년)
+        self.leap_months = {
+            1900: 8, 1903: 5, 1906: 4, 1909: 2, 1911: 6, 1914: 5, 1917: 2, 1919: 7,
+            1922: 5, 1925: 4, 1928: 2, 1930: 6, 1933: 5, 1936: 3, 1938: 7, 1941: 6,
+            1944: 4, 1947: 2, 1949: 7, 1952: 5, 1955: 3, 1957: 8, 1960: 6, 1963: 4,
+            1966: 3, 1968: 7, 1971: 5, 1974: 4, 1976: 8, 1979: 6, 1982: 4, 1984: 10,
+            1987: 6, 1990: 5, 1993: 3, 1995: 8, 1998: 5, 2001: 4, 2004: 2, 2006: 7,
+            2009: 5, 2012: 4, 2014: 9, 2017: 6, 2020: 4, 2023: 2, 2025: 6, 2028: 5,
+            2031: 3, 2033: 11, 2036: 6, 2039: 5, 2042: 2, 2044: 7, 2047: 5, 2050: 3,
+            2052: 8, 2055: 6, 2058: 4, 2061: 3, 2063: 7, 2066: 5, 2069: 4, 2071: 8,
+            2074: 6, 2077: 4, 2080: 3, 2082: 7, 2085: 5, 2088: 4, 2090: 8, 2093: 6,
+            2096: 4, 2099: 2
+        }
+
+    def _is_leap_month(self, year: int, month: int) -> bool:
+        """해당 년월이 윤달인지 확인"""
+        return year in self.leap_months and self.leap_months[year] == month
 
     def _calculate_international_age(self, birthdate: datetime, now: datetime) -> int:
         age = now.year - birthdate.year
@@ -75,7 +96,7 @@ class SajuCalculator:
     def _calculate_korean_age(self, birthdate: datetime, now: datetime) -> int:
         return now.year - birthdate.year + 1
 
-    def calculate_saju(self, year: int, month: int, day: int, hour: int, minute: int = 0, is_male: bool = True) -> SajuChart:
+    def calculate_saju(self, year: int, month: int, day: int, hour: int, minute: int = 0, is_male: bool = True, is_leap_month: bool = False) -> SajuChart:
         # 대한민국 출생자 전용: 무조건 -32분 1초 보정
         birth_datetime = datetime(year, month, day, hour, minute) - timedelta(minutes=32, seconds=1)
         base_date = datetime(1900, 1, 1)
@@ -87,21 +108,23 @@ class SajuCalculator:
         korean_age = self._calculate_korean_age(birth_datetime, now)
 
         year_pillar = self._calculate_year_pillar(year)
-        month_pillar = self._calculate_month_pillar_improved(year, month, day)
+        month_pillar = self._calculate_month_pillar_improved(year, month, day, is_leap_month)
         day_pillar = self._calculate_day_pillar(days_diff)
         hour_pillar = self._calculate_hour_pillar_improved(day_pillar.heavenly_stem, hour, minute)
         birth_info = {
             "year": year, "month": month, "day": day, 
             "hour": hour, "minute": minute,
             "is_male": is_male,
-            "birth_datetime": birth_datetime
+            "birth_datetime": birth_datetime,
+            "is_leap_month": is_leap_month
         }
         return SajuChart(
             year_pillar, month_pillar, day_pillar, hour_pillar, 
             birth_info,
             age=age,
             korean_age=korean_age,
-            current_datetime=now.strftime("%Y-%m-%d %H:%M:%S")
+            current_datetime=now.strftime("%Y-%m-%d %H:%M:%S"),
+            is_leap_month=is_leap_month
         )
 
     def _calculate_year_pillar(self, year: int) -> SajuPillar:
@@ -111,8 +134,8 @@ class SajuCalculator:
         branch_index = year_diff % 12
         return SajuPillar(self.heavenly_stems[stem_index], self.earthly_branches[branch_index])
 
-    def _calculate_month_pillar_improved(self, year: int, month: int, day: int) -> SajuPillar:
-        month_branch_index = self._get_month_branch_by_solar_terms(year, month, day)    
+    def _calculate_month_pillar_improved(self, year: int, month: int, day: int, is_leap_month: bool = False) -> SajuPillar:
+        month_branch_index = self._get_month_branch_by_solar_terms(year, month, day, is_leap_month)    
         year_stem_index = (year - 1984) % 10
         # 해의 천간별 월간 시작 인덱스 표
         month_stem_base_table = [2, 4, 6, 8, 0, 2, 4, 6, 8, 0]  # 0:갑, 1:을, 2:병, 3:정, 4:무, 5:기, 6:경, 7:신, 8:임, 9:계
@@ -121,7 +144,15 @@ class SajuCalculator:
         month_stem = self.heavenly_stems[month_stem_index]
         return SajuPillar(month_stem, self.earthly_branches[month_branch_index])
 
-    def _get_month_branch_by_solar_terms(self, year: int, month: int, day: int) -> int:
+    def _get_month_branch_by_solar_terms(self, year: int, month: int, day: int, is_leap_month: bool = False) -> int:
+        # 윤달인 경우 월간 계산을 조정
+        if is_leap_month:
+            # 윤달은 해당 월의 다음 월간을 사용
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+        
         solar_terms = [
             (2, 4, 2),   # 입춘: 2월 4일 → 인(2)
             (3, 6, 3),   # 경칩: 3월 6일 → 묘(3)
@@ -266,6 +297,10 @@ def format_saju_analysis(saju_chart: SajuChart, calculator: SajuCalculator) -> s
     analysis.append(f"일간(日干): {saju_chart.get_day_master()}")
     analysis.append(f"현재 나이: {saju_chart.age}세 / 한국식 나이: {saju_chart.korean_age}세")
     analysis.append(f"기준 시점: {saju_chart.current_datetime}")
+    
+    # 윤달 정보 표시
+    if saju_chart.is_leap_month:
+        analysis.append("⚠️ 윤달 출생자입니다 (월간 계산이 조정되었습니다)")
     analysis.append("")
 
     elements = calculator.get_element_strength(saju_chart)
@@ -300,10 +335,12 @@ def calculate_saju_tool(
     day: int,
     hour: int,
     minute: int = 0,
-    is_male: bool = True
+    is_male: bool = True,
+    is_leap_month: bool = False
 ) -> str:
     """
     대한민국 출생자 기준, 생년월일·시간·성별을 입력받아 사주팔자 해석을 반환합니다.
+    윤달 출생자의 경우 is_leap_month=True로 설정하세요.
     """
     chart = saju_calculator.calculate_saju(
         year=year,
@@ -311,17 +348,19 @@ def calculate_saju_tool(
         day=day,
         hour=hour,
         minute=minute,
-        is_male=is_male
+        is_male=is_male,
+        is_leap_month=is_leap_month
     )
     return format_saju_analysis(chart, saju_calculator)
 
 # -------------------- 아래 부분이 수정된 코드입니다 --------------------
 
 def parse_input(text: str) -> Dict:
-    """사용자의 자연어 입력에서 사주 정보(년, 월, 일, 시, 분, 성별)를 추출합니다."""
+    """사용자의 자연어 입력에서 사주 정보(년, 월, 일, 시, 분, 성별, 윤달여부)를 추출합니다."""
     
     numbers = [int(n) for n in re.findall(r'\d+', text)]
     is_male = not ("여" in text or "여자" in text)
+    is_leap_month = "윤" in text or "윤달" in text or "윤월" in text
 
     try:
         params = {
@@ -331,6 +370,7 @@ def parse_input(text: str) -> Dict:
             "hour": numbers[3] if len(numbers) > 3 else 0,
             "minute": numbers[4] if len(numbers) > 4 else 0,
             "is_male": is_male,
+            "is_leap_month": is_leap_month,
         }
         if ("오후" in text or "pm" in text.lower()) and params["hour"] <= 12:
             params["hour"] += 12
@@ -349,6 +389,7 @@ def main():
     print("생년월일시와 성별을 문장으로 입력해 주세요.")
     print("예: 1995년 8월 26일 오후 3시 30분 남자 사주 알려줘")
     print("예: 2002년 1월 5일 7시 여자")
+    print("윤달 출생자: 1995년 윤8월 26일 오후 3시 30분 남자")
     print("프로그램을 종료하려면 '종료' 또는 'exit'를 입력하세요.")
     print("="*50)
 
@@ -371,10 +412,13 @@ def main():
         if saju_params is None:
             print("\n[오류] 입력 형식을 확인해 주세요. '년, 월, 일' 정보가 필요합니다.")
             print("예: 1995년 3월 28일 12시 30분 남자")
+            print("윤달: 1995년 윤8월 28일 12시 30분 남자")
             continue
 
         try:
             print("\n⏳ 사주를 분석하는 중입니다...")
+            if saju_params["is_leap_month"]:
+                print("⚠️ 윤달 출생자로 인식되었습니다.")
             print("-" * 25)
             # 파싱된 딕셔너리를 invoke에 직접 전달하여 오류 해결
             analysis_result = calculate_saju_tool.invoke(saju_params)
