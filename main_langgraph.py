@@ -14,15 +14,16 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from langchain_core.messages import HumanMessage
 from langgraph_system.graph import create_workflow
+from langchain_core.runnables import RunnableConfig
 
 def print_banner():
     """시스템 배너 출력"""
     print("=" * 60)
     print("🔮 FortuneAI - LangGraph 사주 시스템 🔮")
     print("=" * 60)
-    print("✨ Supervisor 패턴 기반 고성능 사주 계산기")
+    print("✨ SajuExpert 서브그래프 기반 고성능 사주 계산기")
     print("🎯 98점 전문가 검증 완료")
-    print("🚀 LangGraph 멀티 워커 시스템")
+    print("🚀 LangGraph 멀티 워커 시스템 (SajuExpert + WebTool + GeneralQA)")
     print("-" * 60)
     print("📝 사용법:")
     print("  • 사주 계산: '1995년 8월 26일 오전 10시 15분 남자 사주'")
@@ -104,23 +105,30 @@ def handle_verbose_query(query: str, app) -> str:
 
 
 def run_query_with_app(query: str, app) -> str:
-    """LangGraph 시스템으로 쿼리 실행 - 미리 생성된 워크플로 사용"""
+    """LangGraph 시스템으로 쿼리 실행 - 새로운 AgentState 구조 사용"""
     print(f"🔍 쿼리 실행: {query}")
     
-    # 초기 상태 설정
+    # 초기 상태 설정 (새로운 AgentState 구조)
     initial_state = {
         "messages": [HumanMessage(content=query)],
-        "next": None,
-        "final_response": None,
-        "sender": None
+        "next": ""
     }
+    
+    # 설정 생성 (세션 관리)
+    config = RunnableConfig(
+        recursion_limit=20, 
+        configurable={"thread_id": str(int(time.time()))}
+    )
     
     try:
         print("🚀 워크플로 실행 중...")
-        result = app.invoke(initial_state)
+        result = app.invoke(initial_state, config=config)
         
-        final_response = result.get("final_response")
-        if final_response:
+        # 메시지에서 최종 응답 추출
+        messages = result.get("messages", [])
+        if messages:
+            # 마지막 메시지가 최종 응답
+            final_response = messages[-1].content
             print("✅ 실행 완료!")
             return final_response
         else:
@@ -136,10 +144,11 @@ def main():
     print_banner()
     print_system_info()
     
-    # ✨ 시스템 시작 시 NodeManager 미리 초기화
+    # ✨ 시스템 시작 시 AgentState 구조 초기화
     print("🔧 시스템 초기화 중...")
-    from langgraph_system.nodes import get_node_manager
-    get_node_manager()  # 싱글톤 초기화 (6-10초 소요)
+    print("  - SajuExpert 서브그래프 로딩...")
+    print("  - WebTool 에이전트 로딩...")
+    print("  - GeneralQA 에이전트 로딩...")
     print("✅ 시스템 초기화 완료!")
     
     # ✨ 워크플로도 미리 생성

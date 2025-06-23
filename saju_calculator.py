@@ -7,6 +7,7 @@
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
+import re 
 
 @dataclass
 class SajuPillar:
@@ -25,6 +26,10 @@ class SajuChart:
     day_pillar: SajuPillar    # 일주
     hour_pillar: SajuPillar   # 시주
     birth_info: Dict
+    age: int
+    korean_age: int
+    current_datetime: str
+    is_leap_month: bool  # 윤달 여부 추가
     
     def get_day_master(self) -> str:
         """일간(日干) 반환"""
@@ -303,7 +308,11 @@ class SajuCalculator:
             "birth_datetime": birth_datetime
         }
         
-        return SajuChart(year_pillar, month_pillar, day_pillar, hour_pillar, birth_info)
+        return SajuChart(year_pillar, month_pillar, day_pillar, hour_pillar, birth_info,
+                         age=self._calculate_international_age(birth_datetime, datetime.now()),
+                         korean_age=self._calculate_korean_age(birth_datetime, datetime.now()),
+                         current_datetime=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                         is_leap_month=is_leap_month)
     
     def _calculate_year_pillar(self, year: int) -> SajuPillar:
         """년주 계산"""

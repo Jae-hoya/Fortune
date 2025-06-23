@@ -1,64 +1,88 @@
 """
-LangGraph 워크플로 그래프 생성
+LangGraph 워크플로 그래프 생성 - Jupyter Notebook 구조 적용
 """
 
-from langgraph.graph import StateGraph, END
-from .state import SajuState
-from .nodes import get_node_manager
+import operator
+from typing import Sequence, Annotated
+from typing_extensions import TypedDict
+from langchain_core.messages import BaseMessage
 
-def create_workflow():
-    """워크플로 그래프 생성 및 반환"""
-    
-    # 싱글톤 NodeManager 인스턴스 가져오기
+from langgraph.graph import StateGraph, END, START
+from langgraph.checkpoint.memory import MemorySaver
+
+# 새로운 AgentState 정의 (notebook 구조와 동일)
+class AgentState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], operator.add]  # 메시지
+    next: str  # 다음으로 라우팅할 에이전트
+
+# NodeManager 사용
+from .nodes import get_node_manager
+from .agents import members
+
+def create_saju_expert_subgraph():
+    """SajuExpert 서브그래프 생성 (Manse -> Retriever)"""
+    # NodeManager 인스턴스 가져오기
     node_manager = get_node_manager()
     
-    # StateGraph 생성
-    workflow = StateGraph(SajuState)
+    # 1. Manse -> Retriever Sub-graph 생성
+    saju_expert_workflow = StateGraph(AgentState)
     
-    # 노드 추가
-    workflow.add_node("supervisor", node_manager.create_supervisor_node())
-    workflow.add_node("SajuAgent", node_manager.create_saju_node())
-    workflow.add_node("RagAgent", node_manager.create_rag_node())
-    workflow.add_node("WebAgent", node_manager.create_web_node())
-    workflow.add_node("result_generator", node_manager.create_result_generator_node())
+    # Sub-graph에 노드 추가 (NodeManager에서 생성)
+    manse_tool_agent_node = node_manager.create_manse_tool_agent_node()
+    retriever_tool_agent_node = node_manager.create_retriever_tool_agent_node()
     
-    # 라우팅 조건부 함수 정의
-    def should_continue(state):
-        # supervisor의 next 결정에 따라 라우팅
-        next_agent = state.get("next")
-        
-        if next_agent == "FINISH":
-            return "result_generator"
-        elif next_agent in ["SajuAgent", "RagAgent", "WebAgent"]:
-            return next_agent
-        else:
-            # 기본값: 결과 생성으로
-            return "result_generator"
+    saju_expert_workflow.add_node("manse", manse_tool_agent_node)
+    saju_expert_workflow.add_node("retriever", retriever_tool_agent_node)
     
-    # 엣지 설정
-    workflow.set_entry_point("supervisor")
+    # Sub-graph 엣지 연결
+    saju_expert_workflow.add_edge(START, "manse")
+    saju_expert_workflow.add_edge("manse", "retriever")
+    saju_expert_workflow.add_edge("retriever", END)
     
-    # supervisor에서 조건부 라우팅
-    workflow.add_conditional_edges(
-        "supervisor",
-        should_continue,
-        {
-            "SajuAgent": "SajuAgent",
-            "RagAgent": "RagAgent", 
-            "WebAgent": "WebAgent",
-            "result_generator": "result_generator"
-        }
-    )
+    # Sub-graph를 컴파일하여 Runnable로 만듭니다.
+    return saju_expert_workflow.compile()
+
+def create_workflow():
+    """워크플로 그래프 생성 및 반환 (notebook 구조 적용)"""
     
-    # 각 에이전트에서 supervisor로 돌아가기
-    workflow.add_edge("SajuAgent", "supervisor")
-    workflow.add_edge("RagAgent", "supervisor")  
-    workflow.add_edge("WebAgent", "supervisor")
+    # NodeManager 인스턴스 가져오기
+    node_manager = get_node_manager()
     
-    # 결과 생성 후 종료
-    workflow.add_edge("result_generator", END)
+    # SajuExpert 서브그래프 생성
+    saju_expert_graph = create_saju_expert_subgraph()
     
-    # 워크플로 컴파일
-    app = workflow.compile()
+    # 노드들 생성 (NodeManager 사용)
+    web_tool_agent_node = node_manager.create_web_tool_agent_node()
+    general_qa_agent_node = node_manager.create_general_qa_agent_node()
+    supervisor_agent = node_manager.agent_manager.create_supervisor_agent(tools=[])
+    
+    # 2. 메인 그래프 생성
+    workflow = StateGraph(AgentState)
+    
+    # 그래프에 노드 추가: ManseTool과 RetrieverTool을 SajuExpert로 대체
+    workflow.add_node("SajuExpert", saju_expert_graph)
+    workflow.add_node("WebTool", web_tool_agent_node)
+    workflow.add_node("GeneralQA", general_qa_agent_node)
+    workflow.add_node("Supervisor", supervisor_agent)
+    
+    # 멤버 노드 > Supervisor 노드로 엣지 추가
+    for member in members:
+        workflow.add_edge(member, "Supervisor")
+    
+    # 조건부 엣지 추가
+    conditional_map = {k: k for k in members}
+    conditional_map["FINISH"] = END
+    
+    def get_next(state):
+        return state["next"]
+    
+    # Supervisor 노드에서 조건부 엣지 추가
+    workflow.add_conditional_edges("Supervisor", get_next, conditional_map)
+    
+    # 시작점 - QueryExpansion 제거하고 바로 Supervisor로 시작
+    workflow.add_edge(START, "Supervisor")
+    
+    # 그래프 컴파일
+    app = workflow.compile(checkpointer=MemorySaver())
     
     return app 

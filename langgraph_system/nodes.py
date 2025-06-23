@@ -6,11 +6,22 @@ import re
 import functools
 from datetime import datetime
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.tools.retriever import create_retriever_tool
+from langchain_core.prompts import PromptTemplate, load_prompt, ChatPromptTemplate, MessagesPlaceholder
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
 from typing import Dict, Any, List
 
 from .state import SajuState
 from .agents import AgentManager
 from tools import ToolManager
+
+# 새로운 imports (notebook 구조 지원용)
+from saju_calculator import calculate_saju_tool
+from reranker import create_saju_compression_retriever
+from langchain_teddynote.tools.tavily import TavilySearch
+from langchain.tools import DuckDuckGoSearchResults, tool
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 class NodeManager:
     """노드 생성 및 관리 클래스"""
@@ -25,6 +36,7 @@ class NodeManager:
         # 에이전트 관리자 초기화
         self.agent_manager = AgentManager()
     
+    # === 기존 노드들 (호환성 유지) ===
     def create_saju_node(self):
         """사주 계산 노드 생성"""
         calendar_tools = self.tool_manager.calendar_tools
@@ -99,6 +111,114 @@ class NodeManager:
             }
         
         return result_generator_node
+
+    # === 새로운 노드들 (notebook 구조 지원) ===
+    def _agent_node(self, state, agent, name):
+        """지정한 agent와 name을 사용하여 agent 노드를 생성하는 헬퍼 함수"""
+        # agent 호출
+        agent_response = agent.invoke(state)
+        # agent의 마지막 메시지를 HumanMessage로 변환하여 반환
+        return {
+            "messages": [
+                HumanMessage(content=agent_response["messages"][-1].content, name=name)
+            ]
+        }
+
+    def create_manse_tool_agent(self):
+        """만세력 계산 에이전트 생성"""
+        llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+        tools = [calculate_saju_tool]
+        return create_react_agent(llm, tools)
+
+    def create_retriever_tool_agent(self):
+        """RAG 검색 에이전트 생성"""
+        llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+        
+        # PDF 문서를 기반으로 검색 도구 생성
+        pdf_retriever = create_saju_compression_retriever()
+        retriever_tool = create_retriever_tool(
+            pdf_retriever,
+            "pdf_retriever",
+            "A tool for searching information related to Saju (Four Pillars of Destiny)",
+            document_prompt=PromptTemplate.from_template(
+                "<document><context>{page_content}</context><metadata><source>{source}</source><page>{page}</page></metadata></document>"
+            ),
+        )
+        
+        retriever_tools = [retriever_tool]
+        
+        # 프롬프트 로드
+        try:
+            base_prompt = load_prompt("prompt/saju-rag-promt.yaml")
+            saju_prompt = ChatPromptTemplate.from_messages([
+                ("system", base_prompt.template),
+                MessagesPlaceholder("messages"),
+            ])
+            return create_react_agent(llm, retriever_tools, prompt=saju_prompt)
+        except Exception as e:
+            print(f"프롬프트 로드 실패: {e}")
+            # 기본 프롬프트 사용
+            return create_react_agent(llm, retriever_tools)
+
+    def create_web_tool_agent(self):
+        """웹 검색 에이전트 생성"""
+        llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+        
+        # 웹 검색 도구들 설정
+        tavily_tool = TavilySearch(
+            max_results=5,
+            include_domains=["namu.wiki", "wikipedia.org"]
+        )
+        
+        duck_tool = DuckDuckGoSearchResults(
+            max_results=5,
+        )
+        
+        web_tools = [tavily_tool, duck_tool]
+        
+        prompt = """
+사주 또는 사주 오행의 개념적 질문이나, 일상 질문이 들어오면, web search를 통해 답합니다.
+"""
+        
+        return create_react_agent(llm, tools=web_tools, prompt=prompt)
+
+    def create_general_qa_agent(self):
+        """일반 QA 에이전트 생성"""
+        @tool
+        def general_qa_tool(query: str) -> str:
+            """
+            일반적인 질문이나 상식적인 내용에 대해 답변합니다. 사주와 관련 없는 모든 질문에 사용할 수 있습니다.
+            """
+            google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+            return google_llm.invoke(query).content
+
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+        general_qa_tools = [general_qa_tool]
+        
+        prompt = "일반적인 질문이나 상식적인 내용에 대해 답변합니다."
+        
+        return create_react_agent(llm, tools=general_qa_tools, prompt=prompt)
+
+    # === Notebook 스타일 노드 생성 메서드들 ===
+    def create_manse_tool_agent_node(self):
+        """Manse Tool Agent 노드 생성"""
+        manse_tool_agent = self.create_manse_tool_agent()
+        return functools.partial(self._agent_node, agent=manse_tool_agent, name="ManseTool")
+
+    def create_retriever_tool_agent_node(self):
+        """Retriever Tool Agent 노드 생성"""
+        retriever_tool_agent = self.create_retriever_tool_agent()
+        return functools.partial(self._agent_node, agent=retriever_tool_agent, name="RetrieverTool")
+
+    def create_web_tool_agent_node(self):
+        """Web Tool Agent 노드 생성"""
+        web_tool_agent = self.create_web_tool_agent()
+        return functools.partial(self._agent_node, agent=web_tool_agent, name="WebTool")
+
+    def create_general_qa_agent_node(self):
+        """General QA Agent 노드 생성"""
+        general_qa_agent = self.create_general_qa_agent()
+        return functools.partial(self._agent_node, agent=general_qa_agent, name="GeneralQA")
 
 # 전역 NodeManager 인스턴스 (싱글톤 패턴)
 _node_manager = None

@@ -1,5 +1,6 @@
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from langchain_ollama import OllamaEmbeddings
 from typing import List
 # from embeddings import get_bge_embeddings
 from models import get_bge_embeddings
@@ -16,6 +17,16 @@ def load_vector_store(db_path: str):
     """
     embeddings = get_bge_embeddings()
     return FAISS.load_local(db_path, embeddings, allow_dangerous_deserialization=True)
+
+def load_saju_vector_store():
+    """
+    사주 전용 FAISS 벡터 스토어를 로드합니다.
+    
+    Returns:
+        사주 전용 FAISS 벡터 스토어 객체
+    """
+    embeddings = OllamaEmbeddings(model="bge-m3")
+    return FAISS.load_local("faiss_saju/all_saju_data", embeddings, allow_dangerous_deserialization=True)
 
 def get_all_documents(vectorstore, query: str = "", top_k: int = 1000) -> List[Document]:
     """
@@ -43,4 +54,17 @@ def create_retriever(vectorstore, k: int = 10):
     Returns:
         벡터 스토어 검색기
     """
-    return vectorstore.as_retriever(search_kwargs={"k": k}) 
+    return vectorstore.as_retriever(search_kwargs={"k": k})
+
+def create_saju_retriever(k: int = 20):
+    """
+    사주 전용 검색기를 생성합니다.
+    
+    Args:
+        k: 검색할 문서 수 (기본값: 20)
+        
+    Returns:
+        사주 전용 벡터 스토어 검색기
+    """
+    vector_store = load_saju_vector_store()
+    return vector_store.as_retriever(search_kwargs={"k": k}) 

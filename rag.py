@@ -3,11 +3,13 @@ from langchain_core.documents import Document
 from langchain_core.runnables import RunnablePassthrough, RunnableSequence
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.retrievers import BaseRetriever
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, load_prompt
 from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from operator import itemgetter
 
 from models import get_openai_llm
@@ -17,11 +19,66 @@ from reranker import get_flashrank_reranker, rerank_documents
 # 세션 기록을 저장할 딕셔너리
 session_store = {}
 
+# 사주 전용 세션 기록을 저장할 딕셔너리
+saju_session_store = {}
+
 # 세션 ID를 기반으로 세션 기록을 가져오는 함수
 def get_session_history(session_ids):
     if session_ids not in session_store:
         session_store[session_ids] = ChatMessageHistory()
     return session_store[session_ids]
+
+# 사주 전용 세션 기록을 가져오는 함수
+def get_saju_session_history(session_ids):
+    """사주 전용 세션 기록을 가져오는 함수"""
+    print(f"[사주 대화 세션ID]: {session_ids}")
+    if session_ids not in saju_session_store:
+        saju_session_store[session_ids] = ChatMessageHistory()
+    return saju_session_store[session_ids]
+
+def create_saju_rag_chain():
+    """
+    사주 전용 RAG 체인을 생성합니다.
+    
+    Returns:
+        사주 전용 RAG 체인 (대화 기록 포함)
+    """
+    try:
+        # 프롬프트 로드 시도
+        import yaml
+        with open("prompt/saju-rag-promt.yaml", "r", encoding="utf-8") as f:
+            prompt_data = yaml.safe_load(f)
+        prompt = ChatPromptTemplate.from_template(prompt_data["template"])
+    except Exception as e:
+        print(f"사주 프롬프트 로드 실패: {e}")
+        # 기본 프롬프트 사용
+        prompt = ChatPromptTemplate.from_template(
+            "다음 문맥을 바탕으로 사주에 관한 질문에 답변하세요.\n\n"
+            "문맥: {context}\n\n"
+            "이전 대화: {chat_history}\n\n"
+            "질문: {question}\n\n"
+            "답변:"
+        )
+    
+    # LLM 모델 설정
+    model = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.1)
+    
+    # 체인 구성
+    saju_chain = {
+        "question": itemgetter("question"),
+        "context": itemgetter("context"),
+        "chat_history": itemgetter("chat_history"),
+    } | prompt | model | StrOutputParser()
+    
+    # 대화 기록을 포함한 RAG 체인 생성
+    rag_with_history = RunnableWithMessageHistory(
+        saju_chain,
+        get_saju_session_history,  # 사주 전용 세션 기록 함수
+        input_messages_key="question",
+        history_messages_key="chat_history",
+    )
+    
+    return rag_with_history
 
 class RagPipeline:
     """RAG(Retrieval-Augmented Generation) 파이프라인 클래스"""

@@ -1,5 +1,6 @@
 from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import FlashrankRerank
+from langchain.retrievers.document_compressors import FlashrankRerank, CrossEncoderReranker
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 from typing import List
 from langchain_core.documents import Document
 
@@ -12,6 +13,19 @@ def get_flashrank_reranker():
     """
     # 최신 API는 model_name 매개변수를 받지 않음
     return FlashrankRerank()
+
+def get_crossencoder_reranker(top_n: int = 10):
+    """
+    CrossEncoder 기반 리랭커를 생성합니다. (사주 전용)
+    
+    Args:
+        top_n: 리랭킹 후 반환할 문서 수 (기본값: 10)
+        
+    Returns:
+        CrossEncoder 리랭커 객체
+    """
+    model = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-base")
+    return CrossEncoderReranker(model=model, top_n=top_n)
 
 def create_compression_retriever(base_retriever, compressor):
     """
@@ -28,6 +42,25 @@ def create_compression_retriever(base_retriever, compressor):
         base_compressor=compressor,
         base_retriever=base_retriever
     )
+
+def create_saju_compression_retriever():
+    """
+    사주 전용 압축 검색기를 생성합니다.
+    CrossEncoder를 사용하여 검색 결과를 리랭킹합니다.
+    
+    Returns:
+        사주 전용 ContextualCompressionRetriever 객체
+    """
+    from vector_store import create_saju_retriever
+    
+    # 사주 전용 기본 검색기 생성
+    base_retriever = create_saju_retriever(k=20)
+    
+    # CrossEncoder 리랭커 생성
+    compressor = get_crossencoder_reranker(top_n=10)
+    
+    # 압축 검색기 생성
+    return create_compression_retriever(base_retriever, compressor)
 
 def rerank_documents(reranker, documents: List[Document], query: str) -> List[Document]:
     """
