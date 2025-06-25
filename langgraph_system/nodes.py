@@ -7,19 +7,12 @@ from langchain_core.messages import HumanMessage
 
 from .state import SajuState
 from .agents import AgentManager
-from tools import ToolManager
 
 class NodeManager:
     """노드 생성 및 관리 클래스"""
     
     def __init__(self):
-        # 도구 관리자 초기화
-        self.tool_manager = ToolManager(
-            enable_rag=True,
-            enable_web=True, 
-            enable_calendar=True
-        )
-        # 에이전트 관리자 초기화
+        # 에이전트 관리자 초기화 (단순화)
         self.agent_manager = AgentManager()
     
     # === 새로운 노드들 (notebook 구조 지원) ===
@@ -33,8 +26,6 @@ class NodeManager:
                 HumanMessage(content=agent_response["messages"][-1].content, name=name)
             ]
         }
-
-
 
     # === Notebook 스타일 노드 생성 메서드들 ===
     def create_manse_tool_agent_node(self):
