@@ -2,12 +2,20 @@
 에이전트 생성 및 관리
 """
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate, load_prompt
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel
 from typing import Literal
 from datetime import datetime
+
+# 새로운 imports (notebook 구조 지원용)
+from saju_calculator import calculate_saju_tool
+from reranker import create_saju_compression_retriever
+from langchain_core.tools.retriever import create_retriever_tool
+from langchain_teddynote.tools.tavily import TavilySearch
+from langchain.tools import DuckDuckGoSearchResults, tool
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 # 멤버 Agent 목록 정의 (notebook 구조에 맞게 변경)
 members = ["SajuExpert", "WebTool", "GeneralQA"]
@@ -74,56 +82,77 @@ class AgentManager:
         
         return supervisor_agent
 
-    def create_manse_agent(self, tools):
-        """만세력 계산 ReAct 에이전트 생성 (notebook의 manse_tool_agent에 해당)"""
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "당신은 사주 전문가입니다. 생년월일시를 받아 사주팔자를 계산하세요. 반드시 도구를 사용하여 정확한 계산을 수행하세요."),
-            MessagesPlaceholder(variable_name="messages")
-        ])
-        return create_react_agent(self.llm, tools=tools, prompt=prompt)
+    def create_manse_tool_agent(self):
+        """만세력 계산 에이전트 생성"""
+        llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+        tools = [calculate_saju_tool]
+        return create_react_agent(llm, tools)
 
-    def create_retriever_agent(self, tools):
-        """RAG 검색 ReAct 에이전트 생성 (notebook의 retriever_tool_agent에 해당)"""
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "당신은 사주 해석 전문가입니다. 사주 관련 지식을 검색하고 해석하세요. 반드시 도구를 사용하여 정확한 정보를 찾으세요."),
-            MessagesPlaceholder(variable_name="messages")
-        ])
-        return create_react_agent(self.llm, tools=tools, prompt=prompt)
+    def create_retriever_tool_agent(self):
+        """RAG 검색 에이전트 생성"""
+        llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+        
+        # PDF 문서를 기반으로 검색 도구 생성
+        pdf_retriever = create_saju_compression_retriever()
+        retriever_tool = create_retriever_tool(
+            pdf_retriever,
+            "pdf_retriever",
+            "A tool for searching information related to Saju (Four Pillars of Destiny)",
+            document_prompt=PromptTemplate.from_template(
+                "<document><context>{page_content}</context><metadata><source>{source}</source><page>{page}</page></metadata></document>"
+            ),
+        )
+        
+        retriever_tools = [retriever_tool]
+        
+        # 프롬프트 로드
+        try:
+            base_prompt = load_prompt("prompt/saju-rag-promt.yaml")
+            saju_prompt = ChatPromptTemplate.from_messages([
+                ("system", base_prompt.template),
+                MessagesPlaceholder("messages"),
+            ])
+            return create_react_agent(llm, retriever_tools, prompt=saju_prompt)
+        except Exception as e:
+            print(f"프롬프트 로드 실패: {e}")
+            # 기본 프롬프트 사용
+            return create_react_agent(llm, retriever_tools)
 
-    def create_web_agent(self, tools):
-        """웹 검색 ReAct 에이전트 생성 (notebook의 web_tool_agent에 해당)"""
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "사주 또는 사주 오행의 개념적 질문이나, 일상 질문이 들어오면, web search를 통해 답합니다."),
-            MessagesPlaceholder(variable_name="messages")
-        ])
-        return create_react_agent(self.llm, tools=tools, prompt=prompt)
-    
-    def create_general_qa_agent(self, tools):
-        """일반 QA ReAct 에이전트 생성 (notebook의 general_qa_agent에 해당)"""
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "일반적인 질문이나 상식적인 내용에 대해 답변합니다."),
-            MessagesPlaceholder(variable_name="messages")
-        ])
-        return create_react_agent(self.llm, tools=tools, prompt=prompt)
+    def create_web_tool_agent(self):
+        """웹 검색 에이전트 생성"""
+        llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+        
+        # 웹 검색 도구들 설정
+        tavily_tool = TavilySearch(
+            max_results=5,
+            include_domains=["namu.wiki", "wikipedia.org"]
+        )
+        
+        duck_tool = DuckDuckGoSearchResults(
+            max_results=5,
+        )
+        
+        web_tools = [tavily_tool, duck_tool]
+        
+        prompt = """
+사주 또는 사주 오행의 개념적 질문이나, 일상 질문이 들어오면, web search를 통해 답합니다.
+"""
+        
+        return create_react_agent(llm, tools=web_tools, prompt=prompt)
 
-    # 기존 메서드들 유지 (호환성을 위해)
-    def create_saju_agent(self, tools):
-        """사주 계산 ReAct 에이전트 생성 (기존 호환성 유지)"""
-        return self.create_manse_agent(tools)
+    def create_general_qa_agent(self):
+        """일반 QA 에이전트 생성"""
+        @tool
+        def general_qa_tool(query: str) -> str:
+            """
+            일반적인 질문이나 상식적인 내용에 대해 답변합니다. 사주와 관련 없는 모든 질문에 사용할 수 있습니다.
+            """
+            google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+            return google_llm.invoke(query).content
 
-    def create_rag_agent(self, tools):
-        """RAG 검색 ReAct 에이전트 생성 (기존 호환성 유지)"""
-        return self.create_retriever_agent(tools)
-    
-    def create_response_generator_agent(self, tools):
-        """응답 생성 ReAct 에이전트 생성"""
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """당신은 최종 응답 생성 전문가입니다. 
-다른 에이전트들이 수집한 정보를 종합하여 사용자에게 완성도 높은 최종 답변을 제공하세요.
-
-- 여러 에이전트의 결과를 통합
-- 일관성 있고 이해하기 쉬운 응답 생성
-- 필요시 추가 검색을 통해 정보 보완"""),
-            MessagesPlaceholder(variable_name="messages")
-        ])
-        return create_react_agent(self.llm, tools=tools, prompt=prompt)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+        general_qa_tools = [general_qa_tool]
+        
+        prompt = "일반적인 질문이나 상식적인 내용에 대해 답변합니다."
+        
+        return create_react_agent(llm, tools=general_qa_tools, prompt=prompt)

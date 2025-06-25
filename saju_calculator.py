@@ -1656,4 +1656,44 @@ def format_saju_analysis(saju_chart: SajuChart, calculator: SajuCalculator) -> s
     for element, strength in elements_simple.items():
         analysis.append(f"  {element}: {strength}점")
     
-    return "\n".join(analysis) 
+    return "\n".join(analysis)
+
+
+# LangChain Tool 정의
+from langchain.tools import tool
+
+@tool
+def calculate_saju_tool(year: int, month: int, day: int, hour: int, minute: int = 0, 
+                       is_male: bool = True, timezone: str = "Asia/Seoul") -> str:
+    """
+    사주팔자를 계산하고 분석합니다. 
+    생년월일시를 입력받아 정확한 사주팔자, 오행 분석, 십신 분석, 대운 등을 제공합니다.
+    
+    Args:
+        year: 출생 년도 (예: 1990)
+        month: 출생 월 (1-12)
+        day: 출생 일 (1-31)
+        hour: 출생 시간 (0-23시)
+        minute: 출생 분 (0-59분, 기본값: 0)
+        is_male: 성별 (True: 남성, False: 여성, 기본값: True)
+        timezone: 시간대 (기본값: "Asia/Seoul")
+    
+    Returns:
+        str: 포맷팅된 사주 분석 결과
+    """
+    try:
+        calculator = SajuCalculator()
+        saju_chart = calculator.auto_calculate_saju(
+            year=year, 
+            month=month, 
+            day=day, 
+            hour=hour, 
+            minute=minute, 
+            is_male=is_male, 
+            timezone=timezone
+        )
+        
+        return format_saju_analysis(saju_chart, calculator)
+        
+    except Exception as e:
+        return f"사주 계산 중 오류가 발생했습니다: {str(e)}" 

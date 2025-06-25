@@ -65,11 +65,11 @@ def create_workflow():
     workflow.add_node("GeneralQA", general_qa_agent_node)
     workflow.add_node("Supervisor", supervisor_agent)
     
-    # 멤버 노드 > Supervisor 노드로 엣지 추가
+    # 각 에이전트가 실행되면 바로 종료되도록 수정
     for member in members:
-        workflow.add_edge(member, "Supervisor")
+        workflow.add_edge(member, END)
     
-    # 조건부 엣지 추가
+    # 조건부 엣지 추가 - Supervisor에서 각 에이전트로 라우팅만
     conditional_map = {k: k for k in members}
     conditional_map["FINISH"] = END
     
