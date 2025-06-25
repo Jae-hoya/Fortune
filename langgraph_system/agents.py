@@ -10,7 +10,7 @@ from typing import Literal
 from datetime import datetime
 
 # 새로운 imports (notebook 구조 지원용)
-from saju_calculator import calculate_saju_tool
+from tools import ToolManager
 from reranker import create_saju_compression_retriever
 from langchain_core.tools.retriever import create_retriever_tool
 from langchain_teddynote.tools.tavily import TavilySearch
@@ -85,7 +85,20 @@ class AgentManager:
     def create_manse_tool_agent(self):
         """만세력 계산 에이전트 생성"""
         llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
-        tools = [calculate_saju_tool]
+        
+        # ToolManager에서 사주 계산 도구 가져오기
+        tool_manager = ToolManager(enable_calendar=True)
+        tool_manager.initialize()
+        saju_tools = tool_manager.calendar_tools
+        
+        # calculate_saju_tool 찾기
+        calculate_saju_tool = None
+        for tool in saju_tools:
+            if hasattr(tool, 'name') and 'calculate_saju_chart_simple' in tool.name:
+                calculate_saju_tool = tool
+                break
+        
+        tools = [calculate_saju_tool] if calculate_saju_tool else saju_tools
         return create_react_agent(llm, tools)
 
     def create_retriever_tool_agent(self):

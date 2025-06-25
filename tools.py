@@ -777,8 +777,33 @@ class ToolManager:
             except Exception as e:
                 return f"종합 사주 분석 중 오류 발생: {str(e)}"
         
+        @tool("calculate_saju_chart_simple")
+        def calculate_saju_tool(
+            year: int,
+            month: int,
+            day: int,
+            hour: int,
+            minute: int = 0,
+            is_male: bool = True,
+            is_leap_month: bool = False
+        ) -> str:
+            """
+            대한민국 출생자 기준, 생년월일·시간·성별을 입력받아 사주팔자 해석을 반환합니다.
+            윤달 출생자의 경우 is_leap_month=True로 설정하세요.
+            """
+            chart = SajuCalculator().calculate_saju(
+                year=year,
+                month=month,
+                day=day,
+                hour=hour,
+                minute=minute,
+                is_male=is_male,
+                is_leap_month=is_leap_month
+            )
+            return format_saju_analysis(chart, SajuCalculator())
+
         return [parse_birth_info, calculate_saju_chart, analyze_five_elements, 
-                analyze_ten_gods, calculate_great_fortune, get_comprehensive_saju_analysis]
+                analyze_ten_gods, calculate_great_fortune, get_comprehensive_saju_analysis, calculate_saju_tool]
     
     def get_tools(self) -> List[Tool]:
         """모든 활성화된 도구들 반환"""
