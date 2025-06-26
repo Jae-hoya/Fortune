@@ -17,7 +17,7 @@ from reranker import create_saju_compression_retriever
 # 1. 사주 계산 도구 (Manse Tool)
 # =============================================================================
         
-        @tool
+@tool
 def calculate_saju_tool(
     year: int,
     month: int,
@@ -80,7 +80,7 @@ web_tools = [tavily_tool, duck_tool]
 # 4. 일반 QA 도구 (General QA Tool)
 # =============================================================================
         
-        @tool
+@tool
 def general_qa_tool(query: str) -> str:
     """
     일반적인 질문이나 상식적인 내용에 대해 답변합니다. 사주와 관련 없는 모든 질문에 사용할 수 있습니다.
