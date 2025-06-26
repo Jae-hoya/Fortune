@@ -25,7 +25,7 @@ import sys
 
 # --- 로컬 모듈 임포트 ---
 # (실제 환경에 맞게 경로를 확인하거나 수정해야 할 수 있습니다.)
-from manse_7 import calculate_saju_tool
+from manse_8 import calculate_saju_tool
 from pdf_retriever_saju import pdf_rag_chain, compression_retriever
 from query_expansion_agent import get_query_expansion_node, get_query_expansion_agent
 
@@ -64,8 +64,8 @@ saju_prompt = ChatPromptTemplate.from_messages([
 retriever_tool_agent = create_react_agent(llm, retriever_tools, prompt=saju_prompt).with_config({"tags": ["final_answer_agent"]})
 
 # Web Search Tool Agent
-tavily_tool = TavilySearch(max_results=5, include_domains=["namu.wiki", "wikipedia.org"])
-duck_tool = DuckDuckGoSearchResults(max_results=5)
+tavily_tool = TavilySearch(max_results=2, include_domains=["namu.wiki", "wikipedia.org"])
+duck_tool = DuckDuckGoSearchResults(max_results=2)
 web_search_tools = [tavily_tool, duck_tool]
 web_search_prompt = "사주 또는 사주 오행의 개념적 질문이나, 일상 질문이 들어오면, web search를 통해 답합니다."
 web_tool_agent = create_react_agent(llm, tools=web_search_tools, prompt=web_search_prompt).with_config({"tags": ["final_answer_agent"]})
@@ -143,10 +143,11 @@ def supervisor_agent(state):
 saju_expert_workflow = StateGraph(AgentState)
 saju_expert_workflow.add_node("manse", manse_tool_agent_node)
 saju_expert_workflow.add_node("retriever", retriever_tool_agent_node)
+
 saju_expert_workflow.add_edge(START, "manse")
 saju_expert_workflow.add_edge("manse", "retriever")
 saju_expert_workflow.add_edge("retriever", END)
-saju_expert_graph = saju_expert_workflow.compile()
+saju_expert_graph = saju_expert_workflow.compile(MemorySaver())
 
 # 메인 그래프 생성
 workflow = StateGraph(AgentState)
