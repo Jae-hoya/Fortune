@@ -1,3 +1,5 @@
+![그래프구조](graph.png)
+
 manse_6.py : 만세툴
 manse_7.py : 윤달 적용 만세툴
 manse_7.py: prompt떄문인지 갑자기 100점만점을 나오는 오류. 따라서 8점 만점으로 수정
