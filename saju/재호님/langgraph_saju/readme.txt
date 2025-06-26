@@ -1,4 +1,4 @@
-![그래프구조](graph.PNG)
+![그래프구조](graph.png)
 
 manse_6.py : 만세툴
 manse_7.py : 윤달 적용 만세툴
