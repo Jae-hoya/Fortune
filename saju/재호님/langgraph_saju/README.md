@@ -1,5 +1,6 @@
-그래프구조
-!(graph.png)
+# 그래프구조
+
+![](graph.png)
 
 # manse tool
 - manse_6.py : 만세툴
