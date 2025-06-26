@@ -1,6 +1,6 @@
 # 그래프구조
 
-![그래프구조](https://github.com/Jae-hoya/Fortune/raw/jaeho/saju/재호님/langgraph_saju/graph.png)
+![그래프구조](https://github.com/Jae-hoya/Fortune/raw/jaeho/saju/재호님/langgraph_saju/graph.PNG)
 
 # manse tool
 - manse_6.py : 만세툴
