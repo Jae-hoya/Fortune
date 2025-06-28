@@ -32,6 +32,11 @@ saju_agent_main.py: 최종 답변만을 불러오기 위한 파이썬 파일(토
 saju_agent_main
 
 
+
+왜인지 모르겠지만, 생성에 있어서 테디님의 stream_graph를 써야, 메모리가 잘됌(다음달 운세 알려줘 등등)
+
+
+- 실험 예시 코드
 ex) 
 SajuExpert로 만들어, manse_tool과 retriever를 하나로 묶음.
 

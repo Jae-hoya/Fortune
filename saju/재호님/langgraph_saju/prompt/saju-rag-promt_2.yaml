@@ -17,9 +17,9 @@ template: |
          - gender
          - time zone (Earthly Branch: 子, 丑, ..., 亥)
          - **age** (international age) and **korean_age** (traditional Korean age), both calculated based on the current datetime.
-    - These values are already preprocessed by a specialized calculator (ManseTool), so you must not recalculate age.
-    - Analyze and interpret the information accurately based on the provided inputs.
-
+      - These values are already preprocessed by a specialized calculator (ManseTool), so you must not recalculate age.
+      - Analyze and interpret the information accurately based on the provided inputs. 
+      - Today 
 
   2. **Five Elements (Wu Xing) Analysis Rules (Strict step-by-step compliance and self-validation)**
       1) **Cheongan-Jiji → Five Elements Mapping (Invariant)**  

@@ -32,6 +32,8 @@ from query_expansion_agent import get_query_expansion_node, get_query_expansion_
 # --- 환경 변수 로드 ---
 load_dotenv()
 
+
+
 # --- LLM 및 기본 설정 ---
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
@@ -61,6 +63,7 @@ saju_prompt = ChatPromptTemplate.from_messages([
     ("system", base_prompt.template),
     MessagesPlaceholder("messages"),
 ])
+
 retriever_tool_agent = create_react_agent(llm, retriever_tools, prompt=saju_prompt).with_config({"tags": ["final_answer_agent"]})
 
 # Web Search Tool Agent
@@ -108,30 +111,42 @@ options_for_next = ["FINISH"] + members
 class RouteResponse(BaseModel):
     next: Literal[*options_for_next]
 
+# --- 현재 날짜
+now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 supervisor_system_prompt = (
-    "You are a supervisor tasked with orchestrating a multi-step workflow with the following specialized agents: {members}.\n"
-    "The tools are:\n"
-    "- SajuExpert: This agent is an expert in Saju (Four Pillars of Destiny). It handles everything from calculating the Saju from birth information to providing detailed interpretations and analysis. Use this for any query that involves birth dates/times or asks for a Saju reading.\n"
-    "- WebTool: For answering general or conceptual questions about Saju, or handling everyday/non-specialized queries, by searching the web. Use this if the user is asking what Saju is, but not for a personal reading.\n"
-    "- GeneralQA: For answering general questions that are NOT related to Saju at all (e.g., programming, science, general knowledge, etc.).\n\n"
-    "Your job is to route the user's request to the most appropriate tool:\n"
-    "   - If the user input contains birth information or asks for a fortune reading, call SajuExpert.\n"
-    "   - If the input is a general or conceptual question about Saju, call WebTool.\n"
-    "   - If the input is completely unrelated to Saju, call GeneralQA.\n"
-    "After the agent has finished, respond with FINISH if the task is complete."
+    "오늘 날짜는 {now}입니다.\n"
+    "당신은 다음과 같은 전문 에이전트들을 조율하는 Supervisor입니다: {members}.\n"
+    "각 에이전트의 역할은 다음과 같습니다:\n"
+    "- SajuExpert: 사주(생년월일/시간 등) 정보를 바탕으로 사주풀이, 운세 해석, 상세 분석을 담당합니다. "
+        " 추가적인 질문으로 내일, 다음달 내년등 미래에 대한 운세를 물어볼때도 SajuExpert를 호출하세요. "
+        " 이때 이전 사주구조를 사용해야 하며, 미래의 운세는 현재의 기준으로({now}) 나의 내일, 다음달, 내년 운세를 말합니다.\n"
+        " 이때 특별한 요청이 있지 않는이상, 이전에 사용했던 사주구조, 천간지지, 오핸분석을 그대로 사용해야 합니다.\n"
+    "- WebTool: 사주 개념, 오행 등 일반적/개념적 질문이나 일상 질문에 대해 웹 검색을 통해 답변합니다.\n"
+    "- GeneralQA: 사주와 무관한 일반 상식, 과학, 프로그래밍 등 모든 질문에 답변합니다.\n\n"
+    "당신의 임무는 사용자의 요청을 가장 적합한 에이전트에게 라우팅하는 것입니다.\n"
+    "다음 기준을 따르세요:\n"
+    "1. 사용자 입력에 생년월일, 출생시간 등 사주풀이에 필요한 정보가 포함되어 있거나,"
+    " 추가적인 운세/사주풀이, 또는 내일, 다음달 내년등 미래에 대한 운세를(예: 내일 운세알려줘, 다음달 운세 알려줘 등등) 요청하면 SajuExpert를 호출하세요. 이때 현재의 기준으로({now}) 나의 내일, 다음달, 내년 운세를 말합니다.\n"
+    " 이때 특별한 요청이 있지 않는이상, 이전에 사용했던 사주구조를 사용해야 합니다."
+    "2. 사주에 대한 개념적/일반적 질문(예: '사주란 무엇인가요?')이나 일상 질문은 WebTool을 호출하세요.\n"
+    "3. 사주와 전혀 관련 없는 질문은 GeneralQA를 호출하세요.\n"
+    "4. **이전 대화(최근 assistant의 답변)가 SajuExpert(만세툴)에서 나온 것이고, 이번 질문이 그에 대한 추가 질문(예: '그럼 건강운은?', '재물운은?')이라면, 반드시 SajuExpert로 라우팅하세요.**\n"
+    "5. 대화의 맥락을 고려하여, 사용자가 명시적으로 사주풀이를 요청하지 않아도, 직전 대화가 사주풀이였다면 추가 질문도 SajuExpert로 보내세요.\n"
+    "에이전트가 답변을 마치면 FINISH로 응답하세요."
 )
 
 supervisor_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", supervisor_system_prompt),
         MessagesPlaceholder(variable_name="messages"),
-        ("system", "Given the conversation above, who should act next? Or should we FINISH? Select one of: {options}"),
+        ("system", "위 대화를 참고하여, 다음 중 누가 다음 행동을 해야 하는지 선택하세요: {options}"),
     ]
 )
 
 def supervisor_agent(state):
     supervisor_chain = (
-        supervisor_prompt.partial(options=str(options_for_next), members=", ".join(members))
+        supervisor_prompt.partial(options=str(options_for_next), members=", ".join(members), now=now)
         | llm.with_structured_output(RouteResponse)
     )
     route_response = supervisor_chain.invoke(state)
@@ -139,72 +154,99 @@ def supervisor_agent(state):
 
 # --- 5. LangGraph 그래프 구성 ---
 
-# SajuExpert Sub-graph 생성
-saju_expert_workflow = StateGraph(AgentState)
-saju_expert_workflow.add_node("manse", manse_tool_agent_node)
-saju_expert_workflow.add_node("retriever", retriever_tool_agent_node)
+def create_workflow_graph():
+    """워크플로우 그래프 생성"""
+    # SajuExpert Sub-graph 생성
+    saju_expert_workflow = StateGraph(AgentState)
+    saju_expert_workflow.add_node("manse", manse_tool_agent_node)
+    saju_expert_workflow.add_node("retriever", retriever_tool_agent_node)
 
-saju_expert_workflow.add_edge(START, "manse")
-saju_expert_workflow.add_edge("manse", "retriever")
-saju_expert_workflow.add_edge("retriever", END)
-saju_expert_graph = saju_expert_workflow.compile(MemorySaver())
+    saju_expert_workflow.add_edge(START, "manse")
+    saju_expert_workflow.add_edge("manse", "retriever")
+    saju_expert_workflow.add_edge("retriever", END)
+    saju_expert_graph = saju_expert_workflow.compile(MemorySaver())
 
-# 메인 그래프 생성
-workflow = StateGraph(AgentState)
-workflow.add_node("SajuExpert", saju_expert_graph)
-workflow.add_node("QueryExpansion", query_expansion_node)
-workflow.add_node("WebTool", web_tool_agent_node)
-workflow.add_node("GeneralQA", general_qa_agent_node)
-workflow.add_node("Supervisor", supervisor_agent)
+    # 메인 그래프 생성
+    workflow = StateGraph(AgentState)
+    workflow.add_node("SajuExpert", saju_expert_graph)
+    workflow.add_node("QueryExpansion", query_expansion_node)
+    workflow.add_node("WebTool", web_tool_agent_node)
+    workflow.add_node("GeneralQA", general_qa_agent_node)
+    workflow.add_node("Supervisor", supervisor_agent)
 
-for member in members:
-    workflow.add_edge(member, "Supervisor")
+    for member in members:
+        workflow.add_edge(member, "Supervisor")
 
-conditional_map = {k: k for k in members}
-conditional_map["FINISH"] = END
+    conditional_map = {k: k for k in members}
+    conditional_map["FINISH"] = END
 
-def get_next(state):
-    return state["next"]
+    def get_next(state):
+        return state["next"]
 
-workflow.add_conditional_edges("Supervisor", get_next, conditional_map)
-workflow.add_edge(START, "QueryExpansion")
-workflow.add_edge("QueryExpansion", "Supervisor")
+    workflow.add_conditional_edges("Supervisor", get_next, conditional_map)
+    workflow.add_edge(START, "QueryExpansion")
+    workflow.add_edge("QueryExpansion", "Supervisor")
 
-graph = workflow.compile(checkpointer=MemorySaver())
+    return workflow.compile(checkpointer=MemorySaver())
+
+from langchain_teddynote.messages import random_uuid, stream_graph, invoke_graph
+from langchain_core.messages import AIMessage
 
 # --- 6. 스크립트 실행 (스트리밍 로직 수정) ---
-async def main():
-    """메인 실행 함수"""
-    thread_id = str(uuid.uuid4())
+def run_saju_analysis(messages, thread_id=None, use_stream=True):
+    graph = create_workflow_graph()
+    if not graph:
+        return "그래프 생성에 실패했습니다."
+    if thread_id is None:
+        thread_id = random_uuid()
     config = RunnableConfig(recursion_limit=10, configurable={"thread_id": thread_id})
-    print(f"사주 상담을 시작합니다. (세션 ID: {thread_id})")
-    print("종료하시려면 'exit'를 입력하세요.")
+    inputs = {"messages": messages}
+    if use_stream:
+        return stream_graph(graph, inputs, config)
+    else:
+        return invoke_graph(graph, inputs, config)
 
+def main():
+    print("사주 에이전틱 RAG 시스템 (대화 맥락 기억 버전)을 시작합니다... ")
+    print("생년월일, 태이난 시각, 성별을 입력해 주세요.")
+    print("윤달에 태어나신 경우, 윤달이라고 작성해주세요.")
+    example_questions = [
+        "1996년 12월 13일 남자, 10시 30분 출생 운세봐줘.",
+        "대운과 세운, 조심해야 할것들 알려줘",
+        "금전운알려줘",
+        "정관이 뭐야? 상세히 설명해줘",
+        "사주의 개념에 대해서 알려줘"
+    ]
+    print("\n사용 가능한 예시 질문:")
+    for i, question in enumerate(example_questions, 1):
+        print(f"{i}. {question}")
+    print("\n질문을 입력하세요 (종료하려면 'quit' 입력):")
+    chat_history = []
+    thread_id = random_uuid()
     while True:
-        user_input = await asyncio.to_thread(input, "질문: ")
-        if user_input.lower() == 'exit':
-            print("상담을 종료합니다.")
+        user_input = input("\n질문: ").strip()
+        if user_input.lower() in ['quit', 'exit', '종료']:
+            print("시스템을 종료합니다.")
             break
-
-        inputs = {"messages": [HumanMessage(content=user_input)]}
-        
-        print("\n답변:")
-        
-        async for event in graph.astream_events(inputs, config, version="v1"):
-            kind = event["event"]
-            if kind == "on_chat_model_stream":
-                # 태그가 'final_answer_agent'인 에이전트의 출력만 스트리밍합니다.
-                if "final_answer_agent" in event.get("tags", []):
-                    chunk = event["data"]["chunk"]
-                    if chunk.content:
-                        sys.stdout.write(chunk.content)
-                        sys.stdout.flush()
-
-        print("\n" + "-" * 50)
-
+        if not user_input:
+            continue
+        chat_history.append(HumanMessage(content=user_input))
+        try:
+            print("\n분석을 시작합니다...")
+            result = run_saju_analysis(chat_history, thread_id=thread_id, use_stream=True)
+            print("\n분석 완료!")
+            # 답변 메시지 추출 및 기록 (AIMessage로 저장)
+            if hasattr(result, '__iter__') and not isinstance(result, str):
+                # stream_graph의 경우 generator이므로, 마지막 메시지 추출
+                last_ai_msg = None
+                for msg in result:
+                    if hasattr(msg, 'content'):
+                        last_ai_msg = msg
+                if last_ai_msg:
+                    chat_history.append(AIMessage(content=last_ai_msg.content))
+            # invoke_graph의 경우는 별도 처리 필요
+        except Exception as e:
+            print(f"오류가 발생했습니다: {e}")
 
 if __name__ == "__main__":
-    # 윈도우에서 asyncio.run() 사용 시 발생하는 이벤트 루프 에러 방지
-    if sys.platform == 'win32':
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(main()) 
+    main()
