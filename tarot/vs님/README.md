@@ -213,6 +213,7 @@ graph TD
 ```
 
 ## 에이전트 구조
+![image](https://github.com/user-attachments/assets/d17db1a1-44d1-4665-9e0c-dc396269bb10)
 
 ```
 graph LR
