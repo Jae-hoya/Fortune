@@ -211,3 +211,98 @@ graph TD
 ✅ 평균 응답 시간: 3.2초
 ✅ 시스템 가용성: 99.5%
 ```
+
+## 에이전트 구조
+
+```
+graph LR
+    subgraph "🚀 사용자 입력"
+        USER[사용자 입력<br/>User Input]
+    end
+    
+    subgraph "🎯 Supervisor"
+        SUPERVISOR[State Classifier<br/>상태 분류기<br/>• 상담 진행 상태 판단<br/>• Fast Track vs Full Analysis<br/>• 0.1초 내 라우팅 결정]
+    end
+    
+    subgraph "🤖 SajuAgent/RagAgent/WebAgent"
+        subgraph "Fast Track Agents (70%)"
+            FAST1[Consultation Continue Agent<br/>상담 계속 에이전트<br/>• 스프레드 선택 처리<br/>• 패턴 매칭 기반<br/>• LLM 호출: 0회<br/>• 응답시간: 0.5초]
+            
+            FAST2[Card Analysis Agent<br/>카드 분석 에이전트<br/>• 카드 선택 처리<br/>• 고급 분석 통합<br/>• LLM 호출: 1회<br/>• 응답시간: 1.5초]
+            
+            FAST3[Context Reference Agent<br/>컨텍스트 참조 에이전트<br/>• 추가 질문 처리<br/>• 이전 답변 참조<br/>• LLM 호출: 1회<br/>• 응답시간: 1.2초]
+        end
+        
+        subgraph "Full Analysis Agents (25%)"
+            FULL1[Intent Classification Agent<br/>의도 분류 에이전트<br/>• 복잡한 의도 파악<br/>• gpt-4o 기반 분석<br/>• JSON 응답 형식]
+            
+            FULL2[Consultation Flow Agent<br/>상담 플로우 에이전트<br/>• 감정 분석<br/>• 웹 검색 판단<br/>• 스프레드 추천]
+            
+            FULL3[Card Info Agent<br/>카드 정보 에이전트<br/>• RAG 기반 카드 검색<br/>• 타로 전문 지식]
+            
+            FULL4[Spread Info Agent<br/>스프레드 정보 에이전트<br/>• RAG 기반 스프레드 검색<br/>• 다양한 스프레드 정보]
+        end
+        
+        subgraph "Tool Processing Agents (5%)"
+            TOOL1[RAG Search Agent<br/>RAG 검색 에이전트<br/>• FAISS 벡터 검색<br/>• 7개 타로책 통합<br/>• 한영 번역 최적화]
+            
+            TOOL2[Web Search Agent<br/>웹 검색 에이전트<br/>• Tavily/DuckDuckGo<br/>• 실시간 정보 수집<br/>• 이중 백업 시스템]
+        end
+    end
+    
+    subgraph "📊 ResultGenerator"
+        RESULT[Unified Processor<br/>통합 결과 생성기<br/>• 에이전트 결과 통합<br/>• 도구 호출 체크<br/>• 최종 응답 생성<br/>• 품질 검증]
+    end
+    
+    subgraph "✨ 최종 응답"
+        OUTPUT[사용자 응답<br/>User Response<br/>• 타로 상담 결과<br/>• 과학적 분석<br/>• 실용적 조언]
+    end
+    
+    %% 플로우 연결
+    USER --> SUPERVISOR
+    
+    %% Fast Track 플로우
+    SUPERVISOR --> |"70% 요청<br/>CONSULTATION_ACTIVE"| FAST1
+    SUPERVISOR --> |"상담 진행 중<br/>card_selection"| FAST2
+    SUPERVISOR --> |"추가 질문<br/>FOLLOWUP_QUESTION"| FAST3
+    
+    %% Full Analysis 플로우  
+    SUPERVISOR --> |"25% 요청<br/>NEW_SESSION"| FULL1
+    FULL1 --> |"card_info"| FULL3
+    FULL1 --> |"spread_info"| FULL4
+    FULL1 --> |"consultation"| FULL2
+    
+    %% Tool Processing 플로우
+    FULL3 --> |"tool_calls"| TOOL1
+    FULL4 --> |"tool_calls"| TOOL1
+    FULL2 --> |"web_search_needed"| TOOL2
+    
+    %% 결과 생성
+    FAST1 --> RESULT
+    FAST2 --> RESULT
+    FAST3 --> RESULT
+    FULL2 --> RESULT
+    FULL3 --> RESULT
+    FULL4 --> RESULT
+    TOOL1 --> RESULT
+    TOOL2 --> RESULT
+    
+    RESULT --> OUTPUT
+    
+    %% 스타일링
+    classDef user fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    classDef supervisor fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    classDef fastTrack fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef fullAnalysis fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef toolProcessing fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef result fill:#e0f2f1,stroke:#00695c,stroke-width:3px
+    classDef output fill:#e8eaf6,stroke:#3f51b5,stroke-width:3px
+    
+    class USER user
+    class SUPERVISOR supervisor
+    class FAST1,FAST2,FAST3 fastTrack
+    class FULL1,FULL2,FULL3,FULL4 fullAnalysis
+    class TOOL1,TOOL2 toolProcessing
+    class RESULT result
+    class OUTPUT output
+```
