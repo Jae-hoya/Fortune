@@ -19,7 +19,7 @@ from langchain_core.runnables import RunnableConfig
 # utils.py에서 함수들 import
 from utils import (
     print_banner, print_system_info, format_response, print_help,
-    handle_debug_query, run_query_with_app, run_query_with_streaming
+    handle_debug_query, run_query_with_app
 )
 
 def main():
@@ -39,10 +39,14 @@ def main():
     app = create_workflow()
     print("✅ 워크플로 준비 완료!")
     
-    # 대화 히스토리 관리
+    # 세션 및 대화 히스토리 관리
     conversation_history = []
+    session_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     session_id = f"session_{int(time.time())}"
     query_count = 0
+    
+    print(f"🕐 세션 시작: {session_start_time}")
+    print(f"🆔 세션 ID: {session_id}")
     
     print("💬 질문을 입력해주세요 (종료: quit/exit, 도움말: help):")
     
@@ -59,13 +63,16 @@ def main():
             
             # 새 세션 시작 명령 처리
             if user_input.lower() in ['new', 'clear']:
-                session_id = str(uuid.uuid4())
+                session_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                session_id = f"session_{int(time.time())}"
                 query_count = 0
                 conversation_history = []  # 대화 히스토리 초기화
-                print(f"\n🔄 새로운 대화를 시작합니다. (세션 ID: {session_id[:8]}...)")
+                print(f"\n🔄 새로운 대화를 시작합니다.")
+                print(f"🕐 세션 시작: {session_start_time}")
+                print(f"🆔 세션 ID: {session_id}")
                 
                 # 환영 메시지 생성
-                welcome_response = run_query_with_app("안녕하세요! FortuneAI입니다. 무엇을 도와드릴까요?", app, conversation_history)
+                welcome_response = run_query_with_app("안녕하세요! FortuneAI입니다. 무엇을 도와드릴까요?", app, conversation_history, session_start_time, session_id)
                 print(f"🔮 FortuneAI: {welcome_response}")
                 print("-" * 60)
                 continue
@@ -83,18 +90,18 @@ def main():
             query_count += 1
             print(f"\n⏳ 분석 중... (질문 #{query_count})")
             
-            # 디버그 모드 처리
-            debug_response = handle_debug_query(user_input, app, conversation_history)
-            if debug_response:
-                print(debug_response)
+            # 성능 분석 모드 처리
+            analysis_response = handle_debug_query(user_input, app, conversation_history, session_start_time, session_id)
+            if analysis_response:
+                print(analysis_response)
                 continue
             
-            # 일반 쿼리 실행 - 기본 모드 (주요 노드만 스트리밍 표시)
+            # 일반 쿼리 실행 - 상세 스트리밍 표시
             start_time = time.time()
-            response = run_query_with_app(user_input, app, conversation_history)
+            response = run_query_with_app(user_input, app, conversation_history, session_start_time, session_id)
             execution_time = time.time() - start_time
             
-            # 스트리밍 출력이 이미 완료되었으므로 실행 시간만 표시
+            # 실행 시간 표시
             print(f"\n⏱️  실행 시간: {execution_time:.2f}초")
             
         except KeyboardInterrupt:
@@ -111,6 +118,8 @@ if __name__ == "__main__":
     # 명령행 인자 처리
     if len(sys.argv) > 1:
         conversation_history = []  # 명령행 모드에서도 히스토리 초기화
+        session_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        session_id = f"session_{int(time.time())}"
         
         # --debug 플래그 확인
         is_debug = '--debug' in sys.argv
@@ -126,15 +135,17 @@ if __name__ == "__main__":
             get_node_manager()
             print("⚙️ 워크플로 생성 중...")
             app = create_workflow()
+            print(f"🕐 세션 시작: {session_start_time}")
+            print(f"🆔 세션 ID: {session_id}")
             
             if is_debug:
-                # 디버그 모드
-                result = handle_debug_query(f"debug:{query}", app, conversation_history)
+                # 성능 분석 모드
+                result = handle_debug_query(f"debug:{query}", app, conversation_history, session_start_time, session_id)
                 print(result)
             else:
-                # 기본 모드 - 스트리밍 출력
-                response = run_query_with_app(query, app, conversation_history)
-                # 스트리밍이 이미 완료되었으므로 추가 출력 없음
+                # 기본 모드 - 상세 스트리밍 출력
+                response = run_query_with_app(query, app, conversation_history, session_start_time, session_id)
+                # 상세 스트리밍이 이미 완료됨
         else:
             print("❌ 질문을 입력해주세요.")
             print("사용법: python main.py [--debug] '질문'")

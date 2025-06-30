@@ -8,6 +8,7 @@ import sys
 import time
 from datetime import datetime
 from langchain_core.messages import HumanMessage, AIMessage
+from langchain_teddynote.messages import stream_graph
 
 
 # ================================
@@ -35,7 +36,7 @@ def print_banner():
     print("  • 운세 상담: '1995년 8월 26일생 2024년 연애운'")
     print("  • 일반 검색: '사주에서 십신이란?'")
     print("  • 종료: 'quit' 또는 'exit'")
-    print("  • 디버그: '--debug' 또는 'debug:질문' (상세 개발자 모드)")
+    print("  • 성능분석: '--debug' 또는 'debug:질문' (실행시간 분석)")
     print("=" * 70)
 
 
@@ -46,7 +47,7 @@ def print_system_info():
     print(f"  • Python 버전: {sys.version.split()[0]}")
     print(f"  • 작업 디렉토리: {os.getcwd()}")
     print(f"  • 워커 노드: Supervisor, SajuExpert(manse+retriever), WebTool, GeneralQA")
-    print(f"  • 모드: 기본(주요 노드만) / 디버그(전체 노드 + 성능 분석)")
+    print(f"  • 출력: 상세 워크플로 표시 / debug명령어로 성능 분석 추가")
     print()
 
 
@@ -78,7 +79,7 @@ def print_help():
   • new, clear      : 새로운 세션 시작
   • help, ?         : 도움말 보기
   • quit, exit      : 프로그램 종료
-  • debug:질문      : 디버그 모드로 실행
+  • debug:질문      : 성능 분석 모드로 실행
 
 🏗️  **워크플로 구조**:
   1. Supervisor: 질문 분석 후 적절한 에이전트로 라우팅
@@ -86,9 +87,9 @@ def print_help():
   3. WebTool: 일반 사주 개념 → tavily_tool, duck_tool
   4. GeneralQA: 비사주 질문 → general_qa_tool (Google Gemini)
 
-🎯 **모드 설명**:
-  • 기본 모드: 주요 작업 노드만 깔끔하게 표시 (사용자 친화적)
-  • 디버그 모드: 모든 노드 + 성능 분석 (개발자용)
+🎯 **출력 방식**:
+  • 기본: 모든 노드의 상세한 실행 과정과 툴 정보 표시
+  • debug: 추가로 성능 분석 및 실행 시간 상세 정보 제공
 
 🔧 **사용 가능한 툴**:
   • calculate_saju_tool: 사주팔자 계산
@@ -133,9 +134,10 @@ def print_node_header(node_name: str, is_debug: bool = False):
         print("─" * 30)
 
 
-def print_simple_node_info(node_name: str):
-    """기본 모드: 간단한 노드 정보 표시"""
+def print_simple_node_info(node_name: str, current_time: str = None):
+    """기본 모드: 간단한 노드 정보 표시 (시간 포함)"""
     node_info = {
+        "Supervisor": "🎯 워크플로 관리",
         "SajuExpert": "🔮 사주 전문가",
         "manse": "📅 만세력 계산", 
         "retriever": "🔍 지식 검색",
@@ -144,7 +146,8 @@ def print_simple_node_info(node_name: str):
     }
     
     info = node_info.get(node_name, f"🔧 {node_name}")
-    print(f"\n{info} 중...")
+    time_str = f" ({current_time})" if current_time else ""
+    print(f"\n{info} 중...{time_str}")
 
 
 def print_node_execution(node_name: str):
@@ -182,27 +185,27 @@ def print_completion(is_debug: bool = False):
 # 쿼리 처리 관련 함수들
 # ================================
 
-def handle_debug_query(query: str, app, conversation_history: list) -> str:
-    """디버그 쿼리 처리"""
+def handle_debug_query(query: str, app, conversation_history: list, session_start_time: str, session_id: str) -> str:
+    """성능 분석 쿼리 처리"""
     if not query.startswith("debug:"):
         return None
     
     actual_query = query[6:].strip()
     if not actual_query:
-        return "❌ 디버그할 질문을 입력해주세요. 예: debug:1995년 8월 26일 사주"
+        return "❌ 성능 분석할 질문을 입력해주세요. 예: debug:1995년 8월 26일 사주"
     
-    print(f"\n🔍 디버그 모드로 실행 중: '{actual_query}'")
+    print(f"\n🔍 성능 분석 모드로 실행 중: '{actual_query}'")
     print("-" * 50)
     
     start_time = time.time()
-    response = run_query_with_debug(actual_query, app, conversation_history)
+    response = run_query_with_debug(actual_query, app, conversation_history, session_start_time, session_id)
     execution_time = time.time() - start_time
     
-    debug_info = f"""
-🔍 **디버그 분석 결과**
+    analysis_info = f"""
+📊 **성능 분석 결과**
 • 실행 시간: {execution_time:.2f}초
 • 질문: {actual_query}
-• 노드 경로: Supervisor → 전문 에이전트 → 응답 생성
+• 워크플로: Supervisor → 전문 에이전트 → 응답 생성
 
 📋 **최종 응답**
 {response}
@@ -211,13 +214,13 @@ def handle_debug_query(query: str, app, conversation_history: list) -> str:
 • 총 처리 시간: {execution_time:.2f}초
 • 메모리 사용: 체크포인터 활용한 상태 관리
 """
-    return debug_info
+    return analysis_info
 
 
-def run_query_with_app(query: str, app, conversation_history: list) -> str:
-    """기본 모드: 향상된 스트리밍 사용"""
-    # 향상된 스트리밍 함수를 호출
-    return run_query_with_streaming(query, app, conversation_history)
+def run_query_with_app(query: str, app, conversation_history: list, session_start_time: str, session_id: str) -> str:
+    """기본 모드: 디버그 스타일의 상세한 스트리밍 사용"""
+    # 디버그 스타일을 기본으로 사용
+    return run_query_with_debug(query, app, conversation_history, session_start_time, session_id)
 
 
 def get_node_tools(node_name: str) -> str:
@@ -233,16 +236,21 @@ def get_node_tools(node_name: str) -> str:
     return node_tools.get(node_name, "unknown")
 
 
-def run_query_with_streaming(query: str, app, conversation_history: list) -> str:
-    """기본 모드: 깔끔한 스트리밍 (주요 노드만)"""
+
+def run_query_with_debug(query: str, app, conversation_history: list, session_start_time: str, session_id: str) -> str:
+    """상세 스트리밍 모드: 모든 노드 + 상세 정보 + 툴 추적"""
     print(f"🔍 쿼리 실행: {query}")
     
     # 새로운 사용자 메시지를 히스토리에 추가
     conversation_history.append(HumanMessage(content=query))
     
+    # 현재 상태 설정 (세션 정보 유지, 현재 시간만 갱신)
     current_state = {
         "messages": conversation_history.copy(),
-        "next": ""
+        "next": "",
+        "session_start_time": session_start_time,  # 세션 시작 시간 (고정)
+        "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # 현재 쿼리 시간
+        "session_id": session_id  # 세션 ID (고정)
     }
     
     # 설정 생성 (Checkpointer용)
@@ -253,107 +261,55 @@ def run_query_with_streaming(query: str, app, conversation_history: list) -> str
     }
     
     try:
-        print("🚀 AI 분석 시작...")
-        
-        # 기본 모드: 주요 작업 노드만 간단하게 표시
-        final_response = ""
-        prev_node = ""
-        node_sequence = []
-        displayed_content = []
-        
-        # 주요 작업 노드만 필터링 (Supervisor는 제외)
-        work_nodes = ["SajuExpert", "manse", "retriever", "WebTool", "GeneralQA"]
-        
-        for chunk_msg, metadata in app.stream(current_state, config=config, stream_mode="messages"):
-            curr_node = metadata.get("langgraph_node", "")
-            
-            # 주요 작업 노드만 표시
-            if curr_node in work_nodes and curr_node != prev_node:
-                print_simple_node_info(curr_node)
-                node_sequence.append(curr_node)
-                prev_node = curr_node
-            
-            # 토큰별로 실시간 출력
-            if chunk_msg.content:
-                print(chunk_msg.content, end="", flush=True)
-                displayed_content.append(chunk_msg.content)
-        
-        # 간단한 완료 정보
-        print(f"\n\n✅ 완료! (경로: {' → '.join(node_sequence)})")
-        
-        # 최종 응답 획득
-        if displayed_content:
-            final_response = "".join(displayed_content)
-            conversation_history.append(AIMessage(content=final_response))
-            return final_response
-        else:
-            print("❌ 응답 생성 실패")
-            return "응답을 생성하지 못했습니다."
-            
-    except Exception as e:
-        print(f"❌ 오류 발생: {str(e)}")
-        return f"오류가 발생했습니다: {str(e)}"
-
-
-def run_query_with_debug(query: str, app, conversation_history: list) -> str:
-    """디버그 모드: 모든 노드 + 상세 정보 + 툴 추적"""
-    print(f"🔍 쿼리 실행 (디버그): {query}")
-    
-    # 새로운 사용자 메시지를 히스토리에 추가
-    conversation_history.append(HumanMessage(content=query))
-    
-    # 현재 상태 설정
-    current_state = {
-        "messages": conversation_history.copy(),
-        "next": ""
-    }
-    
-    # 설정 생성 (Checkpointer용)
-    config = {
-        "configurable": {
-            "thread_id": f"thread_{int(time.time())}"
-        }
-    }
-    
-    try:
-        print("🚀 워크플로 실행 중 (전체 노드 + 툴 추적)...")
+        print("🚀 AI 워크플로 실행 중...")
         
         # 디버그 모드: 모든 노드와 상세 정보 표시
-        final_response = ""
-        prev_node = ""
-        displayed_content = []
+        collected_content = []
         node_sequence = []
         tool_usage = {}  # 노드별 툴 사용 기록
         
-        for chunk_msg, metadata in app.stream(current_state, config=config, stream_mode="messages"):
-            curr_node = metadata.get("langgraph_node", "")
+        def debug_callback(data):
+            """디버그 스트리밍 콜백 함수"""
+            node = data["node"]
+            content = data["content"]
             
             # 새로운 노드 진입 시 상세 정보 출력
-            if curr_node and curr_node != prev_node:
-                print_node_header(curr_node, is_debug=True)
-                print_node_execution(curr_node)  # 툴 정보도 함께 출력
-                node_sequence.append(curr_node)
-                tool_usage[curr_node] = get_node_tools(curr_node)
+            if node and node not in node_sequence:
+                print_node_header(node, is_debug=True)
+                print_node_execution(node)  # 툴 정보도 함께 출력
+                node_sequence.append(node)
+                tool_usage[node] = get_node_tools(node)
                 print("💬 상세 응답:")
-                prev_node = curr_node
             
-            # 토큰별로 실시간 출력
-            if chunk_msg.content:
-                print(chunk_msg.content, end="", flush=True)
-                displayed_content.append(chunk_msg.content)
+            # 콘텐츠 실시간 출력 + 수집
+            if content:
+                print(content, end="", flush=True)  # 실시간 출력
+                collected_content.append(content)
+        
+        # stream_graph를 사용하여 모든 노드 스트리밍 (node_names 빈 리스트 = 모든 노드)
+        stream_graph(
+            graph=app,
+            inputs=current_state,
+            config=config,
+            node_names=[],  # 빈 리스트 = 모든 노드 표시
+            callback=debug_callback
+        )
         
         # 디버그 정보 요약
         print(f"\n\n📊 워크플로 분석 결과:")
+        print(f"🕐 세션 시작: {current_state['session_start_time']}")
+        print(f"⏰ 쿼리 시간: {current_state['current_time']}")
+        print(f"🆔 세션 ID: {current_state['session_id']}")
         print(f"🎯 실행된 노드: {' → '.join(node_sequence)}")
         print(f"🛠️  사용된 툴:")
         for node, tools in tool_usage.items():
             print(f"   • {node}: {tools}")
         
-        print_completion(is_debug=True)
+        print_completion(is_debug=False)
         
         # 최종 응답 획득
-        if displayed_content:
-            final_response = "".join(displayed_content)
+        if collected_content:
+            final_response = "".join(collected_content)
         else:
             result = app.invoke(current_state, config=config)
             messages = result.get("messages", [])
