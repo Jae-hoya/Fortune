@@ -5,7 +5,6 @@
 import functools
 from langchain_core.messages import HumanMessage
 
-from .state import SajuState
 from .agents import AgentManager
 
 class NodeManager:

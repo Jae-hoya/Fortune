@@ -2,18 +2,15 @@
 간단한 상태 관리 - 메시지 기반 에이전트
 """
 
-from typing import TypedDict, List, Dict, Any, Optional
+import operator
+from typing import Sequence, Annotated
+from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage
 
-class SajuState(TypedDict):
-    """메시지 기반 에이전트 상태"""
-    
-    # 메시지 히스토리 (핵심)
-    messages: List[BaseMessage]
-    
-    # 워크플로 제어
-    next: Optional[str]  # 다음 에이전트 이름
-    
-    # 최종 결과
-    final_response: Optional[str]
-    response_generated: bool 
+# 새로운 AgentState 정의 (멀티턴 채팅 지원)
+class AgentState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], operator.add]  # 메시지
+    next: str  # 다음으로 라우팅할 에이전트
+    session_start_time: str  # 세션 시작 시간 (고정)
+    current_time: str  # 현재 쿼리 시간 (매번 갱신)
+    session_id: str  # 세션 ID (고정)

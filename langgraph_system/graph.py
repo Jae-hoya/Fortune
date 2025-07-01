@@ -2,21 +2,13 @@
 LangGraph 워크플로 그래프 생성 - Jupyter Notebook 구조 적용
 """
 
-import operator
-from typing import Sequence, Annotated
-from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage
 
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
 
-# 새로운 AgentState 정의 (멀티턴 채팅 지원)
-class AgentState(TypedDict):
-    messages: Annotated[Sequence[BaseMessage], operator.add]  # 메시지
-    next: str  # 다음으로 라우팅할 에이전트
-    session_start_time: str  # 세션 시작 시간 (고정)
-    current_time: str  # 현재 쿼리 시간 (매번 갱신)
-    session_id: str  # 세션 ID (고정)
+# AgentState를 state.py에서 import
+from .state import AgentState
 
 # NodeManager 사용
 from .nodes import get_node_manager
