@@ -132,28 +132,21 @@ class PromptManager:
             - 출생 정보 재질문
             - 이전 대화 확인 ('아까 말한 것', '방금 전 결과')
             - 단순 확인 ('네', '알겠습니다')
-
-            === 응답 형식 ===
-            {instructions_format}
-
-            === 응답 예시 ===
-            - 에이전트 라우팅: {{"action": "ROUTE", "next": "SajuExpert", "message": "1995년생 남성의 사주를 계산해주세요", "final_answer": null, "reason": "출생정보가 있고 사주 계산 요청"}}
-            - 직접 답변: {{"action": "DIRECT", "final_answer": "안녕하세요! 사주나 운세에 관해 궁금한 것이 있으시면 언제든 말씀해주세요.", "message": "명령 없음", "reason": "간단한 인사"}}
-            - 출생 정보 요청: {{"action": "BIRTH_INFO_REQUEST", "final_answer": "사주 분석을 위해 정확한 출생 정보가 필요합니다. 태어난 연도, 월, 일, 시간과 성별을 알려주세요.", "message": "명령 없음", "reason": "출생정보 부족"}}
-            - 출생 정보 파싱 후 라우팅: {{"action": "ROUTE", "next": "SajuExpert", "message": "파싱된 출생 정보로 사주를 계산해주세요", "birth_info": {{"year": 1995, "month": 8, "day": 26, "hour": 10, "minute": 30, "is_male": true, "is_leap_month": false}}, "query_type": "saju", "final_answer": null, "reason": "출생정보 파싱 성공"}}
-
+             
             === 응답 양식 지침 ===
             **DIRECT 응답 시:**
             - final_answer에 자연스럽고 친근한 톤으로 답변
             - message는 반드시 "명령 없음"으로 반환
             - 불필요한 구조화된 텍스트 없이 대화체로 응답
             - 사용자가 바로 이해할 수 있는 명확하고 간단한 문장
+            - next는 반드시 FINISH로 반환
 
             **BIRTH_INFO_REQUEST 응답 시:**
             - final_answer에 정중하고 친근하게 출생 정보 요청
             - message는 반드시 "명령 없음"으로 반환
             - 필요한 정보를 구체적으로 안내
             - 예: '사주 분석을 위해 정확한 출생 정보가 필요합니다. 태어난 연도, 월, 일, 시간과 성별을 알려주세요.'
+            - next는 반드시 FINISH로 반환
 
             **ROUTE 응답 시:**
             - message에 해당 에이전트가 수행해야 할 구체적인 작업 명령
@@ -161,6 +154,15 @@ class PromptManager:
             - 기존 사주 결과가 있으면 message에 '기존 사주 결과를 활용'이라고 명확히 지시
             - 에이전트가 이해하기 쉬운 명확한 지시사항
             - 예: '1995년 8월 26일 오전 10시 15분생 남성의 사주를 계산하고 운세를 해석해주세요'
+
+            === 응답 형식 ===
+            {instructions_format}
+
+            === 응답 예시 ===
+            - 에이전트 라우팅: {{"action": "ROUTE", "next": "SajuExpert", "message": "1995년생 남성의 사주를 계산해주세요", "final_answer": null, "reason": "출생정보가 있고 사주 계산 요청"}}
+            - 직접 답변: {{"action": "DIRECT", "next": "FINISH", "final_answer": "안녕하세요! 사주나 운세에 관해 궁금한 것이 있으시면 언제든 말씀해주세요.", "message": "명령 없음", "reason": "간단한 인사"}}
+            - 출생 정보 요청: {{"action": "BIRTH_INFO_REQUEST", "next": "FINISH", "final_answer": "사주 분석을 위해 정확한 출생 정보가 필요합니다. 태어난 연도, 월, 일, 시간과 성별을 알려주세요.", "message": "명령 없음", "reason": "출생정보 부족"}}
+            - 출생 정보 파싱 후 라우팅: {{"action": "ROUTE", "next": "SajuExpert", "message": "파싱된 출생 정보로 사주를 계산해주세요", "birth_info": {{"year": 1995, "month": 8, "day": 26, "hour": 10, "minute": 30, "is_male": true, "is_leap_month": false}}, "query_type": "saju", "final_answer": null, "reason": "출생정보 파싱 성공"}}
 
             === 최종 답변 생성 기준 ===
             - 에이전트 실행 후 사용자 질문이 완전히 해결되었다면 종합적인 최종 답변 생성
