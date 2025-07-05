@@ -27,7 +27,6 @@ class SajuResult(TypedDict):
     day_master: str       # 일간 (예: "기")
     age: int              # 현재 나이
     korean_age: int       # 한국식 나이
-    current_datetime: str # 계산 기준 시점
     
     # 추가 분석 결과
     element_strength: Optional[Dict[str, int]]  # 오행 강약
@@ -36,6 +35,9 @@ class SajuResult(TypedDict):
     yearly_fortunes: Optional[List[Dict[str, Any]]]  # 세운 (연운)
     useful_gods: Optional[List[str]]  # 용신 (유용한 신)
     taboo_gods: Optional[List[str]]   # 기신 (피해야 할 신)
+
+    # 사주 해석 결과
+    saju_analysis: Optional[str]
 
 # 핵심 AgentState
 class AgentState(TypedDict):

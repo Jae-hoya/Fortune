@@ -1,7 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from typing import Optional, Literal, Dict, List, Any
 from datetime import datetime
 
 # 멤버 Agent 목록 정의
@@ -20,6 +20,32 @@ class SupervisorResponse(BaseModel):
     birth_info: Optional[dict] = Field(default=None, description="파싱된 출생 정보")
     query_type: Optional[str] = Field(default=None, description="질의 유형")
 
+
+class SajuExpertResponse(BaseModel):
+    """SajuExpert 응답 모델"""
+    # 사주 계산 결과
+    year_pillar: str = Field(description="년주")
+    month_pillar: str = Field(description="월주")
+    day_pillar: str = Field(description="일주")
+    hour_pillar: str = Field(description="시주")
+    day_master: str = Field(description="일간")
+    age: int = Field(description="나이")
+    korean_age: int = Field(description="한국식 나이")
+    is_leap_month: bool = Field(description="윤달 여부")
+
+    element_strength: Optional[Dict[str, int]] = Field(default=None, description="오행 강약")
+    ten_gods: Optional[Dict[str, List[str]]] = Field(default=None, description="십신 분석")
+    great_fortunes: Optional[List[Dict[str, Any]]] = Field(default=None, description="대운")
+    yearly_fortunes: Optional[List[Dict[str, Any]]] = Field(default=None, description="세운 (연운)")
+
+    # 추가 분석 결과 
+    useful_gods: Optional[List[str]] = Field(default=None, description="용신 (유용한 신)")
+    taboo_gods: Optional[List[str]] = Field(default=None, description="기신 (피해야 할 신)")
+
+    # 사주 해석 결과
+    saju_analysis: str = Field(description="사주 해석 결과")
+
+
 class PromptManager:
     def __init__(self):
         pass
@@ -29,7 +55,8 @@ class PromptManager:
         
         return ChatPromptTemplate.from_messages([
             ("system", """
-            당신은 사주 전문 AI 시스템의 Supervisor입니다. 현재 시간: {current_time}
+            당신은 사주 전문 AI 시스템의 Supervisor입니다.
+            현재 시간: {current_time}
             세션 ID: {session_id}, 세션 시작: {session_start_time}
 
             === 현재 상태 정보 ===
@@ -124,6 +151,8 @@ class PromptManager:
 
             **ROUTE 응답 시:**
             - message에 해당 에이전트가 수행해야 할 구체적인 작업 명령
+            - 새로운 출생 정보가 업데이트 되어 있으면 message에 사주 분석을 새롭게 요청하는 메시지를 추가
+            - 기존 사주 결과가 있으면 message에 '기존 사주 결과를 활용'이라고 명확히 지시
             - 에이전트가 이해하기 쉬운 명확한 지시사항
             - 예: '1995년 8월 26일 오전 10시 15분생 남성의 사주를 계산하고 운세를 해석해주세요'
 
@@ -149,3 +178,63 @@ class PromptManager:
             MessagesPlaceholder(variable_name="messages"),
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ]).partial(instructions_format=parser.get_format_instructions())
+
+    def saju_expert_system_prompt(self):
+        parser = JsonOutputParser(pydantic_object=SajuExpertResponse)
+        
+        return ChatPromptTemplate.from_messages([
+            ("system", """
+            당신은 대한민국 사주팔자 전문가 AI입니다.
+            Supervisor의 명령과 아래 입력 정보를 바탕으로 사주팔자를 계산하고, 반드시 SajuExpertResponse JSON 포맷으로 결과를 반환하세요.
+            
+            현재 시각: {current_time}
+            세션 ID: {session_id}, 세션 시작: {session_start_time}
+
+            === Supervisor 명령 ===
+            {supervisor_command}
+
+            === 입력 정보 ===
+            - 출생 연도: {year}
+            - 출생 월: {month}
+            - 출생 일: {day}
+            - 출생 시: {hour}시 {minute}분
+            - 성별: {gender}
+            - 윤달 여부: {is_leap_month}
+            - 사주 계산 결과: {saju_result}
+
+            === 당신의 역할 ===
+            1. Supervisor의 명령에 따라 calculate_saju_tool을 사용해 사주팔자(년주, 월주, 일주, 시주, 일간, 나이 등)를 계산합니다.
+            2. 사주 해석(saju_analysis)은 사용자 질문을 고려하여 분석 결과에 대해 자세하게 제공해주세요.
+            3. 오행 강약, 십신 분석, 대운 등은 사용자가 추가로 요청하거나, 질문에 포함된 경우에만 tool을 호출해 결과를 추가하세요.
+            4. 모든 결과는 SajuExpertResponse JSON 포맷으로 반환하세요.
+
+            === 응답 포맷 ===
+            {instructions_format}
+
+            === 응답 포맷 예시 ===
+            {{
+              "year_pillar": "갑진",
+              "month_pillar": "을사",
+              "day_pillar": "병오",
+              "hour_pillar": "정미",
+              "day_master": "병화",
+              "age": 30,
+              "korean_age": 31,
+              "is_leap_month": false,
+              "element_strength": {{"목": 15, "화": 20, "토": 10, "금": 8, "수": 12}},
+              "ten_gods": {{"년주": ["정재"], "월주": ["편관"], "일주": ["비견"], "시주": ["식신"]}},
+              "great_fortunes": [{{"age": 32, "pillar": "경신", "years": "2027~2036"}}],
+              "saju_analysis": "당신의 사주팔자는 갑진(甲寅) 년주, 을사(乙巳) 월주, 병오(丙午) 일주, 정미(丁未) 시주로 구성되어 있습니다. 일간은 병화(丙火)로, 밝고 적극적인 성향을 가졌습니다. 올해는 재물운이 강하게 들어오니 새로운 도전을 해보는 것이 좋겠습니다."
+            }}
+
+            === 응답 지침 ===
+            - 반드시 SajuExpertResponse JSON 포맷으로만 답변하세요.
+            - 사주 해석(saju_analysis)은 항상 포함하세요.
+            - 오행, 십신, 대운 등은 질문에 해당 내용이 있을 때만 포함하세요.
+            - 불필요한 설명, 인사말, JSON 외 텍스트는 절대 추가하지 마세요.
+            """
+            ),
+            MessagesPlaceholder("messages"),
+            MessagesPlaceholder("agent_scratchpad"),
+        ]).partial(instructions_format=parser.get_format_instructions())
+    

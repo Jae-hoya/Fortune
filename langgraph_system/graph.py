@@ -23,10 +23,11 @@ def create_saju_expert_subgraph():
     saju_expert_workflow = StateGraph(AgentState)
     
     # Sub-graph에 노드 추가 (NodeManager에서 생성)
-    manse_tool_agent_node = node_manager.create_manse_tool_agent_node()
+    # manse_tool_agent_node = node_manager.create_manse_tool_agent_node()
+    saju_expert_agent_node = node_manager.saju_expert_agent_node
     retriever_tool_agent_node = node_manager.create_retriever_tool_agent_node()
     
-    saju_expert_workflow.add_node("manse", manse_tool_agent_node)
+    saju_expert_workflow.add_node("manse", saju_expert_agent_node)
     saju_expert_workflow.add_node("retriever", retriever_tool_agent_node)
     
     # Sub-graph 엣지 연결

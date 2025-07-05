@@ -88,7 +88,6 @@ class NodeManager:
         if birth_info:
             birth_info_detail = f"({birth_info['year']}년 {birth_info['month']}월 {birth_info['day']}일 {birth_info['hour']}시 {birth_info['minute']}분, {'남성' if birth_info['is_male'] else '여성'})"
         
-        
         # Supervisor React Agent 생성
         supervisor_agent = self.agent_manager.create_supervisor_agent()
         
@@ -134,6 +133,54 @@ class NodeManager:
             updated_state["query_type"] = output.get("query_type")
 
         return updated_state
+
+    def saju_expert_agent_node(self, state):
+        """Saju Expert Agent 노드"""
+        print("🔧 Saju Expert 노드 실행")
+        
+        current_time = state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        session_id = state.get("session_id", "unknown")
+        session_start_time = state.get("session_start_time", "unknown")
+        messages = state.get("messages", [])
+
+        supervisor_command = state.get("messages")[-1].content
+
+        year = state.get("birth_info", {}).get("year")
+        month = state.get("birth_info", {}).get("month")
+        day = state.get("birth_info", {}).get("day")
+        hour = state.get("birth_info", {}).get("hour")
+        minute = state.get("birth_info", {}).get("minute")
+        gender = "남자" if state.get("birth_info", {}).get("is_male") else "여자"
+        is_leap_month = state.get("birth_info", {}).get("is_leap_month")
+
+        saju_result = state.get("saju_result", "")
+
+        saju_expert_agent = self.agent_manager.create_saju_expert_agent()
+
+        response = saju_expert_agent.invoke({
+            "current_time": current_time,
+            "session_id": session_id,
+            "session_start_time": session_start_time,
+            "supervisor_command": supervisor_command,
+            "year": year,
+            "month": month,
+            "day": day,
+            "hour": hour,
+            "minute": minute,
+            "gender": gender,
+            "is_leap_month": is_leap_month,
+            "saju_result": saju_result,
+            "messages": messages,
+        })
+       
+        output = json.loads(response["output"]) if isinstance(response["output"], str) else response["output"]
+
+        updated_state = state.copy()
+        updated_state["saju_result"] = output
+        updated_state["messages"].append(AIMessage(content=output.get("saju_analysis")))
+
+        return updated_state
+
 
 
 # 전역 NodeManager 인스턴스 (싱글톤 패턴)

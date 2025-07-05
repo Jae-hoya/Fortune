@@ -19,7 +19,7 @@ from tools import (
     saju_retriever_tool, 
     web_tools, 
     general_qa_tool,
-    manse_tools,
+    saju_tools,
     retriever_tools,
     general_qa_tools,
     supervisor_tools
@@ -59,11 +59,27 @@ class AgentManager:
         )
         
         return agent_executor
-
-    def create_manse_tool_agent(self):
-        """만세력 계산 에이전트 생성 (노트북 방식으로 단순화)"""
+    
+    def create_saju_expert_agent(self):
+        """사주 전문 에이전트 생성"""
         llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
-        return create_react_agent(llm, manse_tools)
+        prompt = PromptManager().saju_expert_system_prompt()
+
+        agent = create_tool_calling_agent(llm, saju_tools, prompt)
+
+        agent_executor = AgentExecutor(
+            agent=agent,
+            tools=saju_tools,
+            verbose=True,
+            max_iterations=3,
+            early_stopping_method="generate"
+        )
+        return agent_executor
+    
+    # def create_manse_tool_agent(self):
+    #     """만세력 계산 에이전트 생성 (노트북 방식으로 단순화)"""
+    #     llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+    #     return create_react_agent(llm, manse_tools)
 
     def create_retriever_tool_agent(self):
         """RAG 검색 에이전트 생성 (노트북 방식으로 단순화)"""
