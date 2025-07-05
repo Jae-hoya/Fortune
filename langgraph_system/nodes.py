@@ -1,11 +1,22 @@
 """
 노드 함수들 - NodeManager 클래스로 노드 생성 및 관리
 """
-
+from datetime import datetime
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel
+from typing import Literal, Optional
 import functools
-from langchain_core.messages import HumanMessage
+import operator
+from typing import Sequence, Annotated, Dict, List, Any, Optional
+from typing_extensions import TypedDict
+from langchain_core.messages import BaseMessage
+import re
+import json
 
 from .agents import AgentManager
+
 
 class NodeManager:
     """노드 생성 및 관리 클래스"""
@@ -46,6 +57,84 @@ class NodeManager:
         """General QA Agent 노드 생성"""
         general_qa_agent = self.agent_manager.create_general_qa_agent()
         return functools.partial(self._agent_node, agent=general_qa_agent, name="GeneralQA")
+    
+    def supervisor_agent_node(self, state):
+        """Supervisor React Agent 노드"""
+        print("🔧 Supervisor 노드 실행")
+
+        """State 정보를 활용한 동적 Supervisor 프롬프트 생성"""
+        # State에서 정보 추출
+        question = state.get("question", "")
+        messages = state.get("messages", [])
+        current_time = state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        session_id = state.get("session_id", "unknown")
+        session_start_time = state.get("session_start_time", "unknown")
+        
+        # State 상태 분석
+        birth_info = state.get("birth_info")
+        saju_result = state.get("saju_result")
+        query_type = state.get("query_type", "unknown")
+        retrieved_docs = state.get("retrieved_docs", [])
+        web_search_results = state.get("web_search_results", [])
+        
+        # 상태 정보를 문자열로 변환
+        birth_info_status = "있음" if birth_info else "없음"
+        saju_result_status = "있음" if saju_result else "없음"
+        retrieved_docs_count = len(retrieved_docs)
+        web_results_count = len(web_search_results)
+        
+        # 출생 정보 상세 표시
+        birth_info_detail = ""
+        if birth_info:
+            birth_info_detail = f"({birth_info['year']}년 {birth_info['month']}월 {birth_info['day']}일 {birth_info['hour']}시 {birth_info['minute']}분, {'남성' if birth_info['is_male'] else '여성'})"
+        
+        
+        # Supervisor React Agent 생성
+        supervisor_agent = self.agent_manager.create_supervisor_agent()
+        
+        # Agent 실행
+        response = supervisor_agent.invoke({
+            "question": question,
+            "messages": messages,
+            "current_time": current_time,
+            "session_id": session_id,
+            "session_start_time": session_start_time,
+            "birth_info_status": birth_info_status,
+            "birth_info_detail": birth_info_detail,
+            "saju_result_status": saju_result_status,
+            "query_type": query_type,
+            "current_time": current_time,
+            "session_id": session_id,
+            "session_start_time": session_start_time,
+            "birth_info_status": birth_info_status,
+            "birth_info_detail": birth_info_detail,
+            "saju_result_status": saju_result_status,
+            "retrieved_docs_count": retrieved_docs_count,
+            "web_results_count": web_results_count,
+        })
+        
+        # 응답에서 라우팅 정보 추출
+        output = json.loads(response["output"]) if isinstance(response["output"], str) else response["output"]
+
+        updated_state = state.copy()
+
+        if output.get("action"):
+            pass
+        if output.get("next"):
+            updated_state["next"] = output.get("next")
+        if output.get("message"):
+            updated_state["messages"].append(AIMessage(content=output.get("message")))
+        if output.get("final_answer"):
+            updated_state["final_answer"] = output.get("final_answer")
+        if output.get("reason"):
+            pass
+        if output.get("birth_info"):
+            updated_state["birth_info"] = output.get("birth_info")
+        if output.get("query_type"):
+            updated_state["query_type"] = output.get("query_type")
+
+        return updated_state
+
 
 # 전역 NodeManager 인스턴스 (싱글톤 패턴)
 _node_manager = None

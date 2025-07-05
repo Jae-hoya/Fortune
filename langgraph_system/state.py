@@ -40,8 +40,10 @@ class SajuResult(TypedDict):
 # 핵심 AgentState
 class AgentState(TypedDict):
     # 기본 LangGraph 요구사항
+    question: str
     messages: Annotated[Sequence[BaseMessage], operator.add]
     next: str
+    final_answer: Optional[str]
     
     # 세션 관리
     session_id: str

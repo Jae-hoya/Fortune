@@ -246,6 +246,7 @@ def run_query_with_debug(query: str, app, conversation_history: list, session_st
     
     # 현재 상태 설정 (세션 정보 유지, 현재 시간만 갱신)
     current_state = {
+        "question": query,
         "messages": conversation_history.copy(),
         "next": "",
         "session_start_time": session_start_time,  # 세션 시작 시간 (고정)
