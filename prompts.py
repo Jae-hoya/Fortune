@@ -46,6 +46,12 @@ class SajuExpertResponse(BaseModel):
     saju_analysis: str = Field(description="사주 해석 결과")
 
 
+class RetrieverResponse(BaseModel):
+    """Retriever 응답 모델"""
+    retrieved_docs: List[Dict[str, Any]] = Field(description="검색된 문서")
+    generated_result: str = Field(description="검색된 문서 기반 생성된 답변")
+
+
 class PromptManager:
     def __init__(self):
         pass
@@ -160,6 +166,7 @@ class PromptManager:
             - 에이전트 실행 후 사용자 질문이 완전히 해결되었다면 종합적인 최종 답변 생성
             - 여러 에이전트 결과가 있다면 일관성 있게 통합
             - 사주 결과가 있다면 구체적인 사주 정보 포함
+            - 검색된 문서가 있다면 검색된 문서를 활용하여 답변 생성
             - 추가 질문 유도나 후속 서비스 안내 포함
 
             === 컨텍스트 활용 ===
@@ -238,3 +245,35 @@ class PromptManager:
             MessagesPlaceholder("agent_scratchpad"),
         ]).partial(instructions_format=parser.get_format_instructions())
     
+    def retriever_system_prompt(self):
+        parser = JsonOutputParser(pydantic_object=RetrieverResponse)
+        
+        return ChatPromptTemplate.from_messages([
+            ("system", """
+            당신은 사주 전문 AI 시스템의 Retriever 전문가입니다.
+            사용자의 질문과 사주 계산 결과를 바탕으로 사주 관련 정보를 검색하고, 결과를 반환하세요.
+            
+            현재 시각: {current_time}
+            세션 ID: {session_id}, 세션 시작: {session_start_time}
+
+            === 입력 정보 ===
+            - 사용자 질문: {question}
+            - 사주 계산 결과: {saju_result}
+             
+            === 당신의 역할 ===
+            1. 사용자 질문과 사주 계산 결과를 바탕으로 사주 관련 정보를 검색하세요.
+            2. 검색된 정보를 retrieved_docs에 반환하세요.
+            3. 검색된 문서가 있다면, 사용자 질문에 맞는 답변을 생성해서 generated_result에 추가하세요.
+
+            === 응답 포맷 ===
+            {instructions_format}
+
+            === 응답 포맷 예시 ===
+            {{
+              "retrieved_docs": [{{"context": "검색된 사주의 내용", "metadata": {{"source": "검색된 문서의 출처", "page": "검색된 문서의 페이지 번호"}}}}],
+              "generated_result": "사주팔자는 사람의 생명력과 운명을 예측하는 방법입니다."
+            }}
+            """),
+            MessagesPlaceholder(variable_name="messages"),
+            MessagesPlaceholder(variable_name="agent_scratchpad")            
+        ]).partial(instructions_format=parser.get_format_instructions())

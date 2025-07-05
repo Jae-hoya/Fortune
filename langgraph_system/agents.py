@@ -76,6 +76,22 @@ class AgentManager:
         )
         return agent_executor
     
+    def create_retriever_agent(self):
+        """RAG 검색 에이전트 생성"""
+        llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+        prompt = PromptManager().retriever_system_prompt()
+
+        agent = create_tool_calling_agent(llm, retriever_tools, prompt)
+
+        agent_executor = AgentExecutor(
+            agent=agent,
+            tools=retriever_tools,
+            verbose=True,
+            max_iterations=3,
+            early_stopping_method="generate"
+        )
+        return agent_executor
+
     # def create_manse_tool_agent(self):
     #     """만세력 계산 에이전트 생성 (노트북 방식으로 단순화)"""
     #     llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)

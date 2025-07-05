@@ -140,7 +140,7 @@ def create_retriever_tool_for_saju():
         "pdf_retriever",
         "A tool for searching information related to Saju (Four Pillars of Destiny)",
         document_prompt=PromptTemplate.from_template(
-            "<document><context>{page_content}</context><metadata><source>{source}</source><page>{page}</page></metadata></document>"
+            '{{"context": "{page_content}", "metadata": {{"source": "{source}", "page": "{page}"}}'
         ),
     )
 

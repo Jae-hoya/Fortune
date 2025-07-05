@@ -25,14 +25,15 @@ def create_saju_expert_subgraph():
     # Sub-graph에 노드 추가 (NodeManager에서 생성)
     # manse_tool_agent_node = node_manager.create_manse_tool_agent_node()
     saju_expert_agent_node = node_manager.saju_expert_agent_node
-    retriever_tool_agent_node = node_manager.create_retriever_tool_agent_node()
+    retriever_agent_node = node_manager.retriever_agent_node
+    # retriever_tool_agent_node = node_manager.create_retriever_tool_agent_node()
     
-    saju_expert_workflow.add_node("manse", saju_expert_agent_node)
-    saju_expert_workflow.add_node("retriever", retriever_tool_agent_node)
+    saju_expert_workflow.add_node("saju_calculator", saju_expert_agent_node)
+    saju_expert_workflow.add_node("retriever", retriever_agent_node)
     
     # Sub-graph 엣지 연결
-    saju_expert_workflow.add_edge(START, "manse")
-    saju_expert_workflow.add_edge("manse", "retriever")
+    saju_expert_workflow.add_edge(START, "saju_calculator")
+    saju_expert_workflow.add_edge("saju_calculator", "retriever")
     saju_expert_workflow.add_edge("retriever", END)
     
     # Sub-graph를 컴파일하여 Runnable로 만듭니다.
