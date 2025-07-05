@@ -25,7 +25,8 @@ def load_saju_vector_store():
     Returns:
         사주 전용 FAISS 벡터 스토어 객체
     """
-    embeddings = OllamaEmbeddings(model="bge-m3")
+    # embeddings = OllamaEmbeddings(model="bge-m3")
+    embeddings = get_bge_embeddings()
     return FAISS.load_local("faiss_saju/all_saju_data", embeddings, allow_dangerous_deserialization=True)
 
 def get_all_documents(vectorstore, query: str = "", top_k: int = 1000) -> List[Document]:
