@@ -85,7 +85,7 @@ def card_info_handler(state: TarotState) -> TarotState:
    🔮 타로 상담사 톤으로 답변하세요.
    """
    try:
-       response = llm_with_tools.invoke([HumanMessage(content=prompt)])
+       response = llm_with_tools.invoke([HumanMessage(content=prompt)], {"metadata": {"final_response": "yes", "handler": "card_info_handler"}})
        return {"messages": [response]}
    except Exception as e:
        fallback_msg = f"🔮 카드 정보를 찾는 중 문제가 생겼어요. 다시 질문해주시면 더 정확히 답변드릴게요!\n\n다른 궁금한 점이나 고민이 있으시면 언제든 말씀해주세요!"
@@ -103,7 +103,7 @@ def spread_info_handler(state: TarotState) -> TarotState:
    🔮 타로 상담사 톤으로 답변하세요.
    """
    try:
-       response = llm_with_tools.invoke([HumanMessage(content=prompt)])
+       response = llm_with_tools.invoke([HumanMessage(content=prompt)], {"metadata": {"final_response": "yes", "handler": "spread_info_handler"}})
        return {"messages": [response]}
    except Exception as e:
        fallback_msg = f"🔮 스프레드 정보를 찾는 중 문제가 생겼어요. 다시 질문해주시면 더 정확히 답변드릴게요!\n\n이 스프레드로 상담받고 싶으시거나 다른 고민이 있으시면 언제든 말씀해주세요!"
@@ -164,7 +164,7 @@ def simple_card_handler(state: TarotState) -> TarotState:
        마지막에 "도움이 되셨나요? 더 자세한 상담이 필요하시면 언제든 말씀해주세요!"라고 덧붙여주세요.
        🔮 친근하고 실용적인 톤으로, 사용자 질문과 카드를 확실히 연결해서 답변하세요.
        """
-       interpretation_response = llm.invoke([HumanMessage(content=interpretation_prompt)])
+       interpretation_response = llm.invoke([HumanMessage(content=interpretation_prompt)], {"metadata": {"final_response": "yes", "handler": "simple_card_handler"}})
        # 카드 정보를 해석에 자연스럽게 포함 (별도 표시 제거)
        final_message = interpretation_response.content
        return {"messages": [AIMessage(content=final_message)]}
@@ -310,7 +310,7 @@ def general_handler(state: TarotState) -> TarotState:
            JSON 형식으로 답변:
            {{"is_date_question": true/false, "reasoning": "판단 근거"}}
            """
-           response = llm.invoke([HumanMessage(content=prompt)])
+           response = llm.invoke([HumanMessage(content=prompt)], {"metadata": {"final_response": "yes", "handler": "general_handler"}})
            import json
            result = json.loads(response.content.strip())
            return result.get("is_date_question", False)
@@ -1098,7 +1098,7 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 """
    
    try:
-       comprehensive_response = llm.invoke([HumanMessage(content=analysis_prompt)])
+       comprehensive_response = llm.invoke([HumanMessage(content=analysis_prompt)], {"metadata": {"final_response": "yes", "handler": "consultation_summary_handler"}})
        comprehensive_text = comprehensive_response.content
 
    except Exception as e:
@@ -1272,7 +1272,7 @@ def consultation_individual_handler(state: TarotState) -> TarotState:
    """
    
    try:
-       advice_response = llm.invoke([HumanMessage(content=detailed_advice_prompt)])
+       advice_response = llm.invoke([HumanMessage(content=detailed_advice_prompt)], {"metadata": {"final_response": "yes", "handler": "consultation_individual_handler"}})
        advice_text = advice_response.content
 
    except Exception as e:
@@ -1473,7 +1473,7 @@ def emotional_support_handler(state: TarotState) -> TarotState:
         🔮 타로 상담사 톤으로 답변하세요.
         """
     try:
-        response = llm.invoke([HumanMessage(content=prompt)])
+        response = llm.invoke([HumanMessage(content=prompt)], {"metadata": {"final_response": "yes", "handler": "emotional_support_handler"}})
         return {"messages": [AIMessage(content=response.content)]}
     except Exception as e:
         fallback_msg = f"🔮 감정 지원 응답을 생성하는 중 문제가 발생했어요. 다시 시도해주세요!\n\n{e}"
@@ -1608,7 +1608,7 @@ def tool_result_handler(state: TarotState) -> TarotState:
            """
        
        try:
-           response = llm.invoke([HumanMessage(content=prompt)])
+           response = llm.invoke([HumanMessage(content=prompt)], {"metadata": {"final_response": "yes", "handler": "tool_result_handler"}})
            print(f"🔧 도구 결과를 AIMessage로 변환 완료")
            
            # 기존 메시지들은 유지하고 마지막에 AI 응답 추가
@@ -2056,7 +2056,7 @@ def spread_recommender_node(state: TarotState) -> TarotState:
     감정적으로 따뜻하고 희망적인 톤으로 작성해주세요.
     """
     try:
-        response = llm.invoke([HumanMessage(content=recommendation_prompt)])
+        response = llm.invoke([HumanMessage(content=recommendation_prompt)], {"metadata": {"final_response": "yes", "handler": "spread_recommender_node"}})
         empathy_message = state.get("empathy_message", "")
         final_message = f"{empathy_message}\n\n{response.content}"
         updated_state = {
@@ -2162,7 +2162,7 @@ def situation_analyzer_node(state: TarotState) -> TarotState:
     타로 상담사 톤으로 따뜻하고 친근하게 작성해주세요.
     """
     try:
-        response = llm.invoke([HumanMessage(content=prompt)])
+        response = llm.invoke([HumanMessage(content=prompt)], {"metadata": {"final_response": "yes", "handler": "situation_analyzer_node"}})
         return {
             "situation_analysis_response": response.content,
             "specific_consultation_status": "situation_analyzed"
