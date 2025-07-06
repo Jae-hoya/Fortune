@@ -812,7 +812,7 @@ def handle_casual_new_question(user_input: str, llm) -> TarotState:
     - "비 올까?" → "날씨에 대한 직감을"
     """
     try:
-        response = llm.invoke([HumanMessage(content=casual_prompt)])
+        response = llm.invoke([HumanMessage(content=casual_prompt)], {"metadata": {"final_response": "yes", "handler": "handle_casual_new_question"}})
         return {"messages": [response]}
     except Exception as e:
         return {
@@ -874,7 +874,7 @@ def handle_tarot_related_question(state: TarotState, user_input: str, recent_ai_
     {ending_instruction}
     """
     try:
-        response = llm.invoke([HumanMessage(content=prompt)])
+        response = llm.invoke([HumanMessage(content=prompt)], {"metadata": {"final_response": "yes", "handler": "handle_tarot_related_question"}})
         # 이번 질문도 메모리에 추가
         updated_memory = conversation_memory.copy() if conversation_memory else {}
         updated_memory.setdefault("followup_questions", []).append({
