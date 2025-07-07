@@ -5,7 +5,7 @@ from typing import Optional, Literal, Dict, List, Any
 from datetime import datetime
 
 # 멤버 Agent 목록 정의
-members = ["SajuExpert", "WebTool", "GeneralQA"]
+members = ["SajuExpert", "WebSearch", "GeneralAnswer", "FINISH"]
 
 # Supervisor의 모든 행동 옵션 정의 (확장된 역할 포함)
 supervisor_options = ["ROUTE", "DIRECT", "BIRTH_INFO_REQUEST", "FINISH"]
@@ -52,6 +52,16 @@ class RetrieverResponse(BaseModel):
     generated_result: str = Field(description="검색된 문서 기반 생성된 답변")
 
 
+class WebSearchResponse(BaseModel):
+    """Web Search 응답 모델"""
+    search_result: str = Field(description="웹 검색 결과")
+
+
+class GeneralAnswerResponse(BaseModel):
+    """General Answer 응답 모델"""
+    general_answer: str = Field(description="일반 질문 답변")
+
+
 class PromptManager:
     def __init__(self):
         pass
@@ -75,8 +85,8 @@ class PromptManager:
 
             === 사용 가능한 에이전트 ===
             - SajuExpert: 사주팔자 계산 및 운세 해석 (manse → retriever 순차 실행)
-            - WebTool: 사주 개념, 일반 지식 웹 검색
-            - GeneralQA: 사주와 무관한 일반 질문 답변
+            - WebSearch: 사주 개념, 일반 지식 웹 검색
+            - GeneralAnswer: 사주와 무관한 일반 질문 답변
 
             === 당신의 역할 ===
             1. **출생 정보 관리**:
@@ -119,12 +129,12 @@ class PromptManager:
             - 사주 관련 질문인데 출생 정보가 없거나 불완전함
             - '사주 봐주세요', '운세 알려주세요' 등의 요청
 
-            다음 경우 WebTool 호출:
+            다음 경우 WebSearch 호출:
             - 사주 개념, 용어 설명 요청 ('대운이 뭐야?', '십신이란?')
             - 오행, 십신 등 이론적 질문
             - 일반적인 운세, 점술 관련 질문
 
-            다음 경우 GeneralQA 호출:
+            다음 경우 GeneralAnswer 호출:
             - 사주와 무관한 모든 질문
 
             다음 경우 직접 응답:
@@ -182,7 +192,7 @@ class PromptManager:
             - 파싱 성공 → SajuExpert 라우팅
             - 파싱 실패 → 출생 정보 재요청
             - 일반 질문 → 도구 사용 없이 바로 라우팅
-            - 개념 질문 → WebTool 라우팅
+            - 개념 질문 → WebSearch 라우팅
             """),
             MessagesPlaceholder(variable_name="messages"),
             MessagesPlaceholder(variable_name="agent_scratchpad"),
@@ -278,4 +288,74 @@ class PromptManager:
             """),
             MessagesPlaceholder(variable_name="messages"),
             MessagesPlaceholder(variable_name="agent_scratchpad")            
+        ]).partial(instructions_format=parser.get_format_instructions())
+    
+    def web_search_system_prompt(self):
+        parser = JsonOutputParser(pydantic_object=WebSearchResponse)
+        
+        return ChatPromptTemplate.from_messages([
+            ("system", """
+            당신은 사주 전문 AI 시스템의 Web Search 전문가입니다.
+            사용자의 질문과 Supervisor의 명령에 따라 웹 검색을 수행하고, 결과를 반환하세요.
+            
+            현재 시각: {current_time}
+            세션 ID: {session_id}, 세션 시작: {session_start_time}
+
+            === Supervisor 명령 ===
+            {supervisor_command}
+
+            === 입력 정보 ===
+            - 사용자 질문: {question}
+            - 사주 계산 결과: {saju_result}
+
+            === 당신의 역할 ===
+            1. 사용자 질문과 사주 계산 결과를 바탕으로 웹 검색을 수행하세요.
+            2. 검색된 정보를 search_result에 반환하세요.
+            3. 검색 결과는 최신 정보를 반환하세요.
+             
+            === 응답 포맷 ===
+            {instructions_format}
+
+            === 응답 포맷 예시 ===
+            {{
+              "search_result": "검색된 사주의 내용"
+            }}
+            """),
+            MessagesPlaceholder(variable_name="messages"),
+            MessagesPlaceholder(variable_name="agent_scratchpad")
+        ]).partial(instructions_format=parser.get_format_instructions())
+    
+    def general_answer_system_prompt(self):
+        parser = JsonOutputParser(pydantic_object=GeneralAnswerResponse)
+        
+        return ChatPromptTemplate.from_messages([
+            ("system", """
+            당신은 사주 전문 AI 시스템의 General Answer 전문가입니다.
+            사용자의 질문과 Supervisor의 명령에 따라 일반 질문을 답변하고, 결과를 반환하세요.
+
+            현재 시각: {current_time}
+            세션 ID: {session_id}, 세션 시작: {session_start_time}
+
+            === Supervisor 명령 ===
+            {supervisor_command}
+
+            === 입력 정보 ===
+            - 사용자 질문: {question}
+            - 사용자 사주 정보: {saju_result}
+
+            === 당신의 역할 ===
+            1. 사용자의 질문이 일상 조언(예: 오늘 뭐 먹을까, 무슨 색 옷 입을까 등)이라면, 반드시 사주 정보와 오늘의 일진/오행을 참고하여 맞춤형으로 구체적이고 실용적인 조언을 해주세요.
+            2. 사주적 근거(오행, 기운, 일진 등)를 반드시 설명과 함께 포함하세요.
+            3. 일반 상식 질문에는 기존 방식대로 답변하세요.
+
+            === 예시 ===
+            - 질문: 오늘 뭐 먹을까?
+            - 사주 정보: 1990년 5월 10일 14시생, 남자
+            - 오늘의 일진: 화(火) 기운이 강함, 목(木) 기운이 부족함
+            - 답변 예시: 오늘은 화(火) 기운이 강한 날입니다. 님의 사주에는 목(木) 기운이 부족하므로, 신선한 채소나 나물류, 혹은 매운 음식(예: 김치찌개, 불고기 등)을 드시면 운이 상승할 수 있습니다.
+
+            {instructions_format}
+            """),
+            MessagesPlaceholder(variable_name="messages"),
+            MessagesPlaceholder(variable_name="agent_scratchpad")
         ]).partial(instructions_format=parser.get_format_instructions())

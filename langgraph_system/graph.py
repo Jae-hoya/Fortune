@@ -52,16 +52,18 @@ def create_workflow():
     saju_expert_graph = create_saju_expert_subgraph()
     
     # 노드들 생성 (NodeManager 사용)
-    web_tool_agent_node = node_manager.create_web_tool_agent_node()
-    general_qa_agent_node = node_manager.create_general_qa_agent_node()
+    # web_tool_agent_node = node_manager.create_web_tool_agent_node()
+    # general_qa_agent_node = node_manager.create_general_qa_agent_node()
     # supervisor_agent = node_manager.agent_manager.create_supervisor_agent(tools=[])
     supervisor_node = node_manager.supervisor_agent_node
+    web_search_agent_node = node_manager.web_search_agent_node
+    general_answer_agent_node = node_manager.general_answer_agent_node
     
     
     # 그래프에 노드 추가: ManseTool과 RetrieverTool을 SajuExpert로 대체
     workflow.add_node("SajuExpert", saju_expert_graph)
-    workflow.add_node("WebTool", web_tool_agent_node)
-    workflow.add_node("GeneralQA", general_qa_agent_node)
+    workflow.add_node("WebSearch", web_search_agent_node)
+    workflow.add_node("GeneralAnswer", general_answer_agent_node)
     # workflow.add_node("Supervisor", supervisor_agent)
     workflow.add_node("Supervisor", supervisor_node)
     

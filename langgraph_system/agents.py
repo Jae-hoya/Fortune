@@ -91,6 +91,40 @@ class AgentManager:
             early_stopping_method="generate"
         )
         return agent_executor
+    
+    def create_web_search_agent(self):
+        """Web Search Agent 생성"""
+        llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+        prompt = PromptManager().web_search_system_prompt()
+        
+        agent = create_tool_calling_agent(llm, web_tools, prompt)
+
+        agent_executor = AgentExecutor(
+            agent=agent,
+            tools=web_tools,
+            verbose=True,
+            max_iterations=3,
+            early_stopping_method="generate"
+        )
+
+        return agent_executor
+    
+    def create_general_answer_agent(self):
+        """General Answer Agent 생성"""
+        llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+        prompt = PromptManager().general_answer_system_prompt()
+        
+        agent = create_tool_calling_agent(llm, general_qa_tools, prompt)
+
+        agent_executor = AgentExecutor(
+            agent=agent,
+            tools=general_qa_tools,
+            verbose=True,
+            max_iterations=3,
+            early_stopping_method="generate"
+        )
+        
+        return agent_executor
 
     # def create_manse_tool_agent(self):
     #     """만세력 계산 에이전트 생성 (노트북 방식으로 단순화)"""
