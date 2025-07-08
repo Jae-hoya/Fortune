@@ -26,7 +26,7 @@ from tools import (
 )
 
 # 멤버 Agent 목록 정의 (notebook 구조에 맞게 변경)
-members = ["SajuExpert", "WebTool", "GeneralQA"]
+members = ["SajuExpert", "WebSearch", "GeneralAnswer"]
 
 
 class AgentManager:

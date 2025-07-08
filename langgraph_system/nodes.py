@@ -77,11 +77,6 @@ class NodeManager:
         retrieved_docs = state.get("retrieved_docs", [])
         web_search_results = state.get("web_search_results", [])
         
-        # 상태 정보를 문자열로 변환
-        birth_info_status = "있음" if birth_info else "없음"
-        saju_result_status = "있음" if saju_result else "없음"
-        retrieved_docs_count = len(retrieved_docs)
-        web_results_count = len(web_search_results)
         
         # 출생 정보 상세 표시
         birth_info_detail = ""
@@ -93,23 +88,16 @@ class NodeManager:
         
         # Agent 실행
         response = supervisor_agent.invoke({
+            "current_time": current_time,
+            "session_id": session_id,
+            "session_start_time": session_start_time,
             "question": question,
+            "query_type": query_type,           
+            "birth_info": birth_info,
+            "saju_result": saju_result,
+            "retrieved_docs": retrieved_docs,
+            "web_search_results": web_search_results,
             "messages": messages,
-            "current_time": current_time,
-            "session_id": session_id,
-            "session_start_time": session_start_time,
-            "birth_info_status": birth_info_status,
-            "birth_info_detail": birth_info_detail,
-            "saju_result_status": saju_result_status,
-            "query_type": query_type,
-            "current_time": current_time,
-            "session_id": session_id,
-            "session_start_time": session_start_time,
-            "birth_info_status": birth_info_status,
-            "birth_info_detail": birth_info_detail,
-            "saju_result_status": saju_result_status,
-            "retrieved_docs_count": retrieved_docs_count,
-            "web_results_count": web_results_count,
         })
         
         # 응답에서 라우팅 정보 추출

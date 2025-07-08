@@ -15,11 +15,11 @@ class SupervisorResponse(BaseModel):
     action: Literal[*supervisor_options] = Field(description="수행할 액션")
     next: Optional[Literal[*members]] = Field(default=None, description="다음에 실행할 에이전트")
     message: str = Field(default="명령 없음", description="에이전트에게 전달할 명령 메시지. 직접 답변/출생정보 요청 등 에이전트 호출이 필요 없는 경우 반드시 빈 문자열이나 '명령 없음'으로 반환할 것.")
-    final_answer: Optional[str] = Field(default=None, description="사용자에게 보여줄 최종 답변")
     reason: Optional[str] = Field(default=None, description="결정 이유")
     birth_info: Optional[dict] = Field(default=None, description="파싱된 출생 정보")
     query_type: Optional[str] = Field(default=None, description="질의 유형")
 
+    final_answer: Optional[str] = Field(default=None, description="사용자에게 보여줄 최종 답변")
 
 class SajuExpertResponse(BaseModel):
     """SajuExpert 응답 모델"""
@@ -78,13 +78,13 @@ class PromptManager:
             === 현재 상태 정보 ===
             유저 메시지: {question}
             질의 유형: {query_type}
-            출생 정보: {birth_info_status} {birth_info_detail}
-            사주 계산 결과: {saju_result_status}
-            검색된 문서: {retrieved_docs_count}개
-            웹 검색 결과: {web_results_count}개
+            출생 정보: {birth_info}
+            사주 계산 결과: {saju_result}
+            검색된 문서: {retrieved_docs}
+            웹 검색 결과: {web_search_results}
 
             === 사용 가능한 에이전트 ===
-            - SajuExpert: 사주팔자 계산 및 운세 해석 (manse → retriever 순차 실행)
+            - SajuExpert: 사주팔자 계산 및 운세 해석 (saju_calculator → retriever 순차 실행)
             - WebSearch: 사주 개념, 일반 지식 웹 검색
             - GeneralAnswer: 사주와 무관한 일반 질문 답변
 
@@ -117,54 +117,62 @@ class PromptManager:
             - 연도만 있고 월일 없음 → '정확한 월일을 알려주세요'
             - 월일만 있고 연도 없음 → '태어난 연도를 알려주세요'
             - 시간 정보 없음 → '태어난 시간을 알려주세요 (예: 오전 10시 30분)'
+            - 시간 정보를 모르면 00시 00분으로 대체
 
-            === 라우팅 기준 ===
-            다음 경우 SajuExpert 호출:
-            - 완전한 출생 정보가 있고 사주 계산 요청
-            - 기존 사주 결과 기반 추가 해석 요청 (건강운, 재물운, 애정운 등)
-            - 대운, 세운, 용신 등 고급 분석 요청
-            - 미래 운세 질문 (내일, 다음달, 내년 등)
-
-            다음 경우 출생 정보 재질문:
-            - 사주 관련 질문인데 출생 정보가 없거나 불완전함
-            - '사주 봐주세요', '운세 알려주세요' 등의 요청
-
-            다음 경우 WebSearch 호출:
-            - 사주 개념, 용어 설명 요청 ('대운이 뭐야?', '십신이란?')
-            - 오행, 십신 등 이론적 질문
-            - 일반적인 운세, 점술 관련 질문
-
-            다음 경우 GeneralAnswer 호출:
-            - 사주와 무관한 모든 질문
-
-            다음 경우 직접 응답:
-            - 간단한 인사 ('안녕하세요', '감사합니다')
-            - 출생 정보 재질문
-            - 이전 대화 확인 ('아까 말한 것', '방금 전 결과')
-            - 단순 확인 ('네', '알겠습니다')
-             
-            === 응답 양식 지침 ===
-            **DIRECT 응답 시:**
-            - final_answer에 자연스럽고 친근한 톤으로 답변
-            - message는 반드시 "명령 없음"으로 반환
-            - 불필요한 구조화된 텍스트 없이 대화체로 응답
-            - 사용자가 바로 이해할 수 있는 명확하고 간단한 문장
+            === action 기준 ===
+            action이 'DIRECT'인 경우
+            - 간단한 인사 혹은 과거 대화 확인 등 에이전트 호출이 필요 없는 경우
+                - 간단한 인사 ('안녕하세요', '감사합니다')
+                - 이전 대화 확인 ('아까 말한 것', '방금 전 결과')
+                - 단순 확인 ('네', '알겠습니다')
             - next는 반드시 FINISH로 반환
-
-            **BIRTH_INFO_REQUEST 응답 시:**
+            - message는 반드시 "명령 없음"으로 반환
+            - final_answer에 자연스럽고 친근한 톤으로 답변
+             
+            action이 'BIRTH_INFO_REQUEST'인 경우
             - final_answer에 정중하고 친근하게 출생 정보 요청
             - message는 반드시 "명령 없음"으로 반환
             - 필요한 정보를 구체적으로 안내
             - 예: '사주 분석을 위해 정확한 출생 정보가 필요합니다. 태어난 연도, 월, 일, 시간과 성별을 알려주세요.'
             - next는 반드시 FINISH로 반환
 
-            **ROUTE 응답 시:**
+            action이 'ROUTE'인 경우
+            - 유저의 질의에 따라 적절한 에이전트 (노드)를 선택
             - message에 해당 에이전트가 수행해야 할 구체적인 작업 명령
-            - 새로운 출생 정보가 업데이트 되어 있으면 message에 사주 분석을 새롭게 요청하는 메시지를 추가
             - 기존 사주 결과가 있으면 message에 '기존 사주 결과를 활용'이라고 명확히 지시
-            - 에이전트가 이해하기 쉬운 명확한 지시사항
-            - 예: '1995년 8월 26일 오전 10시 15분생 남성의 사주를 계산하고 운세를 해석해주세요'
+            - 새로운 출생 정보가 업데이트 되어 있으면 message에 사주 분석을 새롭게 요청하는 메시지를 추가
+            - 에이전트가 이해하기 쉬운 명확한 지시사항 (예: '1995년 8월 26일 오전 10시 15분생 남성의 사주를 계산하고 운세를 해석해주세요')
+            - 분석이 완료되었거나, 추가적인 질문이 필요한 경우 action을 무조건 'FINISH'로 반환
 
+            ** ROUTE 선택 전 필수 확인사항 **
+            1. 사주 결과 상태가 "있음"이고 동일한 출생정보 질문이 반복되는 경우 → 무조건 FINISH 선택
+            2. 이미 완전한 사주 분석이 제공되었고 새로운 요청사항이 없는 경우 → 무조건 FINISH 선택
+            3. 기존 사주 결과로 충분히 답변 가능한 질문인 경우 → 무조건 FINISH 선택
+
+            * 다음 경우에만 SajuExpert 호출:
+            - 새로운 출생 정보로 첫 사주 계산 요청
+            - 기존 사주 결과 기반 구체적인 추가 해석 요청 (건강운, 재물운, 애정운 등 세부 분야)
+            - 대운, 세운, 용신 등 고급 분석이 기존 결과에 없는 경우
+            - 특정 시기의 미래 운세 질문 (내일, 다음달, 내년 등)
+            - next는 반드시 SajuExpert로 반환
+
+            * 다음 경우 WebSearch 호출:
+            - 사주 개념, 용어 설명 요청 ('대운이 뭐야?', '십신이란?')
+            - 오행, 십신 등 이론적 질문
+            - 일반적인 운세, 점술 관련 질문
+
+            * 다음 경우 GeneralAnswer 호출:
+            - 일상 조언, 오늘 뭐 먹을까, 무슨 색 옷 입을까 등 일상적인 질문
+             
+            action이 'FINISH'인 경우
+            - 사용자 질문이 완전히 해결되었다면 종합적인 최종 답변 생성
+            - 여러 에이전트 결과가 있다면 일관성 있게 통합
+            - 사주 결과가 있다면 구체적인 사주 정보 포함
+            - 검색된 문서가 있다면 검색된 문서를 활용하여 답변 생성
+            - 추가 질문 유도나 후속 서비스 안내 포함
+            - next는 반드시 FINISH로 반환
+
+             
             === 응답 형식 ===
             {instructions_format}
 
