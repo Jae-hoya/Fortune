@@ -25,10 +25,9 @@ def print_banner():
     print("🚀 LangGraph 멀티 워커 시스템")
     print("-" * 70)
     print("🏗️  시스템 구조:")
-    print("  • Supervisor → SajuExpert(manse + retriever) / WebTool / GeneralQA")
+    print("  • Supervisor → SajuExpert / Search / GeneralAnswer")
     print("  • 사주계산: calculate_saju_tool")
-    print("  • RAG검색: saju_retriever_tool") 
-    print("  • 웹검색: tavily_tool, duck_tool")
+    print("  • 통합검색: saju_retriever_tool + tavily_tool + duck_tool")
     print("  • 일반QA: general_qa_tool (Google Gemini)")
     print("-" * 70)
     print("📝 사용법:")
@@ -83,9 +82,9 @@ def print_help():
 
 🏗️  **워크플로 구조**:
   1. Supervisor: 질문 분석 후 적절한 에이전트로 라우팅
-  2. SajuExpert: 사주 관련 → manse(계산) + retriever(RAG검색)
-  3. WebTool: 일반 사주 개념 → tavily_tool, duck_tool
-  4. GeneralQA: 비사주 질문 → general_qa_tool (Google Gemini)
+  2. SajuExpert: 사주 계산 전담 → calculate_saju_tool
+  3. Search: 통합 검색 → saju_retriever_tool + tavily_tool + duck_tool
+  4. GeneralAnswer: 비사주 질문 → general_qa_tool (Google Gemini)
 
 🎯 **출력 방식**:
   • 기본: 모든 노드의 상세한 실행 과정과 툴 정보 표시
@@ -108,11 +107,9 @@ def print_node_header(node_name: str, is_debug: bool = False):
         
         node_descriptions = {
             "Supervisor": "🎯 워크플로 관리자 - 적절한 에이전트로 라우팅",
-            "SajuExpert": "🔮 사주 전문가 - 만세력 계산 + RAG 검색",
-            "manse": "📅 만세력 계산기 - 사주팔자 계산 툴 사용",
-            "retriever": "🔍 RAG 검색기 - 사주 지식 벡터DB 검색",
-            "WebTool": "🌐 웹 검색기 - Tavily/DuckDuckGo 검색 툴 사용",
-            "GeneralQA": "💬 일반 QA - Google Gemini 모델 사용"
+            "SajuExpert": "🔮 사주 전문가 - 사주팔자 계산 전담",
+            "Search": "🔍 통합 검색기 - RAG 검색 + 웹 검색",
+            "GeneralAnswer": "💬 일반 QA - Google Gemini 모델 사용"
         }
         
         description = node_descriptions.get(node_name, "🔧 시스템 노드")
@@ -123,10 +120,8 @@ def print_node_header(node_name: str, is_debug: bool = False):
         # 기본 모드: 간단하고 스트리밍 친화적
         node_info = {
             "SajuExpert": ("🔮", "사주 전문가"),
-            "manse": ("📅", "만세력 계산"),
-            "retriever": ("🔍", "지식 검색"), 
-            "WebTool": ("🌐", "웹 검색"),
-            "GeneralQA": ("💬", "일반 상담")
+            "Search": ("🔍", "통합 검색"),
+            "GeneralAnswer": ("💬", "일반 상담")
         }
         
         icon, name = node_info.get(node_name, ("🔧", node_name))
@@ -139,10 +134,8 @@ def print_simple_node_info(node_name: str, current_time: str = None):
     node_info = {
         "Supervisor": "🎯 워크플로 관리",
         "SajuExpert": "🔮 사주 전문가",
-        "manse": "📅 만세력 계산", 
-        "retriever": "🔍 지식 검색",
-        "WebTool": "🌐 웹 검색",
-        "GeneralQA": "💬 일반 상담"
+        "Search": "🔍 통합 검색",
+        "GeneralAnswer": "💬 일반 상담"
     }
     
     info = node_info.get(node_name, f"🔧 {node_name}")
@@ -154,11 +147,9 @@ def print_node_execution(node_name: str):
     """디버그 모드: 상세한 노드 실행 정보와 사용 툴 표시"""
     node_tool_info = {
         "Supervisor": ("🎯", "라우팅", "워크플로 관리"),
-        "SajuExpert": ("🔮", "사주분석", "manse + retriever 서브그래프"),
-        "manse": ("📅", "만세력계산", "calculate_saju_tool"),
-        "retriever": ("🔍", "지식검색", "saju_retriever_tool"),
-        "WebTool": ("🌐", "웹검색", "tavily_tool + duck_tool"),
-        "GeneralQA": ("💬", "일반상담", "general_qa_tool (Google Gemini)")
+        "SajuExpert": ("🔮", "사주계산", "calculate_saju_tool"),
+        "Search": ("🔍", "통합검색", "saju_retriever_tool + tavily_tool + duck_tool"),
+        "GeneralAnswer": ("💬", "일반상담", "general_qa_tool (Google Gemini)")
     }
     
     icon, action, tools = node_tool_info.get(node_name, ("🔧", node_name, "unknown"))
@@ -227,11 +218,9 @@ def get_node_tools(node_name: str) -> str:
     """노드별 사용 툴 반환"""
     node_tools = {
         "Supervisor": "워크플로 관리",
-        "SajuExpert": "manse + retriever 서브그래프",
-        "manse": "calculate_saju_tool",
-        "retriever": "saju_retriever_tool",
-        "WebTool": "tavily_tool + duck_tool",
-        "GeneralQA": "general_qa_tool (Google Gemini)"
+        "SajuExpert": "calculate_saju_tool",
+        "Search": "saju_retriever_tool + tavily_tool + duck_tool",
+        "GeneralAnswer": "general_qa_tool (Google Gemini)"
     }
     return node_tools.get(node_name, "unknown")
 
@@ -261,67 +250,88 @@ def run_query_with_debug(query: str, app, conversation_history: list, session_st
         }
     }
     
-    try:
-        print("🚀 AI 워크플로 실행 중...")
+    # try:
+    print("🚀 AI 워크플로 실행 중...")
+    
+    # 디버그 모드: 모든 노드와 상세 정보 표시
+    collected_content = []
+    node_sequence = []
+    tool_usage = {}  # 노드별 툴 사용 기록
+    content_buffer = ""  # 토큰을 모으는 버퍼
+    final_answer_shown = False  # final_answer 출력 여부 체크
+    
+    def debug_callback(data):
+        """디버그 스트리밍 콜백 함수"""
+        nonlocal content_buffer, final_answer_shown
         
-        # 디버그 모드: 모든 노드와 상세 정보 표시
-        collected_content = []
-        node_sequence = []
-        tool_usage = {}  # 노드별 툴 사용 기록
+        node = data["node"]
+        content = data["content"]
         
-        def debug_callback(data):
-            """디버그 스트리밍 콜백 함수"""
-            node = data["node"]
-            content = data["content"]
+        # 새로운 노드 진입 시 상세 정보 출력
+        if node and node not in node_sequence:
+            print_node_header(node, is_debug=True)
+            print_node_execution(node)  # 툴 정보도 함께 출력
+            node_sequence.append(node)
+            tool_usage[node] = get_node_tools(node)
+            print("💬 최종 응답:")
+        
+        # 콘텐츠 처리
+        if content:
+            # final_answer가 이미 출력되었으면 더 이상 아무것도 출력하지 않음
+            if final_answer_shown:
+                return
+                
+            content_buffer += content
             
-            # 새로운 노드 진입 시 상세 정보 출력
-            if node and node not in node_sequence:
-                print_node_header(node, is_debug=True)
-                print_node_execution(node)  # 툴 정보도 함께 출력
-                node_sequence.append(node)
-                tool_usage[node] = get_node_tools(node)
-                print("💬 상세 응답:")
-            
-            # 콘텐츠 실시간 출력 + 수집
-            if content:
-                print(content, end="", flush=True)  # 실시간 출력
-                collected_content.append(content)
-        
-        # stream_graph를 사용하여 모든 노드 스트리밍 (node_names 빈 리스트 = 모든 노드)
-        stream_graph(
-            graph=app,
-            inputs=current_state,
-            config=config,
-            node_names=[],  # 빈 리스트 = 모든 노드 표시
-            callback=debug_callback
-        )
-        
-        # 디버그 정보 요약
-        print(f"\n\n📊 워크플로 분석 결과:")
-        print(f"🕐 세션 시작: {current_state['session_start_time']}")
-        print(f"⏰ 쿼리 시간: {current_state['current_time']}")
-        print(f"🆔 세션 ID: {current_state['session_id']}")
-        print(f"🎯 실행된 노드: {' → '.join(node_sequence)}")
-        print(f"🛠️  사용된 툴:")
-        for node, tools in tool_usage.items():
-            print(f"   • {node}: {tools}")
-        
-        print_completion(is_debug=False)
-        
-        # 최종 응답 획득
-        if collected_content:
-            final_response = "".join(collected_content)
+            # 완전한 JSON이 완성되었는지 확인 (}로 끝나고 valid JSON인지)
+            if content_buffer.strip().endswith('}'):
+                try:
+                    import json
+                    parsed_content = json.loads(content_buffer.strip())
+                    if isinstance(parsed_content, dict) and "final_answer" in parsed_content:
+                        final_answer = parsed_content["final_answer"]
+                        print(final_answer)
+                        collected_content.append(final_answer)
+                        final_answer_shown = True
+                        return
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    pass
+    
+    # stream_graph를 사용하여 모든 노드 스트리밍 (node_names 빈 리스트 = 모든 노드)
+    stream_graph(
+        graph=app,
+        inputs=current_state,
+        config=config,
+        node_names=[],  # 빈 리스트 = 모든 노드 표시
+        callback=debug_callback
+    )
+    
+    # 디버그 정보 요약
+    # print(f"\n\n📊 워크플로 분석 결과:")
+    # print(f"🕐 세션 시작: {current_state['session_start_time']}")
+    # print(f"⏰ 쿼리 시간: {current_state['current_time']}")
+    # print(f"🆔 세션 ID: {current_state['session_id']}")
+    # print(f"🎯 실행된 노드: {' → '.join(node_sequence)}")
+    # print(f"🛠️  사용된 툴:")
+    # for node, tools in tool_usage.items():
+    #     print(f"   • {node}: {tools}")
+    
+    print_completion(is_debug=False)
+    
+    # 최종 응답 획득
+    if collected_content:
+        final_response = "".join(collected_content)
+    else:
+        result = app.invoke(current_state, config=config)
+        messages = result.get("messages", [])
+        if messages:
+            final_response = messages[-1].content
         else:
-            result = app.invoke(current_state, config=config)
-            messages = result.get("messages", [])
-            if messages:
-                final_response = messages[-1].content
-            else:
-                final_response = "응답을 생성하지 못했습니다."
-        
-        conversation_history.append(AIMessage(content=final_response))
-        return final_response
+            final_response = "응답을 생성하지 못했습니다."
+    
+    conversation_history.append(AIMessage(content=final_response))
+    return final_response
             
-    except Exception as e:
-        print(f"❌ 디버그 모드 오류 발생: {str(e)}")
-        return f"오류가 발생했습니다: {str(e)}" 
+    # except Exception as e:
+    #     print(f"❌ 디버그 모드 오류 발생: {str(e)}")
+    #     return f"오류가 발생했습니다: {str(e)}" 

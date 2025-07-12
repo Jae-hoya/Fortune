@@ -181,14 +181,14 @@ def general_qa_tool(query: str) -> str:
 # 각 에이전트별 도구 그룹
 supervisor_tools = [parse_birth_info_tool]  # Supervisor 전용 도구
 saju_tools = [calculate_saju_tool]
-retriever_tools = [saju_retriever_tool]
+search_tools = [saju_retriever_tool] + web_tools
 general_qa_tools = [general_qa_tool]
 
 # 전체 도구 목록
 all_tools = {
     'supervisor': supervisor_tools,
     'saju': saju_tools,
-    'retriever': retriever_tools, 
+    'search': search_tools,
     'web': web_tools,
     'general_qa': general_qa_tools
 }
@@ -203,8 +203,7 @@ __all__ = [
     'general_qa_tool',
     'supervisor_tools',
     'saju_tools',
-    'retriever_tools',
-    'web_tools', 
+    'search_tools',
     'general_qa_tools',
     'all_tools'
 ] 

@@ -169,40 +169,9 @@ class NodeManager:
 
         return updated_state
 
-    def retriever_agent_node(self, state):
-        """Retriever Agent 노드"""
-        print("🔧 Retriever 노드 실행")
-
-        current_time = state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        session_id = state.get("session_id", "unknown")
-        session_start_time = state.get("session_start_time", "unknown")
-        messages = state.get("messages", [])
-        question = state.get("question", "")
-        saju_result = state.get("saju_result", "")
-
-        retriever_agent = self.agent_manager.create_retriever_agent()
-
-        response = retriever_agent.invoke({
-            "current_time": current_time,
-            "session_id": session_id,
-            "session_start_time": session_start_time,
-            "question": question,
-            "saju_result": saju_result,
-            "messages": messages,
-        })
-
-        output = json.loads(response["output"]) if isinstance(response["output"], str) else response["output"]
-
-        updated_state = state.copy()
-        updated_state["retrieved_docs"] = output.get("retrieved_docs")
-        updated_state["generated_result"] = output.get("generated_result")
-        updated_state["messages"].append(AIMessage(content=output.get("generated_result")))
-
-        return updated_state
-    
-    def web_search_agent_node(self, state):
-        """Web Search Agent 노드"""
-        print("🔧 Web Search 노드 실행")
+    def search_agent_node(self, state):
+        """Search Agent 노드 (RAG + 웹검색 통합)"""
+        print("🔧 Search 노드 실행")
 
         current_time = state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         session_id = state.get("session_id", "unknown")
@@ -212,9 +181,9 @@ class NodeManager:
         supervisor_command = state.get("messages")[-1].content
         saju_result = state.get("saju_result", "")
 
-        web_search_agent = self.agent_manager.create_web_search_agent()
+        search_agent = self.agent_manager.create_search_agent()
 
-        response = web_search_agent.invoke({
+        response = search_agent.invoke({
             "current_time": current_time,
             "session_id": session_id,
             "session_start_time": session_start_time,
@@ -222,13 +191,14 @@ class NodeManager:
             "question": question,
             "saju_result": saju_result,
             "messages": messages,
-        })  
+        })
 
         output = json.loads(response["output"]) if isinstance(response["output"], str) else response["output"]
 
         updated_state = state.copy()
-        updated_state["web_search_results"] = output.get("search_result")
-        updated_state["messages"].append(AIMessage(content=output.get("search_result")))
+        updated_state["retrieved_docs"] = output.get("retrieved_docs", [])
+        updated_state["web_search_results"] = output.get("web_search_results", [])
+        updated_state["messages"].append(AIMessage(content=output.get("generated_result")))
 
         return updated_state
 

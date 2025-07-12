@@ -15,18 +15,14 @@ from langchain_core.output_parsers import JsonOutputParser
 
 # 단순화된 tools import (노트북 방식)
 from tools import (
-    calculate_saju_tool, 
-    saju_retriever_tool, 
-    web_tools, 
-    general_qa_tool,
     saju_tools,
-    retriever_tools,
+    search_tools,
     general_qa_tools,
     supervisor_tools
 )
 
 # 멤버 Agent 목록 정의 (notebook 구조에 맞게 변경)
-members = ["SajuExpert", "WebSearch", "GeneralAnswer"]
+members = ["SajuExpert", "Search", "GeneralAnswer"]
 
 
 class AgentManager:
@@ -76,32 +72,16 @@ class AgentManager:
         )
         return agent_executor
     
-    def create_retriever_agent(self):
-        """RAG 검색 에이전트 생성"""
+    def create_search_agent(self):
+        """Search Agent 생성 (RAG 검색 + 웹 검색 통합)"""
         llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
-        prompt = PromptManager().retriever_system_prompt()
-
-        agent = create_tool_calling_agent(llm, retriever_tools, prompt)
-
-        agent_executor = AgentExecutor(
-            agent=agent,
-            tools=retriever_tools,
-            verbose=True,
-            max_iterations=3,
-            early_stopping_method="generate"
-        )
-        return agent_executor
-    
-    def create_web_search_agent(self):
-        """Web Search Agent 생성"""
-        llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
-        prompt = PromptManager().web_search_system_prompt()
+        prompt = PromptManager().search_system_prompt()
         
-        agent = create_tool_calling_agent(llm, web_tools, prompt)
+        agent = create_tool_calling_agent(llm, search_tools, prompt)
 
         agent_executor = AgentExecutor(
             agent=agent,
-            tools=web_tools,
+            tools=search_tools,
             verbose=True,
             max_iterations=3,
             early_stopping_method="generate"

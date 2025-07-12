@@ -5,7 +5,7 @@ from typing import Optional, Literal, Dict, List, Any
 from datetime import datetime
 
 # 멤버 Agent 목록 정의
-members = ["SajuExpert", "WebSearch", "GeneralAnswer", "FINISH"]
+members = ["SajuExpert", "Search", "GeneralAnswer", "FINISH"]
 
 # Supervisor의 모든 행동 옵션 정의 (확장된 역할 포함)
 supervisor_options = ["ROUTE", "DIRECT", "BIRTH_INFO_REQUEST", "FINISH"]
@@ -46,16 +46,12 @@ class SajuExpertResponse(BaseModel):
     saju_analysis: str = Field(description="사주 해석 결과")
 
 
-class RetrieverResponse(BaseModel):
-    """Retriever 응답 모델"""
-    retrieved_docs: List[Dict[str, Any]] = Field(description="검색된 문서")
-    generated_result: str = Field(description="검색된 문서 기반 생성된 답변")
-
-
-class WebSearchResponse(BaseModel):
-    """Web Search 응답 모델"""
-    search_result: str = Field(description="웹 검색 결과")
-
+class SearchResponse(BaseModel):
+    """Search 응답 모델"""
+    search_type: str = Field(description="검색 유형 (rag_search, web_search, hybrid_search)")
+    retrieved_docs: List[Dict[str, Any]] = Field(default=[], description="RAG 검색된 문서")
+    web_search_results: List[Dict[str, Any]] = Field(default=[], description="웹 검색 결과")
+    generated_result: str = Field(description="검색 결과 기반 생성된 답변")
 
 class GeneralAnswerResponse(BaseModel):
     """General Answer 응답 모델"""
@@ -84,8 +80,8 @@ class PromptManager:
             웹 검색 결과: {web_search_results}
 
             === 사용 가능한 에이전트 ===
-            - SajuExpert: 사주팔자 계산 및 운세 해석 (saju_calculator → retriever 순차 실행)
-            - WebSearch: 사주 개념, 일반 지식 웹 검색
+            - SajuExpert: 사주팔자 계산 전담 (사주 계산만 수행)
+            - Search: 검색 전담 (RAG 검색 + 웹 검색 통합)
             - GeneralAnswer: 사주와 무관한 일반 질문 답변
 
             === 당신의 역할 ===
@@ -156,10 +152,12 @@ class PromptManager:
             - 특정 시기의 미래 운세 질문 (내일, 다음달, 내년 등)
             - next는 반드시 SajuExpert로 반환
 
-            * 다음 경우 WebSearch 호출:
+            * 다음 경우 Search 호출:
             - 사주 개념, 용어 설명 요청 ('대운이 뭐야?', '십신이란?')
             - 오행, 십신 등 이론적 질문
             - 일반적인 운세, 점술 관련 질문
+            - 사주 해석을 위한 추가 정보 검색
+            - 기존 사주 결과에 대한 심화 분석 요청
 
             * 다음 경우 GeneralAnswer 호출:
             - 일상 조언, 오늘 뭐 먹을까, 무슨 색 옷 입을까 등 일상적인 질문
@@ -265,46 +263,13 @@ class PromptManager:
             MessagesPlaceholder("agent_scratchpad"),
         ]).partial(instructions_format=parser.get_format_instructions())
     
-    def retriever_system_prompt(self):
-        parser = JsonOutputParser(pydantic_object=RetrieverResponse)
+    def search_system_prompt(self):
+        parser = JsonOutputParser(pydantic_object=SearchResponse)
         
         return ChatPromptTemplate.from_messages([
             ("system", """
-            당신은 사주 전문 AI 시스템의 Retriever 전문가입니다.
-            사용자의 질문과 사주 계산 결과를 바탕으로 사주 관련 정보를 검색하고, 결과를 반환하세요.
-            
-            현재 시각: {current_time}
-            세션 ID: {session_id}, 세션 시작: {session_start_time}
-
-            === 입력 정보 ===
-            - 사용자 질문: {question}
-            - 사주 계산 결과: {saju_result}
-             
-            === 당신의 역할 ===
-            1. 사용자 질문과 사주 계산 결과를 바탕으로 사주 관련 정보를 검색하세요.
-            2. 검색된 정보를 retrieved_docs에 반환하세요.
-            3. 검색된 문서가 있다면, 사용자 질문에 맞는 답변을 생성해서 generated_result에 추가하세요.
-
-            === 응답 포맷 ===
-            {instructions_format}
-
-            === 응답 포맷 예시 ===
-            {{
-              "retrieved_docs": [{{"context": "검색된 사주의 내용", "metadata": {{"source": "검색된 문서의 출처", "page": "검색된 문서의 페이지 번호"}}}}],
-              "generated_result": "사주팔자는 사람의 생명력과 운명을 예측하는 방법입니다."
-            }}
-            """),
-            MessagesPlaceholder(variable_name="messages"),
-            MessagesPlaceholder(variable_name="agent_scratchpad")            
-        ]).partial(instructions_format=parser.get_format_instructions())
-    
-    def web_search_system_prompt(self):
-        parser = JsonOutputParser(pydantic_object=WebSearchResponse)
-        
-        return ChatPromptTemplate.from_messages([
-            ("system", """
-            당신은 사주 전문 AI 시스템의 Web Search 전문가입니다.
-            사용자의 질문과 Supervisor의 명령에 따라 웹 검색을 수행하고, 결과를 반환하세요.
+            당신은 사주 전문 AI 시스템의 Search 전문가입니다.
+            사용자의 질문과 Supervisor의 명령에 따라 RAG 검색 또는 웹 검색을 수행하고, 결과를 반환하세요.
             
             현재 시각: {current_time}
             세션 ID: {session_id}, 세션 시작: {session_start_time}
@@ -316,17 +281,33 @@ class PromptManager:
             - 사용자 질문: {question}
             - 사주 계산 결과: {saju_result}
 
+            === 사용 가능한 도구 ===
+            1. pdf_retriever: 사주 관련 전문 문서 검색 (사주 해석, 십신, 오행, 대운 등)
+            2. tavily_tool: 웹 검색 (최신 정보, 일반 지식)
+            3. duck_tool: 웹 검색 (보조 검색)
+
             === 당신의 역할 ===
-            1. 사용자 질문과 사주 계산 결과를 바탕으로 웹 검색을 수행하세요.
-            2. 검색된 정보를 search_result에 반환하세요.
-            3. 검색 결과는 최신 정보를 반환하세요.
-             
+            1. **사주 관련 질문**: pdf_retriever를 사용하여 전문 문서에서 검색
+               - 사주 해석, 십신 분석, 오행 이론, 대운 해석 등
+               - 기존 사주 결과와 연관된 심화 분석
+            
+            2. **일반 사주 개념/이론**: tavily_tool 또는 duck_tool 사용
+               - 사주 용어 설명, 기본 개념, 역사적 배경 등
+               - 최신 사주 트렌드, 현대적 해석 등
+            
+            3. **복합 질문**: 필요시 여러 도구를 순차적으로 사용
+               - 먼저 pdf_retriever로 전문 지식 검색
+               - 부족한 부분은 웹 검색으로 보완
+
             === 응답 포맷 ===
             {instructions_format}
 
             === 응답 포맷 예시 ===
             {{
-              "search_result": "검색된 사주의 내용"
+              "search_type": "rag_search",
+              "retrieved_docs": [{{"context": "검색된 사주의 내용", "metadata": {{"source": "검색된 문서의 출처"}}}}],
+              "web_search_results": [],
+              "generated_result": "검색 결과를 바탕으로 생성된 답변"
             }}
             """),
             MessagesPlaceholder(variable_name="messages"),
