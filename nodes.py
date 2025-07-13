@@ -15,7 +15,7 @@ from langchain_core.messages import BaseMessage
 import re
 import json
 
-from .agents import AgentManager
+from agents import AgentManager
 
 
 class NodeManager:
@@ -241,4 +241,4 @@ def get_node_manager():
     global _node_manager
     if _node_manager is None:
         _node_manager = NodeManager()
-    return _node_manager
+    return _node_manager 

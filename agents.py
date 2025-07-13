@@ -34,18 +34,21 @@ class AgentManager:
     
     def create_supervisor_agent(self):
         """
-        Tool Calling Agent를 생성합니다.
+        Supervisor Agent를 생성합니다.
         State 정보를 동적으로 프롬프트에 주입합니다.
         """
         llm = ChatOpenAI(temperature=0, model="gpt-4.1-mini")
         
-        # Tool Calling Agent용 프롬프트 템플릿
+        # Agent용 프롬프트 템플릿
         prompt = PromptManager().supervisor_system_prompt()
         
         # Tool Calling Agent 생성
-        agent = create_tool_calling_agent(llm, supervisor_tools, prompt)
-        
-        # AgentExecutor 생성
+        agent = create_tool_calling_agent(
+            llm=llm, 
+            tools=supervisor_tools, 
+            prompt=prompt
+        )
+
         agent_executor = AgentExecutor(
             agent=agent,
             tools=supervisor_tools,
@@ -142,6 +145,4 @@ class AgentManager:
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         
         prompt = "일반적인 질문이나 상식적인 내용에 대해 답변합니다."
-        return create_react_agent(llm, tools=general_qa_tools, prompt=prompt)
-
-
+        return create_react_agent(llm, tools=general_qa_tools, prompt=prompt) 

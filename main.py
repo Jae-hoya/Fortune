@@ -13,7 +13,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from langchain_core.messages import HumanMessage, AIMessage
-from langgraph_system.graph import create_workflow
+from graph import create_workflow
 from langchain_core.runnables import RunnableConfig
 
 # utils.py에서 함수들 import
@@ -132,7 +132,7 @@ if __name__ == "__main__":
             
             # 시스템 초기화
             print("🔧 시스템 초기화 중...")
-            from langgraph_system.nodes import get_node_manager
+            from nodes import get_node_manager
             get_node_manager()
             print("⚙️ 워크플로 생성 중...")
             app = create_workflow()

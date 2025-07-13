@@ -59,4 +59,4 @@ class AgentState(TypedDict):
     
     # 에이전트 간 데이터 공유
     retrieved_docs: List[Dict[str, Any]]  # RAG 검색 결과
-    web_search_results: List[Dict[str, Any]]  # 웹 검색 결과
+    web_search_results: List[Dict[str, Any]]  # 웹 검색 결과 

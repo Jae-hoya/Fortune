@@ -8,11 +8,11 @@ from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
 
 # AgentState를 state.py에서 import
-from .state import AgentState
+from state import AgentState
 
 # NodeManager 사용
-from .nodes import get_node_manager
-from .agents import members
+from nodes import get_node_manager
+from agents import members
 
 
 def create_workflow():
