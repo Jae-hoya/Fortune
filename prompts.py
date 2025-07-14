@@ -198,7 +198,8 @@ class PromptManager:
             - 파싱 성공 → SajuExpert 라우팅
             - 파싱 실패 → 출생 정보 재요청
             - 일반 질문 → 도구 사용 없이 바로 라우팅
-            - 개념 질문 → WebSearch 라우팅
+            - 개념 질문 → Search 라우팅
+            - 일상 질문 → GeneralAnswer 라우팅
             """),
             MessagesPlaceholder(variable_name="messages"),
             MessagesPlaceholder(variable_name="agent_scratchpad"),
