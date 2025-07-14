@@ -8,7 +8,7 @@ import sys
 import time
 from datetime import datetime
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain_teddynote.messages import stream_graph
+# from langchain_teddynote.messages import stream_graph  # 더 이상 사용하지 않음
 
 
 # ================================
@@ -189,7 +189,7 @@ def handle_debug_query(query: str, app, conversation_history: list, session_star
     print("-" * 50)
     
     start_time = time.time()
-    response = run_query_with_debug(actual_query, app, conversation_history, session_start_time, session_id)
+    response = run_query_with_app(actual_query, app, conversation_history, session_start_time, session_id)
     execution_time = time.time() - start_time
     
     analysis_info = f"""
@@ -209,24 +209,6 @@ def handle_debug_query(query: str, app, conversation_history: list, session_star
 
 
 def run_query_with_app(query: str, app, conversation_history: list, session_start_time: str, session_id: str) -> str:
-    """기본 모드: 디버그 스타일의 상세한 스트리밍 사용"""
-    # 디버그 스타일을 기본으로 사용
-    return run_query_with_debug(query, app, conversation_history, session_start_time, session_id)
-
-
-def get_node_tools(node_name: str) -> str:
-    """노드별 사용 툴 반환"""
-    node_tools = {
-        "Supervisor": "워크플로 관리",
-        "SajuExpert": "calculate_saju_tool",
-        "Search": "saju_retriever_tool + tavily_tool + duck_tool",
-        "GeneralAnswer": "general_qa_tool (Google Gemini)"
-    }
-    return node_tools.get(node_name, "unknown")
-
-
-
-def run_query_with_debug(query: str, app, conversation_history: list, session_start_time: str, session_id: str) -> str:
     """상세 스트리밍 모드: 모든 노드 + 상세 정보 + 툴 추적"""
     print(f"🔍 쿼리 실행: {query}")
     
@@ -250,88 +232,53 @@ def run_query_with_debug(query: str, app, conversation_history: list, session_st
         }
     }
     
-    # try:
     print("🚀 AI 워크플로 실행 중...")
     
-    # 디버그 모드: 모든 노드와 상세 정보 표시
-    collected_content = []
-    node_sequence = []
-    tool_usage = {}  # 노드별 툴 사용 기록
-    content_buffer = ""  # 토큰을 모으는 버퍼
-    final_answer_shown = False  # final_answer 출력 여부 체크
+    # 동기 스트림 처리 (stream_mode="updates")
+    final_response = ""
     
-    def debug_callback(data):
-        """디버그 스트리밍 콜백 함수"""
-        nonlocal content_buffer, final_answer_shown
-        
-        node = data["node"]
-        content = data["content"]
-        
-        # 새로운 노드 진입 시 상세 정보 출력
-        if node and node not in node_sequence:
-            print_node_header(node, is_debug=True)
-            print_node_execution(node)  # 툴 정보도 함께 출력
-            node_sequence.append(node)
-            tool_usage[node] = get_node_tools(node)
-            print("💬 최종 응답:")
-        
-        # 콘텐츠 처리
-        if content:
-            # final_answer가 이미 출력되었으면 더 이상 아무것도 출력하지 않음
-            if final_answer_shown:
-                return
-                
-            content_buffer += content
+    for chunk in app.stream(current_state, config=config, stream_mode="updates"):
+        # chunk는 dictionary 형태 (key: 노드, value: 노드의 상태 값)
+        for node, value in chunk.items():
+            if node:
+                print_node_header(node, is_debug=True)
+                print_node_execution(node)
+                print()
             
-            # 완전한 JSON이 완성되었는지 확인 (}로 끝나고 valid JSON인지)
-            if content_buffer.strip().endswith('}'):
-                try:
-                    import json
-                    parsed_content = json.loads(content_buffer.strip())
-                    if isinstance(parsed_content, dict) and "final_answer" in parsed_content:
-                        final_answer = parsed_content["final_answer"]
-                        print(final_answer)
-                        collected_content.append(final_answer)
-                        final_answer_shown = True
-                        return
-                except (json.JSONDecodeError, TypeError, ValueError):
-                    pass
-    
-    # stream_graph를 사용하여 모든 노드 스트리밍 (node_names 빈 리스트 = 모든 노드)
-    stream_graph(
-        graph=app,
-        inputs=current_state,
-        config=config,
-        node_names=[],  # 빈 리스트 = 모든 노드 표시
-        callback=debug_callback
-    )
-    
-    # 디버그 정보 요약
-    # print(f"\n\n📊 워크플로 분석 결과:")
-    # print(f"🕐 세션 시작: {current_state['session_start_time']}")
-    # print(f"⏰ 쿼리 시간: {current_state['current_time']}")
-    # print(f"🆔 세션 ID: {current_state['session_id']}")
-    # print(f"🎯 실행된 노드: {' → '.join(node_sequence)}")
-    # print(f"🛠️  사용된 툴:")
-    # for node, tools in tool_usage.items():
-    #     print(f"   • {node}: {tools}")
+            # final_answer가 있으면 출력하고 저장
+            if "final_answer" in value and value["final_answer"]:
+                final_answer = value["final_answer"]
+                print(final_answer)
+                final_response = final_answer
+            
+            # messages가 있으면 마지막 메시지 출력
+            elif "messages" in value and value["messages"]:
+                last_message = value["messages"][-1]
+                if hasattr(last_message, 'content') and last_message.content:
+                    print(last_message.content)
+                    if not final_response:  # final_answer가 없으면 마지막 메시지를 응답으로 사용
+                        final_response = last_message.content
     
     print_completion(is_debug=False)
     
-    # 최종 응답 획득
-    if collected_content:
-        final_response = "".join(collected_content)
-    else:
-        result = app.invoke(current_state, config=config)
-        messages = result.get("messages", [])
-        if messages:
-            final_response = messages[-1].content
-        else:
-            final_response = "응답을 생성하지 못했습니다."
+    # 최종 응답이 없으면 기본 메시지
+    if not final_response:
+        final_response = "응답을 생성하지 못했습니다."
     
     conversation_history.append(AIMessage(content=final_response))
     return final_response
-            
-    # except Exception as e:
-    #     print(f"❌ 디버그 모드 오류 발생: {str(e)}")
-    #     return f"오류가 발생했습니다: {str(e)}" 
+
+
+def get_node_tools(node_name: str) -> str:
+    """노드별 사용 툴 반환"""
+    node_tools = {
+        "Supervisor": "워크플로 관리",
+        "SajuExpert": "calculate_saju_tool",
+        "Search": "saju_retriever_tool + tavily_tool + duck_tool",
+        "GeneralAnswer": "general_qa_tool (Google Gemini)"
+    }
+    return node_tools.get(node_name, "unknown")
+
+
+
+ 
