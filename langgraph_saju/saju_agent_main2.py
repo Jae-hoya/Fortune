@@ -23,6 +23,10 @@ import uuid
 import asyncio
 import sys
 
+# FastAPI 관련 import
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
 # --- 로컬 모듈 임포트 ---
 # (실제 환경에 맞게 경로를 확인하거나 수정해야 할 수 있습니다.)
 from manse_8 import calculate_saju_tool
@@ -31,8 +35,6 @@ from query_expansion_agent import get_query_expansion_node, get_query_expansion_
 
 # --- 환경 변수 로드 ---
 load_dotenv()
-
-now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # --- LLM 및 기본 설정 ---
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
@@ -56,6 +58,8 @@ retriever_tools = [retriever_tool]
 # Manse Tool Agent
 manse_tools = [calculate_saju_tool]
 manse_tool_agent = create_react_agent(llm, manse_tools)
+
+now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # Retriever Tool Agent
 base_prompt = load_prompt("prompt/saju-rag-promt_2.yaml")
@@ -193,11 +197,40 @@ def create_workflow_graph():
 from langchain_teddynote.messages import random_uuid, stream_graph, invoke_graph
 from langchain_core.messages import AIMessage
 
-# --- 6. 스크립트 실행 (스트리밍 로직 수정) ---
+# --- FastAPI 서버 구현 ---
+app = FastAPI()
+
+class SajuRequest(BaseModel):
+    messages: list[str]  # 사용자 질문 히스토리 (문자열 리스트)
+    thread_id: str = None  # (선택) 세션/스레드 ID
+
+@app.post("/saju")
+async def saju_endpoint(req: SajuRequest):
+    chat_history = [HumanMessage(content=msg) for msg in req.messages]
+    try:
+        result = run_saju_analysis(chat_history, thread_id=req.thread_id, use_stream=True)
+        all_contents = []
+        for msg in result:
+            print("stream msg:", msg)
+            if hasattr(msg, 'content'):
+                all_contents.append(msg.content)
+        if all_contents:
+            return JSONResponse(content={"answers": all_contents})
+        else:
+            return JSONResponse(content={"answer": "답변을 생성하지 못했습니다."}, status_code=500)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+# --- 기존 run_saju_analysis 함수 유지 ---
 def run_saju_analysis(messages, thread_id=None, use_stream=True):
+    print("run_saju_analysis 진입")
     graph = create_workflow_graph()
+    print("그래프 생성:", graph)
     if not graph:
-        return "그래프 생성에 실패했습니다."
+        print("그래프 생성 실패")
+        return None
     if thread_id is None:
         thread_id = random_uuid()
     config = RunnableConfig(recursion_limit=10, configurable={"thread_id": thread_id})
@@ -207,47 +240,11 @@ def run_saju_analysis(messages, thread_id=None, use_stream=True):
     else:
         return invoke_graph(graph, inputs, config)
 
-def main():
-    print("사주 에이전틱 RAG 시스템 (대화 맥락 기억 버전)을 시작합니다... ")
-    print("생년월일, 태이난 시각, 성별을 입력해 주세요.")
-    print("윤달에 태어나신 경우, 윤달이라고 작성해주세요.")
-    example_questions = [
-        "1996년 12월 13일 남자, 10시 30분 출생 운세봐줘.",
-        "대운과 세운, 조심해야 할것들 알려줘",
-        "금전운알려줘",
-        "정관이 뭐야? 상세히 설명해줘",
-        "사주의 개념에 대해서 알려줘"
-    ]
-    print("\n사용 가능한 예시 질문:")
-    for i, question in enumerate(example_questions, 1):
-        print(f"{i}. {question}")
-    print("\n질문을 입력하세요 (종료하려면 'quit' 입력):")
-    chat_history = []
-    thread_id = random_uuid()
-    while True:
-        user_input = input("\n질문: ").strip()
-        if user_input.lower() in ['quit', 'exit', '종료']:
-            print("시스템을 종료합니다.")
-            break
-        if not user_input:
-            continue
-        chat_history.append(HumanMessage(content=user_input))
-        try:
-            print("\n분석을 시작합니다...")
-            result = run_saju_analysis(chat_history, thread_id=thread_id, use_stream=True)
-            print("\n분석 완료!")
-            # 답변 메시지 추출 및 기록 (AIMessage로 저장)
-            if hasattr(result, '__iter__') and not isinstance(result, str):
-                # stream_graph의 경우 generator이므로, 마지막 메시지 추출
-                last_ai_msg = None
-                for msg in result:
-                    if hasattr(msg, 'content'):
-                        last_ai_msg = msg
-                if last_ai_msg:
-                    chat_history.append(AIMessage(content=last_ai_msg.content))
-            # invoke_graph의 경우는 별도 처리 필요
-        except Exception as e:
-            print(f"오류가 발생했습니다: {e}")
-
+# FastAPI 실행용 main
 if __name__ == "__main__":
-    main()
+    import uvicorn
+    uvicorn.run("saju_agent_main2:app", host="0.0.0.0", port=8000, reload=True) 
+
+
+    #uvicorn saju_agent_main2:app --reload --host 0.0.0.0 --port 8000
+     #http://localhost:8000/docs 

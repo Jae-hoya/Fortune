@@ -1,7 +1,9 @@
+# 병렬구조
+
 import functools
 import operator
 from datetime import datetime
-from typing import Sequence, Annotated, Literal
+from typing import Sequence, Annotated, Literal, Optional, Dict, List, Any
 from typing_extensions import TypedDict
 
 from dotenv import load_dotenv
@@ -22,9 +24,9 @@ from pydantic import BaseModel
 import uuid
 import asyncio
 import sys
+import json
 
 # --- 로컬 모듈 임포트 ---
-# (실제 환경에 맞게 경로를 확인하거나 수정해야 할 수 있습니다.)
 from manse_8 import calculate_saju_tool
 from pdf_retriever_saju import pdf_rag_chain, compression_retriever
 from query_expansion_agent import get_query_expansion_node, get_query_expansion_agent
@@ -41,12 +43,20 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 pdf_retriever = compression_retriever()
 pdf_chain = pdf_rag_chain()
 
+# retriever_tool = create_retriever_tool(
+#     pdf_retriever,
+#     "pdf_retriever",
+#     "A tool for searching information related to Saju (Four Pillars of Destiny)",
+#     document_prompt=PromptTemplate.from_template(
+#         "<document><context>{page_content}</context><metadata><source>{source}</source><page>{page}</page></metadata></document>"
+#     ),
+# )
 retriever_tool = create_retriever_tool(
     pdf_retriever,
     "pdf_retriever",
     "A tool for searching information related to Saju (Four Pillars of Destiny)",
     document_prompt=PromptTemplate.from_template(
-        "<document><context>{page_content}</context><metadata><source>{source}</source><page>{page}</page></metadata></document>"
+        "<document><context>{page_content}</context><metadata><source>{source}</source></metadata></document>"
     ),
 )
 retriever_tools = [retriever_tool]
@@ -90,15 +100,88 @@ general_qa_agent = create_react_agent(llm, tools=general_qa_tools, prompt=genera
 # Query Expansion Agent
 query_expansion_node = get_query_expansion_node()
 
+# --- 사주 정보 구조 정의 ---
+class BirthInfo(TypedDict):
+    year: int
+    month: int
+    day: int
+    hour: int
+    minute: int
+    is_male: bool
+    is_leap_month: bool
+
+class SajuResult(TypedDict):
+    year_pillar: str
+    month_pillar: str
+    day_pillar: str
+    hour_pillar: str
+    day_master: str
+    age: int
+    korean_age: int
+    element_strength: Optional[Dict[str, int]]
+    ten_gods: Optional[Dict[str, List[str]]]
+    great_fortunes: Optional[List[Dict[str, Any]]]
+    yearly_fortunes: Optional[List[Dict[str, Any]]]
+    useful_gods: Optional[List[str]]
+    taboo_gods: Optional[List[str]]
+    saju_analysis: Optional[str]
+
 # --- 3. Agent 상태 및 노드 정의 ---
 
 class AgentState(TypedDict):
-    messages: Annotated[Sequence[BaseMessage], operator.add]
+    # 기본 LangGraph 요구사항
+    question: str
+    messages: Annotated[List[BaseMessage], operator.add]
     next: str
+    final_answer: Optional[str]
+    # 세션 관리
+    session_id: str
+    session_start_time: str
+    current_time: str
+    # 사주 시스템 핵심 정보
+    birth_info: Optional[BirthInfo]
+    saju_result: Optional[SajuResult]
+    query_type: str  # "saju", "tarot", "general" 등
+    # 에이전트 간 데이터 공유
+    retrieved_docs: List[Dict[str, Any]]
+    web_search_results: List[Dict[str, Any]]
+
+# agent_node 함수 리팩토링: state 전체를 반환하도록 수정
 
 def agent_node(state, agent, name):
     agent_response = agent.invoke(state)
-    return {"messages": [HumanMessage(content=agent_response["messages"][-1].content, name=name)]}
+    # 기존 메시지에 새 메시지 추가
+    state["messages"] = state.get("messages", []) + [HumanMessage(content=agent_response["messages"][-1].content, name=name)]
+    return state
+
+def parse_birth_info_with_llm(user_input, llm):
+    prompt = f"""
+아래 문장에서 출생 정보를 추출해서 JSON 형태로 반환하세요.
+필드: year, month, day, hour, minute, is_male, is_leap_month
+예시 입력: "1996년 12월 13일 남자, 10시 30분 출생"
+예시 출력: {{"year": 1996, "month": 12, "day": 13, "hour": 10, "minute": 30, "is_male": true, "is_leap_month": false}}
+
+입력: {user_input}
+"""
+    result = llm.invoke(prompt)
+    # LLM이 반환한 JSON 문자열을 파싱
+    try:
+        birth_info = json.loads(result.content)
+        return birth_info
+    except Exception as e:
+        print("파싱 오류:", e)
+        return None
+
+from manse_8 import calculate_saju_tool
+
+def manse_tool_agent_node(state):
+    user_input = state["question"]
+    birth_info = parse_birth_info_with_llm(user_input, llm)
+    state["birth_info"] = birth_info
+    saju_result = calculate_saju_tool(birth_info)
+    state["saju_result"] = saju_result
+    state["messages"].append(HumanMessage(content=f"사주 풀이 결과: {saju_result}", name="ManseTool"))
+    return state
 
 manse_tool_agent_node = functools.partial(agent_node, agent=manse_tool_agent, name="ManseTool")
 retriever_tool_agent_node = functools.partial(agent_node, agent=retriever_tool_agent, name="RetrieverTool")
@@ -112,8 +195,8 @@ options_for_next = ["FINISH"] + members
 class RouteResponse(BaseModel):
     next: Literal[*options_for_next]
 
-# --- 현재 날짜
 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 
 supervisor_system_prompt = (
     "오늘 날짜는 {now}입니다.\n"
@@ -153,21 +236,85 @@ def supervisor_agent(state):
     route_response = supervisor_chain.invoke(state)
     return {"next": route_response.next}
 
-# --- 5. LangGraph 그래프 구성 ---
+@tool
+def saju_chat_tool(state):
+    """
+    사주에 대한 대화형 챗봇 답변을 생성합니다. 간단하게 답변해주세요.
+    """
+    # state에서 messages를 안전하게 가져오기
+    messages = state.get("messages", [])
+    response = "(사주 대화 결과: 추가 질문에 대한 답변)"
+    # 기존 메시지 리스트에 새 메시지를 추가
+    return {"messages": messages + [HumanMessage(content=response, name="SajuChat")]}
+
+saju_chat_tools = [saju_chat_tool]
+saju_chat_prompt = "사주 대화 결과를 참고하여 추가 질문에 대한 답변을 생성합니다. 예를들어, 내일의 운세, 내년의 운세등을 대화형식으로 답변합니다."
+saju_chat_agent = create_react_agent(llm, saju_chat_tools, prompt=saju_chat_prompt)
+saju_chat_node = functools.partial(agent_node, agent=saju_chat_agent, name="SajuChat")
+
+
+# LLM 분기 프롬프트
+branch_prompt = ChatPromptTemplate.from_messages([
+    ("system", "다음 중 어디로 가야 할지 판단하세요: 'saju_chat' 또는 'retriever'.\n"
+               "사주풀이에 추가 설명이 필요하면 'saju_chat', 생년월일을 입력받으면 'retriever'를 선택하세요.\n"
+               "반드시 하나만 골라주세요.\n"),
+    ("user", "질문: {user_input}\n"
+             "manse 결과: {manse_result}\n"
+             "어디로 가야 합니까? (saju_chat/retriever 중 하나만 답변)")
+])
+
+def llm_branch_decision(state):
+    user_input = ""
+    manse_result = ""
+    # state에서 user_input, manse_result 추출 (구조에 따라 조정)
+    if state.get("messages"):
+        # messages가 리스트인지 문자열인지 확인
+        if isinstance(state["messages"], list) and len(state["messages"]) > 0:
+            # 첫 번째 메시지가 HumanMessage 객체인 경우
+            if hasattr(state["messages"][0], 'content'):
+                user_input = state["messages"][0].content
+            else:
+                user_input = str(state["messages"][0])
+            
+            # 마지막 메시지가 AIMessage 객체인 경우
+            if hasattr(state["messages"][-1], 'content'):
+                manse_result = state["messages"][-1].content
+            else:
+                manse_result = str(state["messages"][-1])
+        else:
+            # messages가 문자열인 경우
+            user_input = str(state["messages"])
+            manse_result = ""
+    
+    prompt = branch_prompt.format(user_input=user_input, manse_result=manse_result)
+    # LLM 호출
+    result = llm.invoke(prompt)
+    # 결과에서 'saju_chat' 또는 'retriever'만 추출
+    if "retriever" in result.content.lower():
+        return "retriever"
+    return "saju_chat"
 
 def create_workflow_graph():
-    """워크플로우 그래프 생성"""
-    # SajuExpert Sub-graph 생성
+    """워크플로우 그래프 생성 (병렬 구조)"""
     saju_expert_workflow = StateGraph(AgentState)
     saju_expert_workflow.add_node("manse", manse_tool_agent_node)
+    saju_expert_workflow.add_node("saju_chat", saju_chat_node)
     saju_expert_workflow.add_node("retriever", retriever_tool_agent_node)
 
     saju_expert_workflow.add_edge(START, "manse")
-    saju_expert_workflow.add_edge("manse", "retriever")
+    saju_expert_workflow.add_conditional_edges(
+        "manse",
+        llm_branch_decision,
+        {
+            "saju_chat": "saju_chat",
+            "retriever": "retriever"
+        }
+    )
+    saju_expert_workflow.add_edge("saju_chat", END)
     saju_expert_workflow.add_edge("retriever", END)
-    saju_expert_graph = saju_expert_workflow.compile(MemorySaver())
-
-    # 메인 그래프 생성
+    saju_expert_graph = saju_expert_workflow.compile(MemorySaver())  # 이 부분!
+    
+    # 메인 그래프 생성 (기존과 동일)
     workflow = StateGraph(AgentState)
     workflow.add_node("SajuExpert", saju_expert_graph)
     workflow.add_node("QueryExpansion", query_expansion_node)
@@ -190,25 +337,25 @@ def create_workflow_graph():
 
     return workflow.compile(checkpointer=MemorySaver())
 
-from langchain_teddynote.messages import random_uuid, stream_graph, invoke_graph
+from langchain_teddynote.messages import random_uuid, stream_graph, invoke_graph, stream_graph_v2
 from langchain_core.messages import AIMessage
 
-# --- 6. 스크립트 실행 (스트리밍 로직 수정) ---
 def run_saju_analysis(messages, thread_id=None, use_stream=True):
     graph = create_workflow_graph()
     if not graph:
         return "그래프 생성에 실패했습니다."
     if thread_id is None:
         thread_id = random_uuid()
-    config = RunnableConfig(recursion_limit=10, configurable={"thread_id": thread_id})
+    config = RunnableConfig(recursion_limit=20, configurable={"thread_id": thread_id})
     inputs = {"messages": messages}
     if use_stream:
         return stream_graph(graph, inputs, config)
     else:
         return invoke_graph(graph, inputs, config)
 
+
 def main():
-    print("사주 에이전틱 RAG 시스템 (대화 맥락 기억 버전)을 시작합니다... ")
+    print("사주 에이전틱 RAG 시스템 (병렬 구조 버전)을 시작합니다... ")
     print("생년월일, 태이난 시각, 성별을 입력해 주세요.")
     print("윤달에 태어나신 경우, 윤달이라고 작성해주세요.")
     example_questions = [
@@ -250,4 +397,4 @@ def main():
             print(f"오류가 발생했습니다: {e}")
 
 if __name__ == "__main__":
-    main()
+    main() 

@@ -1,3 +1,5 @@
+# 병렬구조
+
 import functools
 import operator
 from datetime import datetime
@@ -24,7 +26,6 @@ import asyncio
 import sys
 
 # --- 로컬 모듈 임포트 ---
-# (실제 환경에 맞게 경로를 확인하거나 수정해야 할 수 있습니다.)
 from manse_8 import calculate_saju_tool
 from pdf_retriever_saju import pdf_rag_chain, compression_retriever
 from query_expansion_agent import get_query_expansion_node, get_query_expansion_agent
@@ -41,12 +42,20 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 pdf_retriever = compression_retriever()
 pdf_chain = pdf_rag_chain()
 
+# retriever_tool = create_retriever_tool(
+#     pdf_retriever,
+#     "pdf_retriever",
+#     "A tool for searching information related to Saju (Four Pillars of Destiny)",
+#     document_prompt=PromptTemplate.from_template(
+#         "<document><context>{page_content}</context><metadata><source>{source}</source><page>{page}</page></metadata></document>"
+#     ),
+# )
 retriever_tool = create_retriever_tool(
     pdf_retriever,
     "pdf_retriever",
     "A tool for searching information related to Saju (Four Pillars of Destiny)",
     document_prompt=PromptTemplate.from_template(
-        "<document><context>{page_content}</context><metadata><source>{source}</source><page>{page}</page></metadata></document>"
+        "<document><context>{page_content}</context><metadata><source>{source}</source></metadata></document>"
     ),
 )
 retriever_tools = [retriever_tool]
@@ -112,7 +121,6 @@ options_for_next = ["FINISH"] + members
 class RouteResponse(BaseModel):
     next: Literal[*options_for_next]
 
-# --- 현재 날짜
 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 supervisor_system_prompt = (
@@ -153,21 +161,85 @@ def supervisor_agent(state):
     route_response = supervisor_chain.invoke(state)
     return {"next": route_response.next}
 
-# --- 5. LangGraph 그래프 구성 ---
+@tool
+def saju_chat_tool(state):
+    """
+    사주에 대한 대화형 챗봇 답변을 생성합니다. 간단하게 답변해주세요.
+    """
+    # state에서 messages를 안전하게 가져오기
+    messages = state.get("messages", [])
+    response = "(사주 대화 결과: 추가 질문에 대한 답변)"
+    # 기존 메시지 리스트에 새 메시지를 추가
+    return {"messages": messages + [HumanMessage(content=response, name="SajuChat")]}
+
+saju_chat_tools = [saju_chat_tool]
+saju_chat_prompt = "사주 대화 결과를 참고하여 추가 질문에 대한 답변을 생성합니다. 예를들어, 내일의 운세, 내년의 운세등을 대화형식으로 답변합니다."
+saju_chat_agent = create_react_agent(llm, saju_chat_tools, prompt=saju_chat_prompt)
+saju_chat_node = functools.partial(agent_node, agent=saju_chat_agent, name="SajuChat")
+
+
+# LLM 분기 프롬프트
+branch_prompt = ChatPromptTemplate.from_messages([
+    ("system", "다음 중 어디로 가야 할지 판단하세요: 'saju_chat' 또는 'retriever'.\n"
+               "사주풀이에 추가 설명이 필요하면 'saju_chat', 생년월일을 입력받으면 'retriever'를 선택하세요.\n"
+               "반드시 하나만 골라주세요.\n"),
+    ("user", "질문: {user_input}\n"
+             "manse 결과: {manse_result}\n"
+             "어디로 가야 합니까? (saju_chat/retriever 중 하나만 답변)")
+])
+
+def llm_branch_decision(state):
+    user_input = ""
+    manse_result = ""
+    # state에서 user_input, manse_result 추출 (구조에 따라 조정)
+    if state.get("messages"):
+        # messages가 리스트인지 문자열인지 확인
+        if isinstance(state["messages"], list) and len(state["messages"]) > 0:
+            # 첫 번째 메시지가 HumanMessage 객체인 경우
+            if hasattr(state["messages"][0], 'content'):
+                user_input = state["messages"][0].content
+            else:
+                user_input = str(state["messages"][0])
+            
+            # 마지막 메시지가 AIMessage 객체인 경우
+            if hasattr(state["messages"][-1], 'content'):
+                manse_result = state["messages"][-1].content
+            else:
+                manse_result = str(state["messages"][-1])
+        else:
+            # messages가 문자열인 경우
+            user_input = str(state["messages"])
+            manse_result = ""
+    
+    prompt = branch_prompt.format(user_input=user_input, manse_result=manse_result)
+    # LLM 호출
+    result = llm.invoke(prompt)
+    # 결과에서 'saju_chat' 또는 'retriever'만 추출
+    if "retriever" in result.content.lower():
+        return "retriever"
+    return "saju_chat"
 
 def create_workflow_graph():
-    """워크플로우 그래프 생성"""
-    # SajuExpert Sub-graph 생성
+    """워크플로우 그래프 생성 (병렬 구조)"""
     saju_expert_workflow = StateGraph(AgentState)
     saju_expert_workflow.add_node("manse", manse_tool_agent_node)
+    saju_expert_workflow.add_node("saju_chat", saju_chat_node)
     saju_expert_workflow.add_node("retriever", retriever_tool_agent_node)
 
     saju_expert_workflow.add_edge(START, "manse")
-    saju_expert_workflow.add_edge("manse", "retriever")
+    saju_expert_workflow.add_conditional_edges(
+        "manse",
+        llm_branch_decision,
+        {
+            "saju_chat": "saju_chat",
+            "retriever": "retriever"
+        }
+    )
+    saju_expert_workflow.add_edge("saju_chat", END)
     saju_expert_workflow.add_edge("retriever", END)
-    saju_expert_graph = saju_expert_workflow.compile(MemorySaver())
-
-    # 메인 그래프 생성
+    saju_expert_graph = saju_expert_workflow.compile(MemorySaver())  # 이 부분!
+    
+    # 메인 그래프 생성 (기존과 동일)
     workflow = StateGraph(AgentState)
     workflow.add_node("SajuExpert", saju_expert_graph)
     workflow.add_node("QueryExpansion", query_expansion_node)
@@ -190,25 +262,25 @@ def create_workflow_graph():
 
     return workflow.compile(checkpointer=MemorySaver())
 
-from langchain_teddynote.messages import random_uuid, stream_graph, invoke_graph
+from langchain_teddynote.messages import random_uuid, stream_graph, invoke_graph, stream_graph_v2
 from langchain_core.messages import AIMessage
 
-# --- 6. 스크립트 실행 (스트리밍 로직 수정) ---
 def run_saju_analysis(messages, thread_id=None, use_stream=True):
     graph = create_workflow_graph()
     if not graph:
         return "그래프 생성에 실패했습니다."
     if thread_id is None:
         thread_id = random_uuid()
-    config = RunnableConfig(recursion_limit=10, configurable={"thread_id": thread_id})
+    config = RunnableConfig(recursion_limit=20, configurable={"thread_id": thread_id})
     inputs = {"messages": messages}
     if use_stream:
         return stream_graph(graph, inputs, config)
     else:
         return invoke_graph(graph, inputs, config)
 
+
 def main():
-    print("사주 에이전틱 RAG 시스템 (대화 맥락 기억 버전)을 시작합니다... ")
+    print("사주 에이전틱 RAG 시스템 (병렬 구조 버전)을 시작합니다... ")
     print("생년월일, 태이난 시각, 성별을 입력해 주세요.")
     print("윤달에 태어나신 경우, 윤달이라고 작성해주세요.")
     example_questions = [
@@ -250,4 +322,4 @@ def main():
             print(f"오류가 발생했습니다: {e}")
 
 if __name__ == "__main__":
-    main()
+    main() 

@@ -1,80 +1,126 @@
+# 1. 표준/외부 라이브러리 임포트
 import functools
 import operator
 from datetime import datetime
-from typing import Sequence, Annotated, Literal
+from typing import Sequence, Annotated, Literal, Optional, Dict, List, Any
 from typing_extensions import TypedDict
-
+import uuid
+import asyncio
+import sys
+import json
 from dotenv import load_dotenv
 from langchain.tools import tool
-from langchain_core.messages import BaseMessage, HumanMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate, load_prompt
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools.retriever import create_retriever_tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
-from langchain_teddynote.messages import stream_graph
+from langchain_teddynote.messages import stream_graph, random_uuid, invoke_graph, stream_graph_v2
 from langchain_teddynote.tools.tavily import TavilySearch
 from langchain_community.tools import DuckDuckGoSearchResults
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph, START
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel
-import uuid
-import asyncio
-import sys
 
-# --- 로컬 모듈 임포트 ---
-# (실제 환경에 맞게 경로를 확인하거나 수정해야 할 수 있습니다.)
+# 2. 환경 변수 및 상수
+load_dotenv()
+now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+# 3. 로컬 모듈 임포트
 from manse_8 import calculate_saju_tool
 from pdf_retriever_saju import pdf_rag_chain, compression_retriever
 from query_expansion_agent import get_query_expansion_node, get_query_expansion_agent
 
-# --- 환경 변수 로드 ---
-load_dotenv()
+# 4. 데이터 구조 정의
+class BirthInfo(TypedDict):
+    year: int
+    month: int
+    day: int
+    hour: int
+    minute: int
+    is_male: bool
+    is_leap_month: bool
 
-now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+class SajuResult(TypedDict):
+    year_pillar: str
+    month_pillar: str
+    day_pillar: str
+    hour_pillar: str
+    day_master: str
+    age: int
+    korean_age: int
+    element_strength: Optional[Dict[str, int]]
+    ten_gods: Optional[Dict[str, List[str]]]
+    great_fortunes: Optional[List[Dict[str, Any]]]
+    yearly_fortunes: Optional[List[Dict[str, Any]]]
+    useful_gods: Optional[List[str]]
+    taboo_gods: Optional[List[str]]
+    saju_analysis: Optional[str]
 
-# --- LLM 및 기본 설정 ---
+class AgentState(TypedDict):
+    question: str
+    messages: Annotated[List[BaseMessage], operator.add]
+    next: str
+    final_answer: Optional[str]
+    session_id: str
+    session_start_time: str
+    current_time: str
+    birth_info: Optional[BirthInfo]
+    saju_result: Optional[SajuResult]
+    query_type: str
+    retrieved_docs: List[Dict[str, Any]]
+    web_search_results: List[Dict[str, Any]]
+
+# 5. 도구 및 에이전트 생성
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
-# --- 1. Retriever 및 관련 도구 설정 ---
 pdf_retriever = compression_retriever()
 pdf_chain = pdf_rag_chain()
-
 retriever_tool = create_retriever_tool(
     pdf_retriever,
     "pdf_retriever",
     "A tool for searching information related to Saju (Four Pillars of Destiny)",
     document_prompt=PromptTemplate.from_template(
-        "<document><context>{page_content}</context><metadata><source>{source}</source><page>{page}</page></metadata></document>"
+        "<document><context>{page_content}</context><metadata><source>{source}</source></metadata></document>"
     ),
 )
-retriever_tools = [retriever_tool]
 
-# --- 2. Agent 생성 ---
 
-# Manse Tool Agent
+# manse tool
 manse_tools = [calculate_saju_tool]
-manse_tool_agent = create_react_agent(llm, manse_tools)
+manse_tool_prompt = """
+사주 계산 결과를 바탕으로, 사용자에게 친절하고 이해하기 쉬운 자연어로 사주풀이 결과를 설명해 주세요. 
+십신 분석에 대한 용어 및 특징 풀이가 필요합니다.
+설명에는 반드시 다음 항목들을 포함해 주세요: 대운, 세운, 건강운, 재물운, 금전운, 직업운, 성공운.
+사용자가 특정 항목만 물어보거나, 추가적인 운을 질문한 경우에는 해당 항목만 중심적으로 답변해 주세요.
+각 항목은 구체적인 근거(오행, 십성, 용신, 기운의 균형 등의 설명)와 함께, 긍정적이고 조언을 담은 존댓말로 전달해 주세요.
+오행에서, 부족한 부분을 채우기 위해서 어떤 것을 해야 하는지도 안내해 주세요.
+예언이나 단정적인 표현 대신, 경향·조언·주의점 중심으로 안내해 주세요. 
+불안감을 줄 수 있는 부정적인 표현("불행하다", "위험하다", "나쁘다" 등)은 사용하지 마시고, 사용자가 삶에 도움이 될 수 있는 방향으로 해석해 주세요.
+항목별로 비슷한 문장이 반복되지 않도록 주의해 주시고, 구체적으로 설명해주세요.
+답변 마지막에는 "더 궁금하신 점이 있으시면 언제든 질문해 주세요."와 같은 마무리 멘트를 넣어주세요.
+"""
+llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+manse_tool_agent = create_react_agent(llm, manse_tools, prompt=manse_tool_prompt).with_config({"tags": ["final_answer_agent"]})
 
-# Retriever Tool Agent
+# retriever tool
+retriever_tools = [retriever_tool]
 base_prompt = load_prompt("prompt/saju-rag-promt_2.yaml")
 saju_prompt = ChatPromptTemplate.from_messages([
     ("system", f"Today is {now}"),
     ("system", base_prompt.template),
     MessagesPlaceholder("messages"),
 ])
-
 retriever_tool_agent = create_react_agent(llm, retriever_tools, prompt=saju_prompt).with_config({"tags": ["final_answer_agent"]})
 
-# Web Search Tool Agent
+# web search tool
 tavily_tool = TavilySearch(max_results=2, include_domains=["namu.wiki", "wikipedia.org"])
 duck_tool = DuckDuckGoSearchResults(max_results=2)
 web_search_tools = [tavily_tool, duck_tool]
 web_search_prompt = "사주 또는 사주 오행의 개념적 질문이나, 일상 질문이 들어오면, web search를 통해 답합니다."
 web_tool_agent = create_react_agent(llm, tools=web_search_tools, prompt=web_search_prompt).with_config({"tags": ["final_answer_agent"]})
 
-# General QA Tool Agent
 @tool
 def general_qa_tool(query: str) -> str:
     """
@@ -84,57 +130,79 @@ def general_qa_tool(query: str) -> str:
     return google_llm.invoke(query)
 
 general_qa_tools = [general_qa_tool]
-general_qa_prompt = "일반적인 질문이나 상식적인 내용에 대해 답변합니다."
+general_qa_prompt = """
+일반적인 질문을 나의 사주와 관련하여 답변합니다.
+만약 state에 birth_info 또는 saju_result가 포함되어 있다면, 그 정보를 참고해서 답변에 반영하세요.
+birth_info: {birth_info}
+saju_result: {saju_result}
+"""
 general_qa_agent = create_react_agent(llm, tools=general_qa_tools, prompt=general_qa_prompt).with_config({"tags": ["final_answer_agent"]})
-
-# Query Expansion Agent
 query_expansion_node = get_query_expansion_node()
 
-# --- 3. Agent 상태 및 노드 정의 ---
-
-class AgentState(TypedDict):
-    messages: Annotated[Sequence[BaseMessage], operator.add]
-    next: str
-
+# 6. 핵심 함수(노드, 파싱, 라우팅 등)
 def agent_node(state, agent, name):
     agent_response = agent.invoke(state)
-    return {"messages": [HumanMessage(content=agent_response["messages"][-1].content, name=name)]}
+    state["messages"] = state.get("messages", []) + [HumanMessage(content=agent_response["messages"][-1].content, name=name)]
+    return state
+
+def parse_birth_info_with_llm(user_input, llm):
+    prompt = f"""
+아래 문장에서 출생 정보를 추출해서 JSON 형태로 반환하세요.
+필드: year, month, day, hour, minute, is_male, is_leap_month
+예시 입력: "1996년 12월 13일 남자, 10시 30분 출생"
+예시 출력: {{"year": 1996, "month": 12, "day": 13, "hour": 10, "minute": 30, "is_male": true, "is_leap_month": false}}
+
+입력: {user_input}
+"""
+    result = llm.invoke(prompt)
+    try:
+        birth_info = json.loads(result.content)
+        return birth_info
+    except Exception as e:
+        print("파싱 오류:", e)
+        return None
+
+def manse_agent_node(state):
+    user_input = state["question"]
+    birth_info = parse_birth_info_with_llm(user_input, llm)
+    state["birth_info"] = birth_info
+    saju_result = calculate_saju_tool(birth_info)
+    state["saju_result"] = saju_result
+    prompt = f"""
+    아래는 사용자의 사주 정보와 계산 결과입니다.
+    - 입력: {user_input}
+    - 사주 계산 결과: {json.dumps(saju_result, ensure_ascii=False, indent=2)}
+    위 정보를 바탕으로, 사용자가 이해하기 쉽게 사주풀이 결과를 자연어로 설명해 주세요.
+    """
+    llm_response = llm.invoke(prompt)
+    state["messages"].append(HumanMessage(content=llm_response.content, name="ManseLLM"))
+    return state
 
 manse_tool_agent_node = functools.partial(agent_node, agent=manse_tool_agent, name="ManseTool")
 retriever_tool_agent_node = functools.partial(agent_node, agent=retriever_tool_agent, name="RetrieverTool")
 web_tool_agent_node = functools.partial(agent_node, agent=web_tool_agent, name="WebTool")
 general_qa_agent_node = functools.partial(agent_node, agent=general_qa_agent, name="GeneralQA")
 
-# --- 4. Supervisor Agent 정의 ---
-members = ["SajuExpert", "WebTool", "GeneralQA"]
+def search_agent_node(state):
+    user_input = state.get("question") or (state["messages"][0].content if state.get("messages") else "")
+    if any(k in user_input for k in ["자료", "문서", "pdf", "검색", "출처"]):
+        return retriever_tool_agent_node(state)
+    else:
+        return web_tool_agent_node(state)
+
+members = ["search", "manse", "general_qa"]
 options_for_next = ["FINISH"] + members
 
 class RouteResponse(BaseModel):
     next: Literal[*options_for_next]
-
-# --- 현재 날짜
-now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
 supervisor_system_prompt = (
-    "오늘 날짜는 {now}입니다.\n"
+    f"오늘 날짜는 {{now}}입니다.\n"
     "당신은 다음과 같은 전문 에이전트들을 조율하는 Supervisor입니다: {members}.\n"
     "각 에이전트의 역할은 다음과 같습니다:\n"
-    "- SajuExpert: 사주(생년월일/시간 등) 정보를 바탕으로 사주풀이, 운세 해석, 상세 분석을 담당합니다. "
-        " 추가적인 질문으로 내일, 다음달 내년등 미래에 대한 운세를 물어볼때도 SajuExpert를 호출하세요. "
-        " 이때 이전 사주구조를 사용해야 하며, 미래의 운세는 현재의 기준으로({now}) 나의 내일, 다음달, 내년 운세를 말합니다.\n"
-        " 이때 특별한 요청이 있지 않는이상, 이전에 사용했던 사주구조, 천간지지, 오핸분석을 그대로 사용해야 합니다.\n"
-    "- WebTool: 사주 개념, 오행 등 일반적/개념적 질문이나 일상 질문에 대해 웹 검색을 통해 답변합니다.\n"
-    "- GeneralQA: 사주와 무관한 일반 상식, 과학, 프로그래밍 등 모든 질문에 답변합니다.\n\n"
-    "당신의 임무는 사용자의 요청을 가장 적합한 에이전트에게 라우팅하는 것입니다.\n"
-    "다음 기준을 따르세요:\n"
-    "1. 사용자 입력에 생년월일, 출생시간 등 사주풀이에 필요한 정보가 포함되어 있거나,"
-    " 추가적인 운세/사주풀이, 또는 내일, 다음달 내년등 미래에 대한 운세를(예: 내일 운세알려줘, 다음달 운세 알려줘 등등) 요청하면 SajuExpert를 호출하세요. 이때 현재의 기준으로({now}) 나의 내일, 다음달, 내년 운세를 말합니다.\n"
-    " 이때 특별한 요청이 있지 않는이상, 이전에 사용했던 사주구조를 사용해야 합니다."
-    "2. 사주에 대한 개념적/일반적 질문(예: '사주란 무엇인가요?')이나 일상 질문은 WebTool을 호출하세요.\n"
-    "3. 사주와 전혀 관련 없는 질문은 GeneralQA를 호출하세요.\n"
-    "4. **이전 대화(최근 assistant의 답변)가 SajuExpert(만세툴)에서 나온 것이고, 이번 질문이 그에 대한 추가 질문(예: '그럼 건강운은?', '재물운은?')이라면, 반드시 SajuExpert로 라우팅하세요.**\n"
-    "5. 대화의 맥락을 고려하여, 사용자가 명시적으로 사주풀이를 요청하지 않아도, 직전 대화가 사주풀이였다면 추가 질문도 SajuExpert로 보내세요.\n"
-    "에이전트가 답변을 마치면 FINISH로 응답하세요."
+    "- search: 웹검색 및 문서/DB 검색(내부에서 자동 분기)\n"
+    "- manse: 생년월일/시간 등 사주풀이, 운세 해석, 상세 분석 담당\n"
+    "- general_qa: 사주와 무관한 일반 상식, 과학, 프로그래밍 등 모든 질문에 답변\n"
+    "입력에 따라 가장 적합한 에이전트로 라우팅하세요."
 )
 
 supervisor_prompt = ChatPromptTemplate.from_messages(
@@ -144,7 +212,6 @@ supervisor_prompt = ChatPromptTemplate.from_messages(
         ("system", "위 대화를 참고하여, 다음 중 누가 다음 행동을 해야 하는지 선택하세요: {options}"),
     ]
 )
-
 def supervisor_agent(state):
     supervisor_chain = (
         supervisor_prompt.partial(options=str(options_for_next), members=", ".join(members), now=now)
@@ -153,62 +220,39 @@ def supervisor_agent(state):
     route_response = supervisor_chain.invoke(state)
     return {"next": route_response.next}
 
-# --- 5. LangGraph 그래프 구성 ---
-
+# 7. LangGraph 워크플로우 생성
 def create_workflow_graph():
-    """워크플로우 그래프 생성"""
-    # SajuExpert Sub-graph 생성
-    saju_expert_workflow = StateGraph(AgentState)
-    saju_expert_workflow.add_node("manse", manse_tool_agent_node)
-    saju_expert_workflow.add_node("retriever", retriever_tool_agent_node)
-
-    saju_expert_workflow.add_edge(START, "manse")
-    saju_expert_workflow.add_edge("manse", "retriever")
-    saju_expert_workflow.add_edge("retriever", END)
-    saju_expert_graph = saju_expert_workflow.compile(MemorySaver())
-
-    # 메인 그래프 생성
     workflow = StateGraph(AgentState)
-    workflow.add_node("SajuExpert", saju_expert_graph)
-    workflow.add_node("QueryExpansion", query_expansion_node)
-    workflow.add_node("WebTool", web_tool_agent_node)
-    workflow.add_node("GeneralQA", general_qa_agent_node)
+    workflow.add_node("search", search_agent_node)
+    workflow.add_node("manse", manse_tool_agent_node)
+    workflow.add_node("general_qa", general_qa_agent_node)
     workflow.add_node("Supervisor", supervisor_agent)
-
     for member in members:
         workflow.add_edge(member, "Supervisor")
-
     conditional_map = {k: k for k in members}
     conditional_map["FINISH"] = END
-
     def get_next(state):
         return state["next"]
-
     workflow.add_conditional_edges("Supervisor", get_next, conditional_map)
-    workflow.add_edge(START, "QueryExpansion")
-    workflow.add_edge("QueryExpansion", "Supervisor")
-
+    workflow.add_edge(START, "Supervisor")
     return workflow.compile(checkpointer=MemorySaver())
 
-from langchain_teddynote.messages import random_uuid, stream_graph, invoke_graph
-from langchain_core.messages import AIMessage
-
-# --- 6. 스크립트 실행 (스트리밍 로직 수정) ---
 def run_saju_analysis(messages, thread_id=None, use_stream=True):
     graph = create_workflow_graph()
     if not graph:
         return "그래프 생성에 실패했습니다."
     if thread_id is None:
         thread_id = random_uuid()
-    config = RunnableConfig(recursion_limit=10, configurable={"thread_id": thread_id})
+    config = RunnableConfig(recursion_limit=20, configurable={"thread_id": thread_id})
     inputs = {"messages": messages}
     if use_stream:
         return stream_graph(graph, inputs, config)
     else:
         return invoke_graph(graph, inputs, config)
 
+# 8. 실행(main) 함수
 def main():
-    print("사주 에이전틱 RAG 시스템 (대화 맥락 기억 버전)을 시작합니다... ")
+    print("사주 에이전틱 RAG 시스템 (병렬 구조 버전)을 시작합니다... ")
     print("생년월일, 태이난 시각, 성별을 입력해 주세요.")
     print("윤달에 태어나신 경우, 윤달이라고 작성해주세요.")
     example_questions = [
@@ -236,18 +280,15 @@ def main():
             print("\n분석을 시작합니다...")
             result = run_saju_analysis(chat_history, thread_id=thread_id, use_stream=True)
             print("\n분석 완료!")
-            # 답변 메시지 추출 및 기록 (AIMessage로 저장)
             if hasattr(result, '__iter__') and not isinstance(result, str):
-                # stream_graph의 경우 generator이므로, 마지막 메시지 추출
                 last_ai_msg = None
                 for msg in result:
                     if hasattr(msg, 'content'):
                         last_ai_msg = msg
                 if last_ai_msg:
                     chat_history.append(AIMessage(content=last_ai_msg.content))
-            # invoke_graph의 경우는 별도 처리 필요
         except Exception as e:
             print(f"오류가 발생했습니다: {e}")
 
 if __name__ == "__main__":
-    main()
+    main() 

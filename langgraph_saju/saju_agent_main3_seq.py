@@ -1,3 +1,5 @@
+# 순차구조
+
 import functools
 import operator
 from datetime import datetime
@@ -155,15 +157,39 @@ def supervisor_agent(state):
 
 # --- 5. LangGraph 그래프 구성 ---
 
+@tool
+def saju_chat_tool(state):
+    """
+    사주에 대한 대화형 챗봇 답변을 생성합니다. 간단하게 답변해주세요.
+    """
+    last_msg = state["messages"][-1].content
+    response = "(사주 대화 결과: 추가 질문에 대한 답변)"
+    return {"messages": last_msg + [HumanMessage(content=response, name="SajuChat")]}
+
+saju_chat_tools = [saju_chat_tool]
+saju_chat_prompt = "사주 대화 결과를 참고하여 추가 질문에 대한 답변을 생성합니다. 내일의 운세, 내년의 운세등을 대화형식으로 답변합니다."
+saju_chat_agent = create_react_agent(llm, saju_chat_tools, prompt=saju_chat_prompt)
+saju_chat_node = functools.partial(agent_node, agent=saju_chat_agent, name="SajuChat")
+
 def create_workflow_graph():
-    """워크플로우 그래프 생성"""
-    # SajuExpert Sub-graph 생성
+    """워크플로우 그래프 생성 (순차 구조: manse → saju_chat → retriever → END, 또는 saju_chat → END)"""
+    # SajuExpert Sub-graph 생성 (순차)
     saju_expert_workflow = StateGraph(AgentState)
     saju_expert_workflow.add_node("manse", manse_tool_agent_node)
+    saju_expert_workflow.add_node("saju_chat", saju_chat_node)
     saju_expert_workflow.add_node("retriever", retriever_tool_agent_node)
 
     saju_expert_workflow.add_edge(START, "manse")
-    saju_expert_workflow.add_edge("manse", "retriever")
+    saju_expert_workflow.add_edge("manse", "saju_chat")
+    # saju_chat 이후 조건부 분기: retriever 또는 END
+    def saju_chat_next(state):
+        last_msg = state["messages"][-1].content
+        # 예시: '자료', '더', '검색' 등 키워드가 있으면 retriever로, 아니면 END
+        if any(k in last_msg for k in ["자료", "더", "검색"]):
+            return "retriever"
+        else:
+            return END
+    saju_expert_workflow.add_conditional_edges("saju_chat", saju_chat_next, {"retriever": "retriever", END: END})
     saju_expert_workflow.add_edge("retriever", END)
     saju_expert_graph = saju_expert_workflow.compile(MemorySaver())
 

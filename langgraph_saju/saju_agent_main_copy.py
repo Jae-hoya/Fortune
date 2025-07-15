@@ -32,6 +32,7 @@ from query_expansion_agent import get_query_expansion_node, get_query_expansion_
 # --- 환경 변수 로드 ---
 load_dotenv()
 
+# --- 현재 날짜
 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # --- LLM 및 기본 설정 ---
@@ -60,7 +61,6 @@ manse_tool_agent = create_react_agent(llm, manse_tools)
 # Retriever Tool Agent
 base_prompt = load_prompt("prompt/saju-rag-promt_2.yaml")
 saju_prompt = ChatPromptTemplate.from_messages([
-    ("system", f"Today is {now}"),
     ("system", base_prompt.template),
     MessagesPlaceholder("messages"),
 ])
@@ -112,23 +112,19 @@ options_for_next = ["FINISH"] + members
 class RouteResponse(BaseModel):
     next: Literal[*options_for_next]
 
-# --- 현재 날짜
-now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
 supervisor_system_prompt = (
     "오늘 날짜는 {now}입니다.\n"
     "당신은 다음과 같은 전문 에이전트들을 조율하는 Supervisor입니다: {members}.\n"
     "각 에이전트의 역할은 다음과 같습니다:\n"
     "- SajuExpert: 사주(생년월일/시간 등) 정보를 바탕으로 사주풀이, 운세 해석, 상세 분석을 담당합니다. "
-        " 추가적인 질문으로 내일, 다음달 내년등 미래에 대한 운세를 물어볼때도 SajuExpert를 호출하세요. "
-        " 이때 이전 사주구조를 사용해야 하며, 미래의 운세는 현재의 기준으로({now}) 나의 내일, 다음달, 내년 운세를 말합니다.\n"
-        " 이때 특별한 요청이 있지 않는이상, 이전에 사용했던 사주구조, 천간지지, 오핸분석을 그대로 사용해야 합니다.\n"
+    " 추가적인 질문으로 내일, 다음달 내년등 미래에 대한 운세를 물어볼떄도 SajuExpert를 호출하세요. 이때 이전 사주구조를 사용해야 합니다.\n"
+    " 이때 특별한 요청이 있지 않는이상, 이전에 사용했던 사주구조를 사용해야 합니다."
     "- WebTool: 사주 개념, 오행 등 일반적/개념적 질문이나 일상 질문에 대해 웹 검색을 통해 답변합니다.\n"
     "- GeneralQA: 사주와 무관한 일반 상식, 과학, 프로그래밍 등 모든 질문에 답변합니다.\n\n"
     "당신의 임무는 사용자의 요청을 가장 적합한 에이전트에게 라우팅하는 것입니다.\n"
     "다음 기준을 따르세요:\n"
     "1. 사용자 입력에 생년월일, 출생시간 등 사주풀이에 필요한 정보가 포함되어 있거나,"
-    " 추가적인 운세/사주풀이, 또는 내일, 다음달 내년등 미래에 대한 운세를(예: 내일 운세알려줘, 다음달 운세 알려줘 등등) 요청하면 SajuExpert를 호출하세요. 이때 현재의 기준으로({now}) 나의 내일, 다음달, 내년 운세를 말합니다.\n"
+    " 추가적인 운세/사주풀이, 또는 내일, 다음달 내년등 미래에 대한 운세를(예: 내일 운세알려줘, 다음당 운세 알려줘 등등) 요청하면 SajuExpert를 호출하세요.\n"
     " 이때 특별한 요청이 있지 않는이상, 이전에 사용했던 사주구조를 사용해야 합니다."
     "2. 사주에 대한 개념적/일반적 질문(예: '사주란 무엇인가요?')이나 일상 질문은 WebTool을 호출하세요.\n"
     "3. 사주와 전혀 관련 없는 질문은 GeneralQA를 호출하세요.\n"
@@ -192,20 +188,24 @@ def create_workflow_graph():
 
 from langchain_teddynote.messages import random_uuid, stream_graph, invoke_graph
 from langchain_core.messages import AIMessage
-
+import sys
+import io
 # --- 6. 스크립트 실행 (스트리밍 로직 수정) ---
-def run_saju_analysis(messages, thread_id=None, use_stream=True):
+from langchain_core.messages import HumanMessage, AIMessage
+
+def run_saju_analysis(messages, thread_id=None):
     graph = create_workflow_graph()
     if not graph:
         return "그래프 생성에 실패했습니다."
     if thread_id is None:
+        from langchain_teddynote.messages import random_uuid
         thread_id = random_uuid()
+    from langchain_core.runnables import RunnableConfig
     config = RunnableConfig(recursion_limit=10, configurable={"thread_id": thread_id})
     inputs = {"messages": messages}
-    if use_stream:
-        return stream_graph(graph, inputs, config)
-    else:
-        return invoke_graph(graph, inputs, config)
+    from langchain_teddynote.messages import invoke_graph
+    result = invoke_graph(graph, inputs, config)
+    return result
 
 def main():
     print("사주 에이전틱 RAG 시스템 (대화 맥락 기억 버전)을 시작합니다... ")
@@ -222,8 +222,10 @@ def main():
     for i, question in enumerate(example_questions, 1):
         print(f"{i}. {question}")
     print("\n질문을 입력하세요 (종료하려면 'quit' 입력):")
-    chat_history = []
-    thread_id = random_uuid()
+    chat_history = []  # 초기화
+    from langchain_teddynote.messages import random_uuid
+    thread_id = random_uuid()  # 초기에 한 번 생성
+
     while True:
         user_input = input("\n질문: ").strip()
         if user_input.lower() in ['quit', 'exit', '종료']:
@@ -234,18 +236,28 @@ def main():
         chat_history.append(HumanMessage(content=user_input))
         try:
             print("\n분석을 시작합니다...")
-            result = run_saju_analysis(chat_history, thread_id=thread_id, use_stream=True)
+            result = run_saju_analysis(chat_history, thread_id=thread_id)
             print("\n분석 완료!")
-            # 답변 메시지 추출 및 기록 (AIMessage로 저장)
-            if hasattr(result, '__iter__') and not isinstance(result, str):
-                # stream_graph의 경우 generator이므로, 마지막 메시지 추출
+            # invoke_graph 반환값 구조 분석 및 답변 추출
+            if isinstance(result, dict) and "messages" in result:
                 last_ai_msg = None
-                for msg in result:
-                    if hasattr(msg, 'content'):
+                for msg in result["messages"]:
+                    # 가장 마지막 AI 답변만 저장
+                    if isinstance(msg, AIMessage) or hasattr(msg, "content"):
+                        last_ai_msg = msg
+                    elif isinstance(msg, dict) and "content" in msg:
                         last_ai_msg = msg
                 if last_ai_msg:
-                    chat_history.append(AIMessage(content=last_ai_msg.content))
-            # invoke_graph의 경우는 별도 처리 필요
+                    if hasattr(last_ai_msg, "content"):
+                        print(f"\n최종 답변:\n{last_ai_msg.content}\n")
+                        chat_history.append(last_ai_msg)
+                    elif isinstance(last_ai_msg, dict) and "content" in last_ai_msg:
+                        print(f"\n최종 답변:\n{last_ai_msg['content']}\n")
+                        chat_history.append(HumanMessage(content=last_ai_msg["content"]))
+                else:
+                    print("최종 답변 메시지를 찾지 못했습니다.")
+            else:
+                print("invoke_graph 결과 구조가 예상과 다릅니다:", result)
         except Exception as e:
             print(f"오류가 발생했습니다: {e}")
 
