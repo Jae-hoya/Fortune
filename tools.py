@@ -140,12 +140,12 @@ def create_retriever_tool_for_saju():
         "pdf_retriever",
         "A tool for searching information related to Saju (Four Pillars of Destiny)",
         document_prompt=PromptTemplate.from_template(
-            '{{"context": "{page_content}", "metadata": {{"source": "{source}"}}'
-        ),
+        "<document><context>{page_content}</context><metadata><source>{source}</source></metadata></document>"
+    ),
     )
 
 # 전역으로 생성하여 재사용
-saju_retriever_tool = create_retriever_tool_for_saju()
+retriever_tool = create_retriever_tool_for_saju()
 
 # =============================================================================
 # 3. 웹 검색 도구들 (Web Tools)
@@ -172,7 +172,7 @@ def general_qa_tool(query: str) -> str:
     일반적인 질문이나 상식적인 내용에 대해 답변합니다. 사주와 관련 없는 모든 질문에 사용할 수 있습니다.
     """
     google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
-    return google_llm.invoke(query).content
+    return google_llm.invoke(query)
 
 # =============================================================================
 # 도구 그룹화 (노트북 방식과 동일)
@@ -180,14 +180,14 @@ def general_qa_tool(query: str) -> str:
 
 # 각 에이전트별 도구 그룹
 supervisor_tools = [parse_birth_info_tool]  # Supervisor 전용 도구
-saju_tools = [calculate_saju_tool]
-search_tools = [saju_retriever_tool] + web_tools
+manse_tools = [calculate_saju_tool]
+search_tools = [retriever_tool] + web_tools
 general_qa_tools = [general_qa_tool]
 
 # 전체 도구 목록
 all_tools = {
     'supervisor': supervisor_tools,
-    'saju': saju_tools,
+    'manse': manse_tools,
     'search': search_tools,
     'web': web_tools,
     'general_qa': general_qa_tools
@@ -197,12 +197,13 @@ all_tools = {
 __all__ = [
     'parse_birth_info_tool',
     'calculate_saju_tool',
-    'saju_retriever_tool', 
+    'retriever_tool', 
     'tavily_tool',
     'duck_tool',
+    'web_tools',
     'general_qa_tool',
     'supervisor_tools',
-    'saju_tools',
+    'manse_tools',
     'search_tools',
     'general_qa_tools',
     'all_tools'
