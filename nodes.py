@@ -54,7 +54,7 @@ class NodeManager:
         route_response = supervisor_chain.invoke(state)
         return {"next": route_response.next}
 
-    def manse_agent_node(self, state):
+    def create_manse_tool_agent_node(self):
         """Manse Tool Agent 노드 생성"""
         manse_tool_agent = self.agent_manager.create_manse_tool_agent()
         return functools.partial(self._agent_node, agent=manse_tool_agent, name="ManseTool")
