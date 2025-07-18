@@ -17,6 +17,9 @@ FortuneAI는 LangChain과 LangGraph를 활용하여 사주팔자 상담을 제�
 ## 🏗️ 시스템 아키텍처
 
 ### LangGraph 멀티 에이전트 워크플로
+
+![LangGraph Logic](langgraph_logic.png)
+
 ```
 사용자 입력 → Supervisor → 전문 에이전트 → 최종 응답
      ↓           ↓              ↓            ↓
