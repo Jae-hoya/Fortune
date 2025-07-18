@@ -33,6 +33,7 @@ class AgentManager:
     def __init__(self):
         # 기본 LLM 설정
         self.llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
+        self.now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     def create_supervisor_agent(self):
         """
@@ -72,14 +73,13 @@ class AgentManager:
 
     def create_retriever_tool_agent(self):
         """RAG 검색 에이전트 생성 (노트북 방식으로 단순화)"""
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
         retriever_tool_prompt = PromptManager().retriever_tool_prompt()
         retriever_tools = [retriever_tool]
         
         saju_prompt = ChatPromptTemplate.from_messages([
-            ("system", f"Today is {now}"),
+            ("system", f"Today is {self.now}"),
             ("system", retriever_tool_prompt),
             MessagesPlaceholder("messages"),
         ])

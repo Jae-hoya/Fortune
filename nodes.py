@@ -16,7 +16,8 @@ import re
 import json
 
 from agents import AgentManager
-
+from prompts import PromptManager
+from tools import calculate_saju_tool
 
 class NodeManager:
     """노드 생성 및 관리 클래스"""
@@ -24,21 +25,36 @@ class NodeManager:
     def __init__(self):
         # 에이전트 관리자 초기화 (단순화)
         self.agent_manager = AgentManager()
+        self.llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
     
     # === 새로운 노드들 (notebook 구조 지원) ===
     def _agent_node(self, state, agent, name):
         """지정한 agent와 name을 사용하여 agent 노드를 생성하는 헬퍼 함수"""
         # agent 호출
         agent_response = agent.invoke(state)
-        # agent의 마지막 메시지를 HumanMessage로 변환하여 반환
-        return {
-            "messages": [
-                HumanMessage(content=agent_response["messages"][-1].content, name=name)
-            ]
-        }
+        state["messages"] = state.get("messages", []) + [HumanMessage(content=agent_response["messages"][-1].content, name=name)]
+        return state
 
-    # === Notebook 스타일 노드 생성 메서드들 ===
-    def create_manse_tool_agent_node(self):
+    def supervisor_agent_node(self, state):
+        """Supervisor Agent 노드 생성"""
+        members = ["search", "manse", "general_qa"]
+        options_for_next = ["FINISH"] + members
+
+        class RouteResponse(BaseModel):
+            next: Literal[*options_for_next]
+
+        now = self.agent_manager.now
+        supervisor_prompt = PromptManager().supervisor_prompt()
+
+        supervisor_chain = (
+            supervisor_prompt.partial(options=str(options_for_next), members=", ".join(members), now=now)
+            | self.llm.with_structured_output(RouteResponse)
+        )
+
+        route_response = supervisor_chain.invoke(state)
+        return {"next": route_response.next}
+
+    def manse_agent_node(self, state):
         """Manse Tool Agent 노드 생성"""
         manse_tool_agent = self.agent_manager.create_manse_tool_agent()
         return functools.partial(self._agent_node, agent=manse_tool_agent, name="ManseTool")
@@ -58,179 +74,30 @@ class NodeManager:
         general_qa_agent = self.agent_manager.create_general_qa_agent()
         return functools.partial(self._agent_node, agent=general_qa_agent, name="GeneralQA")
     
-    def supervisor_agent_node(self, state):
-        """Supervisor React Agent 노드"""
-        print("🔧 Supervisor 노드 실행")
-
-        """State 정보를 활용한 동적 Supervisor 프롬프트 생성"""
-        # State에서 정보 추출
-        question = state.get("question", "")
-        messages = state.get("messages", [])
-        current_time = state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        session_id = state.get("session_id", "unknown")
-        session_start_time = state.get("session_start_time", "unknown")
-        
-        # State 상태 분석
-        birth_info = state.get("birth_info")
-        saju_result = state.get("saju_result")
-        query_type = state.get("query_type", "unknown")
-        retrieved_docs = state.get("retrieved_docs", [])
-        web_search_results = state.get("web_search_results", [])
-        
-        
-        # 출생 정보 상세 표시
-        birth_info_detail = ""
-        if birth_info:
-            birth_info_detail = f"({birth_info['year']}년 {birth_info['month']}월 {birth_info['day']}일 {birth_info['hour']}시 {birth_info['minute']}분, {'남성' if birth_info['is_male'] else '여성'})"
-        
-        # Supervisor React Agent 생성
-        supervisor_agent = self.agent_manager.create_supervisor_agent()
-        
-        # Agent 실행
-        response = supervisor_agent.invoke({
-            "current_time": current_time,
-            "session_id": session_id,
-            "session_start_time": session_start_time,
-            "question": question,
-            "query_type": query_type,           
-            "birth_info": birth_info,
-            "saju_result": saju_result,
-            "retrieved_docs": retrieved_docs,
-            "web_search_results": web_search_results,
-            "messages": messages,
-        })
-        
-        # 응답에서 라우팅 정보 추출
-        output = json.loads(response["output"]) if isinstance(response["output"], str) else response["output"]
-
-        updated_state = state.copy()
-
-        if output.get("action"):
-            pass
-        if output.get("next"):
-            updated_state["next"] = output.get("next")
-        if output.get("message"):
-            updated_state["messages"].append(AIMessage(content=output.get("message")))
-        if output.get("final_answer"):
-            updated_state["final_answer"] = output.get("final_answer")
-        if output.get("reason"):
-            pass
-        if output.get("birth_info"):
-            updated_state["birth_info"] = output.get("birth_info")
-        if output.get("query_type"):
-            updated_state["query_type"] = output.get("query_type")
-
-        return updated_state
-
-    def saju_expert_agent_node(self, state):
-        """Saju Expert Agent 노드"""
-        print("🔧 Saju Expert 노드 실행")
-        
-        current_time = state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        session_id = state.get("session_id", "unknown")
-        session_start_time = state.get("session_start_time", "unknown")
-        messages = state.get("messages", [])
-
-        supervisor_command = state.get("messages")[-1].content
-
-        year = state.get("birth_info", {}).get("year")
-        month = state.get("birth_info", {}).get("month")
-        day = state.get("birth_info", {}).get("day")
-        hour = state.get("birth_info", {}).get("hour")
-        minute = state.get("birth_info", {}).get("minute")
-        gender = "남자" if state.get("birth_info", {}).get("is_male") else "여자"
-        is_leap_month = state.get("birth_info", {}).get("is_leap_month")
-
-        saju_result = state.get("saju_result", "")
-
-        saju_expert_agent = self.agent_manager.create_saju_expert_agent()
-
-        response = saju_expert_agent.invoke({
-            "current_time": current_time,
-            "session_id": session_id,
-            "session_start_time": session_start_time,
-            "supervisor_command": supervisor_command,
-            "year": year,
-            "month": month,
-            "day": day,
-            "hour": hour,
-            "minute": minute,
-            "gender": gender,
-            "is_leap_month": is_leap_month,
-            "saju_result": saju_result,
-            "messages": messages,
-        })
-       
-        output = json.loads(response["output"]) if isinstance(response["output"], str) else response["output"]
-
-        updated_state = state.copy()
-        updated_state["saju_result"] = output
-        updated_state["messages"].append(AIMessage(content=output.get("saju_analysis")))
-
-        return updated_state
-
+    def manse_agent_node(self, state):
+        """Manse Tool Agent 노드 생성"""
+        user_input = state["question"]
+        birth_info = parse_birth_info_with_llm(user_input, self.llm)
+        state["birth_info"] = birth_info
+        saju_result = calculate_saju_tool(birth_info)
+        state["saju_result"] = saju_result
+        prompt = f"""
+        아래는 사용자의 사주 정보와 계산 결과입니다.
+        - 입력: {user_input}
+        - 사주 계산 결과: {json.dumps(saju_result, ensure_ascii=False, indent=2)}
+        위 정보를 바탕으로, 사용자가 이해하기 쉽게 사주풀이 결과를 자연어로 설명해 주세요.
+        """
+        llm_response = self.llm.invoke(prompt)
+        state["messages"].append(HumanMessage(content=llm_response.content, name="ManseLLM"))
+        return state
+    
     def search_agent_node(self, state):
-        """Search Agent 노드 (RAG + 웹검색 통합)"""
-        print("🔧 Search 노드 실행")
-
-        current_time = state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        session_id = state.get("session_id", "unknown")
-        session_start_time = state.get("session_start_time", "unknown")
-        messages = state.get("messages", [])
-        question = state.get("question", "")
-        supervisor_command = state.get("messages")[-1].content
-        saju_result = state.get("saju_result", "")
-
-        search_agent = self.agent_manager.create_search_agent()
-
-        response = search_agent.invoke({
-            "current_time": current_time,
-            "session_id": session_id,
-            "session_start_time": session_start_time,
-            "supervisor_command": supervisor_command,
-            "question": question,
-            "saju_result": saju_result,
-            "messages": messages,
-        })
-
-        output = json.loads(response["output"]) if isinstance(response["output"], str) else response["output"]
-
-        updated_state = state.copy()
-        updated_state["retrieved_docs"] = output.get("retrieved_docs", [])
-        updated_state["web_search_results"] = output.get("web_search_results", [])
-        updated_state["messages"].append(AIMessage(content=output.get("generated_result")))
-
-        return updated_state
-
-    def general_answer_agent_node(self, state):
-        """General Answer Agent 노드"""
-        print("🔧 General Answer 노드 실행")
-
-        current_time = state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        session_id = state.get("session_id", "unknown")
-        session_start_time = state.get("session_start_time", "unknown")
-        messages = state.get("messages", [])
-        question = state.get("question", "")
-        supervisor_command = state.get("messages")[-1].content
-
-        general_answer_agent = self.agent_manager.create_general_answer_agent()
-
-        response = general_answer_agent.invoke({
-            "current_time": current_time,
-            "session_id": session_id,
-            "session_start_time": session_start_time,
-            "supervisor_command": supervisor_command,
-            "question": question,
-            "messages": messages,
-        })
-
-        output = json.loads(response["output"]) if isinstance(response["output"], str) else response["output"]
-
-        updated_state = state.copy()
-        updated_state["general_answer"] = output.get("general_answer")
-        updated_state["messages"].append(AIMessage(content=output.get("general_answer")))
-
-        return updated_state
+        user_input = state.get("question") or (state["messages"][0].content if state.get("messages") else "")
+        if any(k in user_input for k in ["자료", "문서", "pdf", "검색", "출처"]):
+            return self.create_retriever_tool_agent_node()(state)
+        else:
+            return self.create_web_tool_agent_node()(state)
+    
 
 
 # 전역 NodeManager 인스턴스 (싱글톤 패턴)
@@ -242,3 +109,22 @@ def get_node_manager():
     if _node_manager is None:
         _node_manager = NodeManager()
     return _node_manager 
+
+
+def parse_birth_info_with_llm(user_input, llm):
+    prompt = f"""
+아래 문장에서 출생 정보를 추출해서 JSON 형태로 반환하세요.
+필드: year, month, day, hour, minute, is_male, is_leap_month
+예시 입력: "1996년 12월 13일 남자, 10시 30분 출생"
+예시 출력: {{"year": 1996, "month": 12, "day": 13, "hour": 10, "minute": 30, "is_male": true, "is_leap_month": false}}
+
+입력: {user_input}
+"""
+    result = llm.invoke(prompt)
+    try:
+        birth_info = json.loads(result.content)
+        return birth_info
+    except Exception as e:
+        print("파싱 오류:", e)
+        return None
+    
