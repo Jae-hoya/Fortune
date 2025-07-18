@@ -1,18 +1,9 @@
-"""
-LangGraph 워크플로 그래프 생성 - Jupyter Notebook 구조 적용
-"""
-
-from langchain_core.messages import BaseMessage
-
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
 
-# AgentState를 state.py에서 import
 from state import AgentState
-
-# NodeManager 사용
 from nodes import get_node_manager
-from agents import members
+from nodes import members
 
 
 def create_workflow():
@@ -26,9 +17,9 @@ def create_workflow():
     
     # 노드 생성
     supervisor_agent = node_manager.supervisor_agent_node
-    manse_tool_agent_node = node_manager.create_manse_tool_agent_node
+    manse_tool_agent_node = node_manager.create_manse_tool_agent_node()
     search_agent_node = node_manager.search_agent_node
-    general_qa_agent_node = node_manager.create_general_qa_agent_node
+    general_qa_agent_node = node_manager.create_general_qa_agent_node()
     
     # 그래프에 노드 추가
     workflow.add_node("search", search_agent_node)
@@ -46,4 +37,5 @@ def create_workflow():
    
     workflow.add_conditional_edges("Supervisor", get_next, conditional_map)
     workflow.add_edge(START, "Supervisor")
+    
     return workflow.compile(checkpointer=MemorySaver())

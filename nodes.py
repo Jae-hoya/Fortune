@@ -1,23 +1,16 @@
-"""
-노드 함수들 - NodeManager 클래스로 노드 생성 및 관리
-"""
-from datetime import datetime
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
-from typing import Literal, Optional
+from typing import Literal
 import functools
-import operator
-from typing import Sequence, Annotated, Dict, List, Any, Optional
-from typing_extensions import TypedDict
-from langchain_core.messages import BaseMessage
-import re
 import json
 
 from agents import AgentManager
 from prompts import PromptManager
 from tools import calculate_saju_tool
+
+members = ["search", "manse", "general_qa"]
+options_for_next = ["FINISH"] + members
 
 class NodeManager:
     """노드 생성 및 관리 클래스"""
@@ -37,8 +30,7 @@ class NodeManager:
 
     def supervisor_agent_node(self, state):
         """Supervisor Agent 노드 생성"""
-        members = ["search", "manse", "general_qa"]
-        options_for_next = ["FINISH"] + members
+        
 
         class RouteResponse(BaseModel):
             next: Literal[*options_for_next]

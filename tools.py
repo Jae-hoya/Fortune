@@ -8,96 +8,11 @@ from langchain_core.prompts import PromptTemplate
 from langchain_teddynote.tools.tavily import TavilySearch
 from langchain.tools import DuckDuckGoSearchResults
 from langchain_google_genai import ChatGoogleGenerativeAI
-import re
-from typing import Dict, Any, List
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-from pydantic import BaseModel, Field
 
 # 사주 계산 모듈 import
 from saju_calculator import SajuCalculator, format_saju_analysis
 from reranker import create_saju_compression_retriever
 
-# =============================================================================
-# 0. Supervisor 도구들
-# =============================================================================
-
-class BirthInfoParsed(BaseModel):
-    """파싱된 출생 정보"""
-    year: int = Field(description="출생 연도 (4자리)")
-    month: int = Field(description="출생 월 (1-12)")
-    day: int = Field(description="출생 일 (1-31)")
-    hour: int = Field(description="출생 시간 (0-23)")
-    minute: int = Field(description="출생 분 (0-59)")
-    is_male: bool = Field(description="남성 여부 (True: 남성, False: 여성)")
-    is_leap_month: bool = Field(description="윤달 여부")
-
-
-@tool
-def parse_birth_info_tool(user_input: str) -> dict:
-    """LLM을 사용해서 사용자 입력에서 출생 정보를 파싱합니다.
-    
-    Args:
-        user_input: 사용자가 입력한 텍스트 (예: "1995년 8월 26일 오전 10시 반 남자")
-        
-    Returns:
-        dict: 파싱된 출생 정보 (BirthInfo 형식) 또는 빈 딕셔너리
-    """
-    if not user_input or len(user_input.strip()) < 5:
-        return {}
-    
-    try:
-        # LLM 설정
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-        
-        # 출력 파서 설정
-        parser = JsonOutputParser(pydantic_object=BirthInfoParsed)
-        
-        # 프롬프트 템플릿
-        prompt = ChatPromptTemplate.from_template(
-                """
-                다음 텍스트에서 출생 정보를 추출해주세요.
-
-                텍스트: {input}
-
-                ## 추출 규칙:
-                1. 연도: 4자리 연도로 변환 (예: 95년 → 1995년, 05년 → 2005년)
-                2. 시간: 24시간 형식 (오전/오후 고려, 새벽=0-6시, 밤=18-23시)
-                3. 분: 명시되지 않으면 0, "반"이면 30분
-                4. 성별: 남자/남성/남 → True, 여자/여성/여 → False
-                5. 윤달: "윤"이 언급되면 True, 아니면 False
-                6. 만약 시각 정보가 없으면 00시 00분으로 설정
-                
-                ## 출력 형식
-                {format_instructions}
-                """
-                )
-        
-        # 체인 생성
-        chain = prompt | llm | parser
-        
-        # 실행
-        result = chain.invoke({
-            "input": user_input,
-            "format_instructions": parser.get_format_instructions()
-        })
-        
-        
-        # BirthInfo 형식으로 변환
-        return {
-            "year": result["year"],
-            "month": result["month"],
-            "day": result["day"],
-            "hour": result["hour"],
-            "minute": result["minute"],
-            "is_male": result["is_male"],
-            "is_leap_month": result["is_leap_month"],
-        }
-        
-    except Exception as e:
-        print(f"출생정보 파싱 중 오류: {e}")
-        return {}
 
 # =============================================================================
 # 1. 사주 계산 도구 (Manse Tool)
@@ -179,14 +94,12 @@ def general_qa_tool(query: str) -> str:
 # =============================================================================
 
 # 각 에이전트별 도구 그룹
-supervisor_tools = [parse_birth_info_tool]  # Supervisor 전용 도구
 manse_tools = [calculate_saju_tool]
 search_tools = [retriever_tool] + web_tools
 general_qa_tools = [general_qa_tool]
 
 # 전체 도구 목록
 all_tools = {
-    'supervisor': supervisor_tools,
     'manse': manse_tools,
     'search': search_tools,
     'web': web_tools,
@@ -202,7 +115,6 @@ __all__ = [
     'duck_tool',
     'web_tools',
     'general_qa_tool',
-    'supervisor_tools',
     'manse_tools',
     'search_tools',
     'general_qa_tools',

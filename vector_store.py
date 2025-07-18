@@ -1,8 +1,6 @@
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
-from langchain_ollama import OllamaEmbeddings
 from typing import List
-# from embeddings import get_bge_embeddings
 from models import get_bge_embeddings
 
 def load_vector_store(db_path: str):

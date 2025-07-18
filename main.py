@@ -1,8 +1,3 @@
-"""
-FortuneAI LangGraph 시스템 메인 실행 파일
-Supervisor 패턴 기반 사주 계산기
-"""
-
 import os
 import sys
 from datetime import datetime
@@ -14,7 +9,6 @@ from langchain_core.messages import HumanMessage, AIMessage
 from graph import create_workflow
 from langchain_core.runnables import RunnableConfig
 from langchain_teddynote.messages import stream_graph, random_uuid, invoke_graph
-
 
 
 def run_saju_analysis(messages, thread_id=None, use_stream=True):
@@ -69,6 +63,7 @@ def main():
                     chat_history.append(AIMessage(content=last_ai_msg.content))
         except Exception as e:
             print(f"오류가 발생했습니다: {e}")
+
 
 if __name__ == "__main__":
     main() 

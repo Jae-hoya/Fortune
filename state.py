@@ -1,13 +1,8 @@
-"""
-사주 시스템에 특화된 상태 관리
-"""
-
 import operator
 from typing import Sequence, Annotated, Dict, List, Any, Optional
 from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage
 
-# 사주 관련 정보 구조
 class BirthInfo(TypedDict):
     """출생 정보"""
     year: Annotated[int, "태어난 년도 (양력)"]
@@ -39,24 +34,19 @@ class SajuResult(TypedDict):
     # 사주 해석 결과
     saju_analysis: Annotated[Optional[str], "AI 사주 전문가의 종합 해석 결과"]
 
-# 핵심 AgentState
 class AgentState(TypedDict):
-    # 기본 LangGraph 요구사항
     question: Annotated[str, "사용자의 질문 또는 요청"]
     messages: Annotated[Sequence[BaseMessage], operator.add, "대화 메시지 목록 (자동 중복 제거 및 메시지 관리)"]
     next: Annotated[str, "다음에 실행할 노드명"]
     final_answer: Annotated[Optional[str], "최종 답변 결과"]
     
-    # 세션 관리
     session_id: Annotated[str, "세션 고유 식별자"]
     session_start_time: Annotated[str, "세션 시작 시간"]
     current_time: Annotated[str, "현재 시간"]
     
-    # 사주 시스템 핵심 정보
     birth_info: Annotated[Optional[BirthInfo], "사용자 출생 정보 (년월일시분, 성별, 윤달여부)"]
     saju_result: Annotated[Optional[SajuResult], "사주 계산 및 분석 결과"]
     query_type: Annotated[str, "질문 유형 (saju/search/general)"]
     
-    # 에이전트 간 데이터 공유
     retrieved_docs: Annotated[List[Dict[str, Any]], "RAG 시스템에서 검색된 문서들"]
     web_search_results: Annotated[List[Dict[str, Any]], "웹 검색 결과"]

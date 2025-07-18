@@ -1,8 +1,4 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.output_parsers import JsonOutputParser
-from pydantic import BaseModel, Field
-from typing import Optional, Literal, Dict, List, Any
-from datetime import datetime
 
 
 class PromptManager:

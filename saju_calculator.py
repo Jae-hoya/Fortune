@@ -3,7 +3,6 @@ from typing import Dict, List
 from dataclasses import dataclass
 import re 
 
-# http://xn--vj1b09xs1b16ct2c.com/share/calendar/?selboxDirect=&y=1995&m=8&d=16
 
 # --- 사주 관련 클래스 ---
 @dataclass
