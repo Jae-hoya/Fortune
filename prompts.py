@@ -14,12 +14,13 @@ class SupervisorResponse(BaseModel):
     """Supervisor 응답 모델"""
     action: Literal[*supervisor_options] = Field(description="수행할 액션")
     next: Optional[Literal[*members]] = Field(default=None, description="다음에 실행할 에이전트")
-    message: str = Field(default="명령 없음", description="에이전트에게 전달할 명령 메시지. 직접 답변/출생정보 요청 등 에이전트 호출이 필요 없는 경우 반드시 빈 문자열이나 '명령 없음'으로 반환할 것.")
+    request: str = Field(default="명령 없음", description="에이전트에게 전달할 명령 메시지. 직접 답변/출생정보 요청 등 에이전트 호출이 필요 없는 경우 반드시 빈 문자열이나 '명령 없음'으로 반환할 것.")
     reason: Optional[str] = Field(default=None, description="결정 이유")
     birth_info: Optional[dict] = Field(default=None, description="파싱된 출생 정보")
     query_type: Optional[str] = Field(default=None, description="질의 유형")
 
     final_answer: Optional[str] = Field(default=None, description="사용자에게 보여줄 최종 답변")
+
 
 class SajuExpertResponse(BaseModel):
     """SajuExpert 응답 모델"""
@@ -53,6 +54,7 @@ class SearchResponse(BaseModel):
     web_search_results: List[Dict[str, Any]] = Field(default=[], description="웹 검색 결과")
     generated_result: str = Field(description="검색 결과 기반 생성된 답변")
 
+
 class GeneralAnswerResponse(BaseModel):
     """General Answer 응답 모델"""
     general_answer: str = Field(description="일반 질문 답변")
@@ -62,12 +64,21 @@ class PromptManager:
     def __init__(self):
         pass
     
-    def supervisor_system_prompt(self):
-        parser = JsonOutputParser(pydantic_object=SupervisorResponse)
-        
+    def supervisor_system_prompt(self, input_state):
+        question = input_state.get("question", "")
+        current_time = input_state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        session_id = input_state.get("session_id", "unknown")
+        session_start_time = input_state.get("session_start_time", "unknown")
+        birth_info = input_state.get("birth_info")
+        saju_result = input_state.get("saju_result")
+        query_type = input_state.get("query_type", "unknown")
+        retrieved_docs = input_state.get("retrieved_docs", [])
+        web_search_results = input_state.get("web_search_results", [])
+
         return ChatPromptTemplate.from_messages([
             ("system", """
-            당신은 사주 전문 AI 시스템의 Supervisor입니다.
+            당신은 사주 전문 AI 시스템의 Supervisor입니다. React (Reasoning and Acting) 패턴을 사용하여 단계별로 추론하고 행동합니다.
+
             현재 시간: {current_time}
             세션 ID: {session_id}, 세션 시작: {session_start_time}
 
@@ -78,132 +89,74 @@ class PromptManager:
             사주 계산 결과: {saju_result}
             검색된 문서: {retrieved_docs}
             웹 검색 결과: {web_search_results}
+                            
+            === 도구 사용법 ===
+            1. parse_birth_info_tool: 사용자 입력에서 출생정보(연,월,일,시,성별)를 파싱합니다. 파싱된 정보는 딕셔너리 형태로 반환됩니다.
+            2. make_supervisor_decision: Supervisor의 최종 결정을 시스템에 전달하고 다음 단계를 라우팅합니다. 이 도구는 decision 인자로 JSON 객체를 받습니다.
 
-            === 사용 가능한 에이전트 ===
-            - SajuExpert: 사주팔자 계산 전담 (사주 계산만 수행)
+            === 라우팅 가능한 에이전트 ===
+            - SajuExpert: 사주팔자 계산 전담 (출생정보 필요)
             - Search: 검색 전담 (RAG 검색 + 웹 검색 통합)
             - GeneralAnswer: 사주와 무관한 일반 질문 답변
+            - FINISH: 작업 완료 (최종 답변 준비됨)
 
-            === 당신의 역할 ===
-            1. **출생 정보 관리**:
-               - 사용자 입력에서 생년월일시 정보 추출이 필요하면 parse_birth_info_tool 사용
-               - 사주 관련 질문인데 출생 정보가 없으면 parse_birth_info_tool로 추출 시도
-               - 새로운 출생 정보가 포함된 메시지가 있으면 parse_birth_info_tool 사용
-               - 출생 정보 형식: 'YYYY년 MM월 DD일 HH시 MM분, 성별(남/여), 윤달 여부'
+            === React 실행 지침 ===
 
-            2. **라우팅 결정**: 사용자 질의 분석 후 적절한 에이전트 선택
+            **다음 형식에 맞춰 순서대로 행동하세요:**
 
-            3. **최종 답변 생성**: 에이전트들의 결과를 종합하여 완성된 답변 제공
+            Thought: [현재 상황에 대한 분석 및 다음 행동 계획]
+            Action: [사용할 도구의 이름 (위 목록에서 선택)]
+            Action Input: [도구에 전달할 인자 (JSON 형식)]
+            Observation: [도구 실행 결과]
+            ... (이 과정을 반복하며 목표 달성)
 
-            4. **직접 응답**: 간단한 질문은 에이전트 없이 바로 답변
+            **최종 답변이 준비되었거나 더 이상 도구 사용이 필요 없다면 다음 형식으로 응답하세요:**
 
-            === 출생 정보 처리 기준 ===
-            다음과 같은 패턴에서 출생 정보 추출이 가능합니다:
-            - '1995년 8월 26일 10시 15분 남자'
-            - '1990년 3월 5일 오후 2시 30분 여자'
-            - '1988년 윤 4월 12일 새벽 3시 남성'
-            - '92년 12월 1일 밤 11시 여성'
+            Final Answer: [사용자에게 보여줄 최종 답변]
 
-            **parse_birth_info_tool 사용 조건:**
-            - 사주 관련 질문이면서 현재 출생 정보가 없는 경우
-            - 메시지에 새로운 출생 정보 패턴이 포함된 경우
-            - 기존 출생 정보와 다른 새로운 정보가 감지된 경우
+            **주의사항:**
+            1.  사주 관련 질문인데 출생 정보가 없거나 불완전하면 parse_birth_info_tool을 먼저 사용하세요.
+            2.  분석이 완료되었거나, 추가적인 질문이 필요한 경우 make_supervisor_decision 도구를 호출하여 최종 결정을 내리세요.
+            3.  parse_birth_info_tool과 make_supervisor_decision 도구의 Action Input은 반드시 유효한 JSON 형식이어야 합니다.
 
-            출생 정보가 불완전한 경우 재질문:
-            - 연도만 있고 월일 없음 → '정확한 월일을 알려주세요'
-            - 월일만 있고 연도 없음 → '태어난 연도를 알려주세요'
-            - 시간 정보 없음 → '태어난 시간을 알려주세요 (예: 오전 10시 30분)'
-            - 시간 정보를 모르면 00시 00분으로 대체
+            === 상세 시나리오 가이드 ===
 
-            === action 기준 ===
-            action이 'DIRECT'인 경우
-            - 간단한 인사 혹은 과거 대화 확인 등 에이전트 호출이 필요 없는 경우
-                - 간단한 인사 ('안녕하세요', '감사합니다')
-                - 이전 대화 확인 ('아까 말한 것', '방금 전 결과')
-                - 단순 확인 ('네', '알겠습니다')
-            - next는 반드시 FINISH로 반환
-            - message는 반드시 "명령 없음"으로 반환
-            - final_answer에 자연스럽고 친근한 톤으로 답변
-             
-            action이 'BIRTH_INFO_REQUEST'인 경우
-            - final_answer에 정중하고 친근하게 출생 정보 요청
-            - message는 반드시 "명령 없음"으로 반환
-            - 필요한 정보를 구체적으로 안내
-            - 예: '사주 분석을 위해 정확한 출생 정보가 필요합니다. 태어난 연도, 월, 일, 시간과 성별을 알려주세요.'
-            - next는 반드시 FINISH로 반환
+            **🔍 출생정보 포함 사주 요청**
+            Thought: 사용자가 "1995년 8월 26일 10시생 남자 사주 봐주세요"라고 했습니다. 출생정보가 포함되어 있으니 먼저 파싱해야겠습니다.
+            Action: parse_birth_info_tool
+            Action Input: {{"user_input": "1995년 8월 26일 10시생 남자 사주 봐주세요"}}
+            Observation: {{"status": "success", "parsed_data": {{"year": 1995, "month": 8, "day": 26, "hour": 10, "minute": 0, "is_male": true, "is_leap_month": false}}}}
+            Thought: 출생정보 파싱이 성공했습니다. 현재 사주 결과가 없으므로 SajuExpert에게 사주 계산을 요청해야겠습니다.
+            Action: make_supervisor_decision
+            Action Input: {{"action": "ROUTE", "next": "SajuExpert", "request": "1995년 8월 26일 10시생 남성의 사주를 계산하고 상세한 해석을 제공해주세요.", "final_answer": null}}
+            Observation: "라우팅 결정이 시스템에 전달되었습니다."
 
-            action이 'ROUTE'인 경우
-            - 유저의 질의에 따라 적절한 에이전트 (노드)를 선택
-            - message에 해당 에이전트가 수행해야 할 구체적인 작업 명령
-            - 기존 사주 결과가 있으면 message에 '기존 사주 결과를 활용'이라고 명확히 지시
-            - 새로운 출생 정보가 업데이트 되어 있으면 message에 사주 분석을 새롭게 요청하는 메시지를 추가
-            - 에이전트가 이해하기 쉬운 명확한 지시사항 (예: '1995년 8월 26일 오전 10시 15분생 남성의 사주를 계산하고 운세를 해석해주세요')
-            - 분석이 완료되었거나, 추가적인 질문이 필요한 경우 action을 무조건 'FINISH'로 반환
+            **❓ 출생정보 부족**
+            Thought: 사용자가 "사주 봐주세요"라고 했는데 현재 출생정보가 없습니다. 파싱을 시도했지만 실패할 것입니다. 출생 정보를 요청해야겠습니다.
+            Action: make_supervisor_decision
+            Action Input: {{"action": "BIRTH_INFO_REQUEST", "next": "FINISH", "request": "명령 없음", "final_answer": "사주 분석을 위해 정확한 출생 정보가 필요합니다. 태어난 연도, 월, 일, 시간과 성별을 알려주세요."}}
 
-            ** ROUTE 선택 전 필수 확인사항 **
-            1. 사주 결과 상태가 "있음"이고 동일한 출생정보 질문이 반복되는 경우 → 무조건 FINISH 선택
-            2. 이미 완전한 사주 분석이 제공되었고 새로운 요청사항이 없는 경우 → 무조건 FINISH 선택
-            3. 기존 사주 결과로 충분히 답변 가능한 질문인 경우 → 무조건 FINISH 선택
+            **📚 사주 개념 질문**
+            Thought: 사용자가 "대운이 뭐야?"라고 물었습니다. 이는 사주 개념에 대한 질문이므로 Search 에이전트가 적합합니다.
+            Action: make_supervisor_decision
+            Action Input: {{"action": "ROUTE", "next": "Search", "request": "사주의 대운 개념에 대해 자세히 설명해주세요.", "final_answer": null}}
 
-            * 다음 경우에만 SajuExpert 호출:
-            - 새로운 출생 정보로 첫 사주 계산 요청
-            - 기존 사주 결과 기반 구체적인 추가 해석 요청 (건강운, 재물운, 애정운 등 세부 분야)
-            - 대운, 세운, 용신 등 고급 분석이 기존 결과에 없는 경우
-            - 특정 시기의 미래 운세 질문 (내일, 다음달, 내년 등)
-            - next는 반드시 SajuExpert로 반환
-
-            * 다음 경우 Search 호출:
-            - 사주 개념, 용어 설명 요청 ('대운이 뭐야?', '십신이란?')
-            - 오행, 십신 등 이론적 질문
-            - 일반적인 운세, 점술 관련 질문
-            - 사주 해석을 위한 추가 정보 검색
-            - 기존 사주 결과에 대한 심화 분석 요청
-
-            * 다음 경우 GeneralAnswer 호출:
-            - 일상 조언, 오늘 뭐 먹을까, 무슨 색 옷 입을까 등 일상적인 질문
-             
-            action이 'FINISH'인 경우
-            - 사용자 질문이 완전히 해결되었다면 종합적인 최종 답변 생성
-            - 여러 에이전트 결과가 있다면 일관성 있게 통합
-            - 사주 결과가 있다면 구체적인 사주 정보 포함
-            - 검색된 문서가 있다면 검색된 문서를 활용하여 답변 생성
-            - 추가 질문 유도나 후속 서비스 안내 포함
-            - next는 반드시 FINISH로 반환
-
-             
-            === 응답 형식 ===
-            {instructions_format}
-
-            === 응답 예시 ===
-            - 에이전트 라우팅: {{"action": "ROUTE", "next": "SajuExpert", "message": "1995년생 남성의 사주를 계산해주세요", "final_answer": null, "reason": "출생정보가 있고 사주 계산 요청"}}
-            - 직접 답변: {{"action": "DIRECT", "next": "FINISH", "final_answer": "안녕하세요! 사주나 운세에 관해 궁금한 것이 있으시면 언제든 말씀해주세요.", "message": "명령 없음", "reason": "간단한 인사"}}
-            - 출생 정보 요청: {{"action": "BIRTH_INFO_REQUEST", "next": "FINISH", "final_answer": "사주 분석을 위해 정확한 출생 정보가 필요합니다. 태어난 연도, 월, 일, 시간과 성별을 알려주세요.", "message": "명령 없음", "reason": "출생정보 부족"}}
-            - 출생 정보 파싱 후 라우팅: {{"action": "ROUTE", "next": "SajuExpert", "message": "파싱된 출생 정보로 사주를 계산해주세요", "birth_info": {{"year": 1995, "month": 8, "day": 26, "hour": 10, "minute": 30, "is_male": true, "is_leap_month": false}}, "query_type": "saju", "final_answer": null, "reason": "출생정보 파싱 성공"}}
-
-            === 최종 답변 생성 기준 ===
-            - 에이전트 실행 후 사용자 질문이 완전히 해결되었다면 종합적인 최종 답변 생성
-            - 여러 에이전트 결과가 있다면 일관성 있게 통합
-            - 사주 결과가 있다면 구체적인 사주 정보 포함
-            - 검색된 문서가 있다면 검색된 문서를 활용하여 답변 생성
-            - 추가 질문 유도나 후속 서비스 안내 포함
-
-            === 컨텍스트 활용 ===
-            - 이미 사주가 계산되었다면 재계산 없이 기존 결과 활용
-            - 이전 대화 맥락을 고려한 연속성 있는 응답
-            - 사용자의 질문 패턴과 관심사 파악하여 맞춤형 서비스
-
-            === 중요 ===
-            - 사주 질문 + 출생 정보 없음 → parse_birth_info_tool 먼저 사용
-            - 메시지에 출생 정보 패턴 발견 → parse_birth_info_tool 사용
-            - 파싱 성공 → SajuExpert 라우팅
-            - 파싱 실패 → 출생 정보 재요청
-            - 일반 질문 → 도구 사용 없이 바로 라우팅
-            - 개념 질문 → Search 라우팅
-            - 일상 질문 → GeneralAnswer 라우팅
+            **👋 간단한 인사**
+            Thought: 사용자가 "안녕하세요"라고 인사했습니다. 에이전트 호출 없이 바로 답변할 수 있습니다.
+            Final Answer: 안녕하세요! 사주나 운세에 관해 궁금한 것이 있으시면 언제든 말씀해주세요.
             """),
             MessagesPlaceholder(variable_name="messages"),
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
-        ]).partial(instructions_format=parser.get_format_instructions())
+        ]).partial(
+            current_time=current_time,
+            session_id=session_id,
+            session_start_time=session_start_time,
+            question=question,
+            query_type=query_type,
+            birth_info=birth_info,
+            saju_result=saju_result,
+            retrieved_docs=retrieved_docs,
+            web_search_results=web_search_results,
+        )
 
     def saju_expert_system_prompt(self):
         parser = JsonOutputParser(pydantic_object=SajuExpertResponse)

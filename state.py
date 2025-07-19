@@ -61,4 +61,4 @@ class AgentState(TypedDict):
     # 에이전트 간 데이터 공유
     retrieved_docs: Annotated[List[Dict[str, Any]], "RAG 시스템에서 검색된 문서들"]
     web_search_results: Annotated[List[Dict[str, Any]], "웹 검색 결과"]
-    supervisor_message: Annotated[Optional[str], "Supervisor가 하위 에이전트에게 전달하는 명령"] 
+    request: Annotated[Optional[str], "에이전트 간 전달하는 요청사항 (다음 행동)"]

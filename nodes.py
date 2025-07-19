@@ -62,42 +62,22 @@ class NodeManager:
         """Supervisor React Agent 노드"""
         print("🔧 Supervisor 노드 실행")
 
-        """State 정보를 활용한 동적 Supervisor 프롬프트 생성"""
-        # State에서 정보 추출
-        question = state.get("question", "")
-        messages = state.get("messages", [])
-        current_time = state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        session_id = state.get("session_id", "unknown")
-        session_start_time = state.get("session_start_time", "unknown")
+        input_state = {
+            "question": state.get("question", ""),
+            "current_time": state.get("current_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+            "session_id": state.get("session_id", "unknown"),
+            "session_start_time": state.get("session_start_time", "unknown"),
+            "birth_info": state.get("birth_info"),
+            "saju_result": state.get("saju_result"),
+            "query_type": state.get("query_type", "unknown"),
+            "retrieved_docs": state.get("retrieved_docs", []),
+            "web_search_results": state.get("web_search_results", []),
+        }
         
-        # State 상태 분석
-        birth_info = state.get("birth_info")
-        saju_result = state.get("saju_result")
-        query_type = state.get("query_type", "unknown")
-        retrieved_docs = state.get("retrieved_docs", [])
-        web_search_results = state.get("web_search_results", [])
+        supervisor_agent = self.agent_manager.create_supervisor_agent(input_state)
         
-        
-        # 출생 정보 상세 표시
-        birth_info_detail = ""
-        if birth_info:
-            birth_info_detail = f"({birth_info['year']}년 {birth_info['month']}월 {birth_info['day']}일 {birth_info['hour']}시 {birth_info['minute']}분, {'남성' if birth_info['is_male'] else '여성'})"
-        
-        # Supervisor React Agent 생성
-        supervisor_agent = self.agent_manager.create_supervisor_agent()
-        
-        # Agent 실행
         response = supervisor_agent.invoke({
-            "current_time": current_time,
-            "session_id": session_id,
-            "session_start_time": session_start_time,
-            "question": question,
-            "query_type": query_type,           
-            "birth_info": birth_info,
-            "saju_result": saju_result,
-            "retrieved_docs": retrieved_docs,
-            "web_search_results": web_search_results,
-            "messages": messages,
+            "messages": state.get("messages", [HumanMessage(content=state.get("question", ""))]),
         })
         
         # 응답에서 라우팅 정보 추출

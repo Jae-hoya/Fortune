@@ -5,13 +5,8 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, load_prompt
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
-from pydantic import BaseModel, Field
-from typing import Literal, Optional, Dict, Any
-from datetime import datetime
 from langchain.agents import create_tool_calling_agent, AgentExecutor
-from langchain_core.messages import HumanMessage, SystemMessage
-from prompts import PromptManager, SupervisorResponse
-from langchain_core.output_parsers import JsonOutputParser
+from prompts import PromptManager
 
 # 단순화된 tools import (노트북 방식)
 from tools import (
@@ -32,7 +27,7 @@ class AgentManager:
         # 기본 LLM 설정
         self.llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
     
-    def create_supervisor_agent(self):
+    def create_supervisor_agent(self, input_state):
         """
         Supervisor Agent를 생성합니다.
         State 정보를 동적으로 프롬프트에 주입합니다.
@@ -40,24 +35,16 @@ class AgentManager:
         llm = ChatOpenAI(temperature=0, model="gpt-4.1-mini")
         
         # Agent용 프롬프트 템플릿
-        prompt = PromptManager().supervisor_system_prompt()
+        prompt = PromptManager().supervisor_system_prompt(input_state)
         
-        # Tool Calling Agent 생성
-        agent = create_tool_calling_agent(
-            llm=llm, 
-            tools=supervisor_tools, 
+        # Agent 생성
+        react_agent = create_react_agent(
+            model=llm,
+            tools=supervisor_tools,
             prompt=prompt
         )
 
-        agent_executor = AgentExecutor(
-            agent=agent,
-            tools=supervisor_tools,
-            verbose=True,
-            max_iterations=3,
-            early_stopping_method="generate"
-        )
-        
-        return agent_executor
+        return react_agent
     
     def create_saju_expert_agent(self):
         """사주 전문 에이전트 생성"""
