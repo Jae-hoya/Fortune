@@ -50,21 +50,7 @@ from langgraph.prebuilt import ToolNode
 
 from parsing.parser.tarot_rag_system import TarotRAGSystem
 
-# 웹 검색 관련 imports 추가
-
-from langchain_community.tools import DuckDuckGoSearchRun, DuckDuckGoSearchResults
-
-try:
-
-    from langchain_tavily import TavilySearch
-
-    TAVILY_AVAILABLE = True
-
-except ImportError:
-
-    TAVILY_AVAILABLE = False
-
-    print("⚠️ Tavily 라이브러리를 사용하려면 'pip install langchain-tavily' 설치 필요")
+# 웹 검색 관련 imports 제거됨
 
 # 내부 모듈 imports
 
@@ -84,7 +70,7 @@ from .utils.nodes import (
 
     supervisor_llm_node, classify_intent_node, card_info_handler, spread_info_handler, simple_card_handler,
 
-    consultation_handler, emotion_analyzer_node, web_search_decider_node, web_searcher_node, perform_multilayer_spread_search,
+    consultation_handler, emotion_analyzer_node, perform_multilayer_spread_search,
 
     spread_recommender_node, consultation_router, spread_extractor_node, situation_analyzer_node, card_count_inferrer_node,
 
@@ -100,7 +86,7 @@ from .utils.nodes import (
 
 from .utils.timing import ensure_temporal_context
 
-from .utils.helpers import convert_numpy_types, safe_format_search_results
+from .utils.helpers import convert_numpy_types
 
 from .utils.translation import translate_korean_to_english_with_llm
 

@@ -8,7 +8,7 @@ from langchain_core.tools import tool
 
 from ..utils.translation import translate_korean_to_english_with_llm
 
-from ..utils.helpers import convert_numpy_types, safe_format_search_results
+from ..utils.helpers import convert_numpy_types
 
 from parsing.parser.tarot_rag_system import TarotRAGSystem
 
@@ -35,7 +35,7 @@ def search_tarot_spreads(query: str) -> str:
         safe_results = convert_numpy_types(results)
         print(f"🔮 SPREAD SEARCH: {query} -> {english_query}")
         print(f"🔍 검색 결과: {len(safe_results)}개")
-        return safe_format_search_results(safe_results)
+        return str(safe_results)
     except Exception as e:
         return f"스프레드 검색 중 오류가 발생했습니다: {str(e)}"
 @tool
@@ -50,6 +50,6 @@ def search_tarot_cards(query: str) -> str:
         safe_results = convert_numpy_types(results)
         print(f"🃏 CARD SEARCH: {query} -> {english_query}")
         print(f"🔍 검색 결과: {len(safe_results)}개")
-        return safe_format_search_results(safe_results)
+        return str(safe_results)
     except Exception as e:
         return f"카드 검색 중 오류가 발생했습니다: {str(e)}"

@@ -36,37 +36,7 @@ def convert_numpy_types(obj):
         return obj
     else:
         return obj
-def safe_format_search_results(results) -> str:
-    """검색 결과를 안전하게 포맷팅 (NumPy 타입 변환 포함)"""
-    if not results:
-        return "검색 결과가 없습니다."
-    safe_results = convert_numpy_types(results)
-    formatted = ""
-    for i, result_item in enumerate(safe_results, 1):
-        if isinstance(result_item, (tuple, list)) and len(result_item) >= 2:
-            doc, score = result_item[0], result_item[1]
-        else:
-            doc = result_item
-            score = 0.0
-        if hasattr(doc, 'metadata'):
-            metadata = doc.metadata
-        else:
-            metadata = {}
-        if hasattr(doc, 'page_content'):
-            content = doc.page_content
-        else:
-            content = str(doc)
-        content = content[:300] + "..." if len(content) > 300 else content
-        formatted += f"\n=== 결과 {i} (점수: {float(score):.3f}) ===\n"
-        if metadata.get("card_name"):
-            formatted += f"카드: {metadata['card_name']}\n"
-        if metadata.get("spread_name"):
-            formatted += f"스프레드: {metadata['spread_name']}\n"
-        if metadata.get("source"):
-            formatted += f"출처: {metadata['source']}\n"
-        formatted += f"내용: {content}\n"
-        formatted += "-" * 50 + "\n"
-    return formatted
+# safe_format_search_results 함수 제거됨 (웹 검색 기능 제거)
 def parse_card_numbers(user_input: str, required_count: int) -> List[int]:
     """사용자 입력에서 카드 번호들을 파싱하고 중복 체크"""
     try:
@@ -322,7 +292,23 @@ def get_default_spreads() -> List[Dict[str, Any]]:
                {"position_num": 10, "position_name": "Outcome", "position_meaning": "The potential result if you continue on your current path"}
            ],
            "keywords": "detailed, comprehensive, traditional, complex, obstacles, influences, deep analysis, ten cards, classic, thorough"
-       }
+       },
+       {
+            "spread_name": "THE HORSESHOE TAROT CARD SPREAD",
+            "normalized_name": "horseshoe spread",
+            "card_count": 7,
+            "description": "A seven-card spread in the shape of a horseshoe that explores the past, present, future, obstacles, external influences, advice, and final outcome.",
+            "positions": [
+                {"position_num": 1, "position_name": "Past Influences", "position_meaning": "Events from the past that have shaped the present situation"},
+                {"position_num": 2, "position_name": "Present", "position_meaning": "Current circumstances and energies at work"},
+                {"position_num": 3, "position_name": "Hidden Influences", "position_meaning": "Unseen factors or subconscious elements affecting the situation"},
+                {"position_num": 4, "position_name": "Obstacles", "position_meaning": "Challenges that need to be overcome"},
+                {"position_num": 5, "position_name": "External Influences", "position_meaning": "How others or outside circumstances are affecting the situation"},
+                {"position_num": 6, "position_name": "Advice", "position_meaning": "Guidance on how to approach the situation"},
+                {"position_num": 7, "position_name": "Outcome", "position_meaning": "The likely result if current trends continue"}
+            ],
+            "keywords": "balanced, moderate, seven cards, obstacles, advice, outcome, horseshoe shape, luck, external influences, guidance"
+        }
    ]
 def extract_concern_keywords(user_concern: str) -> str:
    """사용자 고민에서 타로 스프레드 검색에 적합한 키워드 추출 - 개선된 버전"""
@@ -444,18 +430,21 @@ def simple_trigger_check(user_input: str) -> str:
         "new_consultation" | "individual_reading" | "context_reference"
     """
     user_input_lower = user_input.lower()
+    
     # 1. 새 상담 시작 트리거
     new_consultation_keywords = ["타로 봐줘", "새로 봐줘", "처음부터"]
     if any(keyword in user_input_lower for keyword in new_consultation_keywords):
         matched_keyword = next(keyword for keyword in new_consultation_keywords if keyword in user_input_lower)
         print(f"🎯 새 상담 트리거 감지: '{matched_keyword}' in '{user_input}'")
         return "new_consultation"
-    # 2. 개별 해석 트리거 (기존 유지)
-    individual_keywords = ["네", "yes", "보고싶"]
+    
+    # 2. 개별 해석 트리거 (개선된 매칭)
+    individual_keywords = ["네", "yes", "보고싶", "보고 싶", "개별", "자세히", "더 보고", "카드 해석"]
     if any(keyword in user_input_lower for keyword in individual_keywords):
         matched_keyword = next(keyword for keyword in individual_keywords if keyword in user_input_lower)
         print(f"🎯 개별 해석 트리거 감지: '{matched_keyword}' in '{user_input}'")
         return "individual_reading"
+    
     # 3. 나머지는 모두 추가 질문으로 처리
     print(f"🎯 추가 질문으로 분류: '{user_input}'")
     return "context_reference"
@@ -500,65 +489,107 @@ def determine_target_handler(state: TarotState) -> str:
             "general": "general_handler",
             "simple_card": "simple_card_handler"
         }.get(intent, "unknown_handler")
-def perform_multilayer_spread_search(keywords: str, user_input: str) -> List[Dict]:
+def perform_multilayer_spread_search(keywords: str, user_input: str, requested_topic: str = None) -> List[Dict]:
+    """다층적 스프레드 검색 - 개선된 버전"""
     global rag_system
     from parsing.parser.tarot_agent.utils.tools import rag_system
-    """다층적 스프레드 검색 - 의도와 주제를 분리하여 검색"""
+    
+    print(f"🔍 다층적 스프레드 검색 시작: keywords='{keywords}', user_input='{user_input}', requested_topic='{requested_topic}'")
+    
     recommended_spreads = []
-    # 키워드를 의도와 주제로 분리
-    keyword_parts = keywords.split()
-    intent_keywords = []
-    topic_keywords = []
-    intent_terms = ['decision', 'choice', 'crossroads', 'dilemma', 'uncertainty', 'confusion', 
-                   'doubt', 'guidance', 'advice', 'direction', 'clarity', 'insight', 
-                   'understanding', 'future', 'prediction', 'timing']
-    for word in keyword_parts:
-        if word in intent_terms:
-            intent_keywords.append(word)
-        else:
-            topic_keywords.append(word)
-    print(f"🔍 키워드 분리 - 의도: {intent_keywords}, 주제: {topic_keywords}")
+    existing_names = set()
+    
+    # 🆕 특정 주제 요청 시 주제별 키워드 보강
+    if requested_topic:
+        topic_enhancement = {
+            "돈": "money financial wealth business career income",
+            "연애": "love romance relationship heart dating",
+            "직업": "career job work business profession",
+            "건강": "health medical wellness healing",
+            "가족": "family parent child sibling"
+        }
+        
+        if requested_topic in topic_enhancement:
+            enhanced_keywords = f"{keywords} {topic_enhancement[requested_topic]}"
+            print(f"🎯 주제별 키워드 보강: {requested_topic} -> {enhanced_keywords}")
+            keywords = enhanced_keywords
+    
     try:
-        if rag_system:
-            search_attempts = [
-                f"{keywords} tarot spread",
-                f"{' '.join(intent_keywords)} {' '.join(topic_keywords)} spread",
-                f"{' '.join(intent_keywords)} spread" if intent_keywords else None,
-                f"{' '.join(topic_keywords)} spread" if topic_keywords else None,
-                keywords
-            ]
-            search_attempts = [query for query in search_attempts if query]
-            existing_names = set()
-            for i, query in enumerate(search_attempts, 1):
+        # 기존 검색 레이어들
+        search_layers = [
+            keywords,  # 1차: 전체 키워드
+            " ".join(keywords.split()[:4]),  # 2차: 앞 4개 키워드
+            " ".join(keywords.split()[:3]),  # 3차: 앞 3개 키워드
+            " ".join([k for k in keywords.split() if k in ["decision", "choice", "uncertainty", "guidance"]]),  # 4차: 의도 키워드만
+            " ".join([k for k in keywords.split() if k in ["career", "money", "love", "health", "family"]])  # 5차: 주제 키워드만
+        ]
+        
+        # 🆕 특정 주제 요청 시 주제별 검색 레이어 추가
+        if requested_topic:
+            topic_specific_queries = {
+                "돈": ["money spread", "financial spread", "wealth spread", "business spread", "career money"],
+                "연애": ["love spread", "romance spread", "relationship spread", "heart spread"],
+                "직업": ["career spread", "job spread", "work spread", "profession spread"],
+                "건강": ["health spread", "medical spread", "wellness spread", "healing spread"],
+                "가족": ["family spread", "parent spread", "relationship family"]
+            }
+            
+            if requested_topic in topic_specific_queries:
+                # 주제별 검색을 최우선으로 추가
+                topic_queries = topic_specific_queries[requested_topic]
+                search_layers = topic_queries + search_layers
+                print(f"🎯 주제별 검색 레이어 추가: {len(topic_queries)}개")
+        
+        # 검색 실행
+        for i, query in enumerate(search_layers, 1):
+            if not query.strip():
+                continue
+                
+            try:
                 print(f"🔍 {i}차 검색: {query}")
-                try:
-                    results = rag_system.search_spreads(query, final_k=8)
-                    safe_results = convert_numpy_types(results)
-                    print(f"🔍 {i}차 검색 결과: {len(safe_results)}개")
-                    if len(safe_results) > 0:
-                        print(f"✅ {i}차 검색 성공")
-                        for doc, score in safe_results:
-                            if len(recommended_spreads) >= 15:
-                                break
-                            metadata = doc.metadata
-                            spread_name = metadata.get('spread_name', f'스프레드 {len(recommended_spreads)+1}')
-                            if spread_name not in existing_names:
-                                existing_names.add(spread_name)
-                                spread_data = {
-                                    "number": len(recommended_spreads) + 1,
-                                    "spread_name": spread_name,
-                                    "card_count": metadata.get('card_count', 3),
-                                    "positions": metadata.get("positions", []),
-                                    "description": metadata.get("description", ""),
-                                    "search_layer": i,
-                                    "relevance_score": float(score) if hasattr(score, 'item') else score
-                                }
-                                recommended_spreads.append(spread_data)
-                except Exception as e:
-                    print(f"🔍 {i}차 검색 실패: {e}")
-                    continue
+                
+                # 하이브리드 검색 실행
+                hybrid_results = rag_system.search_spreads(query, hybrid_k=40, final_k=20)
+                
+                # 리랭킹 적용
+                if hybrid_results and len(hybrid_results) > 0:
+                    print(f"⚡ 리랭킹 {len(hybrid_results)}개 문서...")
+                    # hybrid_results는 (Document, score) 튜플의 리스트이므로 Document만 추출
+                    docs_only = [doc for doc, score in hybrid_results]
+                    reranked_results = rag_system.reranker.rerank(query, docs_only, top_k=20)
+                    print(f"✅ 리랭킹 완료. 최고 점수: {reranked_results[0][1]:.4f}")
+                    safe_results = convert_numpy_types(reranked_results)
+                else:
+                    safe_results = []
+                
+                print(f"🔍 {i}차 검색 결과: {len(safe_results)}개")
+                
+                if len(safe_results) > 0:
+                    print(f"✅ {i}차 검색 성공")
+                    for doc, score in safe_results:
+                        if len(recommended_spreads) >= 15:
+                            break
+                        metadata = doc.metadata
+                        spread_name = metadata.get('spread_name', f'스프레드 {len(recommended_spreads)+1}')
+                        if spread_name not in existing_names:
+                            existing_names.add(spread_name)
+                            spread_data = {
+                                "number": len(recommended_spreads) + 1,
+                                "spread_name": spread_name,
+                                "card_count": metadata.get('card_count', 3),
+                                "positions": metadata.get("positions", []),
+                                "description": metadata.get("description", ""),
+                                "search_layer": i,
+                                "relevance_score": float(score) if hasattr(score, 'item') else score
+                            }
+                            recommended_spreads.append(spread_data)
+            except Exception as e:
+                print(f"🔍 {i}차 검색 실패: {e}")
+                continue
+                
         if len(recommended_spreads) < 3:
             raise Exception("모든 검색 시도 실패")
+            
     except Exception as e:
         print(f"🔍 다층 검색 실패: {e}, 기본 스프레드 사용")
         default_spreads = get_default_spreads()
@@ -573,12 +604,48 @@ def perform_multilayer_spread_search(keywords: str, user_input: str) -> List[Dic
                 "relevance_score": 0.5
             }
             recommended_spreads.append(spread_data)
+    
     print(f"🔍 최종 추천 스프레드: {len(recommended_spreads)}개")
     for spread in recommended_spreads:
         print(f"  - {spread['spread_name']} (검색층: {spread['search_layer']}, 점수: {spread['relevance_score']:.3f})")
+    
+    # 🆕 특정 주제 요청 시 주제 관련 스프레드 우선 배치
+    if requested_topic:
+        topic_related = []
+        general_spreads = []
+        
+        for spread in recommended_spreads:
+            spread_name = spread.get('spread_name', '').lower()
+            spread_desc = spread.get('description', '').lower()
+            
+            is_topic_related = False
+            if requested_topic == "돈":
+                is_topic_related = any(keyword in spread_name + spread_desc for keyword in ["money", "financial", "wealth", "business", "career"])
+            elif requested_topic == "연애":
+                is_topic_related = any(keyword in spread_name + spread_desc for keyword in ["love", "relationship", "romance", "heart"])
+            elif requested_topic == "직업":
+                is_topic_related = any(keyword in spread_name + spread_desc for keyword in ["career", "job", "work", "profession"])
+            elif requested_topic == "건강":
+                is_topic_related = any(keyword in spread_name + spread_desc for keyword in ["health", "medical", "wellness", "healing"])
+            elif requested_topic == "가족":
+                is_topic_related = any(keyword in spread_name + spread_desc for keyword in ["family", "parent", "child", "sibling"])
+            
+            if is_topic_related:
+                topic_related.append(spread)
+            else:
+                general_spreads.append(spread)
+        
+        if topic_related:
+            print(f"🎯 {requested_topic} 관련 스프레드 우선 배치: {len(topic_related)}개")
+            recommended_spreads = topic_related + general_spreads
+        else:
+            print(f"⚠️ {requested_topic} 관련 스프레드 없음, 일반 스프레드 유지")
+    
+    # 기존 분류 로직 유지
     intent_spreads = []
     topic_spreads = []
     mixed_spreads = []
+    
     for spread in recommended_spreads:
         if spread['search_layer'] == 3:
             intent_spreads.append(spread)
@@ -586,28 +653,36 @@ def perform_multilayer_spread_search(keywords: str, user_input: str) -> List[Dic
             topic_spreads.append(spread)
         else:
             mixed_spreads.append(spread)
+    
     print(f"🎯 스프레드 분류 - 의도: {len(intent_spreads)}개, 주제: {len(topic_spreads)}개, 혼합: {len(mixed_spreads)}개")
+    
     final_spreads = []
+    
     if intent_spreads:
         final_spreads.append(intent_spreads[0])
         print(f"✅ 의도 스프레드 포함: {intent_spreads[0]['spread_name']}")
+    
     available_topic = [s for s in topic_spreads if s not in final_spreads]
     if available_topic:
         final_spreads.append(available_topic[0])
         print(f"✅ 주제 스프레드 포함: {available_topic[0]['spread_name']}")
+    
     remaining = [s for s in recommended_spreads if s not in final_spreads]
     if remaining:
         final_spreads.append(remaining[0])
         print(f"✅ 추가 스프레드 포함: {remaining[0]['spread_name']}")
+    
     while len(final_spreads) < 3 and len(final_spreads) < len(recommended_spreads):
         remaining = [s for s in recommended_spreads if s not in final_spreads]
         if remaining:
             final_spreads.append(remaining[0])
         else:
             break
+    
     print(f"🎯 최종 선택된 3개 스프레드:")
     for i, spread in enumerate(final_spreads, 1):
         print(f"  {i}. {spread['spread_name']} (검색층: {spread['search_layer']}, 점수: {spread['relevance_score']:.3f})")
+    
     return final_spreads[:3]
 def performance_monitor(func):
     """함수 실행 시간 측정 데코레이터"""
@@ -625,22 +700,14 @@ def create_optimized_consultation_flow():
     """최적화된 상담 플로우 생성"""
     from concurrent.futures import ThreadPoolExecutor
     @performance_monitor
-    def parallel_emotion_and_search_analysis(state: TarotState) -> TarotState:
-        """감정 분석과 웹 검색 판단을 병렬로 실행"""
+    def emotion_analysis_only(state: TarotState) -> TarotState:
+        """감정 분석만 실행 (웹 검색 제거)"""
         user_input = state.get("user_input", "")
-        print("🔧 병렬 분석 노드 실행 (감정 + 웹검색)")
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            # 병렬 실행
-            emotion_future = executor.submit(analyze_emotion_and_empathy, user_input)
-            search_future = executor.submit(web_search_decider_node, state)
-            # 결과 병합
-            emotion_result = emotion_future.result()
-            search_result = search_future.result()
-            # 두 결과를 병합
-            combined_state = {**state}
-            combined_state.update(emotion_result)
-            combined_state.update(search_result)
-            return combined_state
+        print("🔧 감정 분석 노드 실행")
+        emotion_result = analyze_emotion_and_empathy(user_input)
+        combined_state = {**state}
+        combined_state.update(emotion_result)
+        return combined_state
     @performance_monitor  
     def cached_spread_search(state: TarotState) -> TarotState:
         """캐시된 스프레드 검색"""
@@ -660,7 +727,7 @@ def create_optimized_consultation_flow():
         result["spread_cache"] = spread_cache
         return result
     return {
-        "parallel_emotion_and_search": parallel_emotion_and_search_analysis,
+        "emotion_analysis_only": emotion_analysis_only,
         "cached_spread_search": cached_spread_search
     }
 def create_smart_routing_system():
@@ -831,13 +898,23 @@ def handle_tarot_related_question(state: TarotState, user_input: str, recent_ai_
             "상담이 완료되었습니다!",
             "## 💡 **상세한 실용적 조언**",
             "종합 해석:",
-            "🃏 **",  # 개별 카드 해석 시작 패턴
+            "🃏 **아래처럼 카드를 뽑으셨네요**",  # 개별 카드 해석 시작 패턴
+            "**시간의 흐름을 읽어보면:**",  # 시기 해석 패턴
+            "**단계별 실행 계획**",  # 상세 조언 패턴
+            "**구체적 행동 지침**",  # 상세 조언 패턴
+            "**마음가짐과 태도**",  # 상세 조언 패턴
         ]
         # 패턴이 여러 개 발견되면 개별 해석이 이미 완료된 것으로 판단
         pattern_count = sum(1 for pattern in completion_patterns if pattern in recent_ai_content)
-        if pattern_count >= 2:  # 2개 이상 패턴이 발견되면 개별 해석 완료로 판단
+        if pattern_count >= 3:  # 3개 이상 패턴이 발견되면 개별 해석 완료로 판단
             already_showed_individual = True
             print(f"🔧 개별 해석 완료 감지: {pattern_count}개 패턴 발견")
+        
+        # 추가 확인: 상담 완료 상태 키워드
+        completion_keywords = ["상담이 완료되었습니다", "다음 중 원하시는 것을 선택해주세요", "새로운 고민 상담", "추가 질문"]
+        if any(keyword in recent_ai_content for keyword in completion_keywords):
+            already_showed_individual = True
+            print(f"🔧 상담 완료 상태 키워드 감지: 개별 해석 완료로 판단")
     # 🔧 개별 해석 여부에 따라 다른 프롬프트 사용
     if already_showed_individual:
         ending_instruction = """자연스럽고 도움이 되는 답변을 해주세요.
@@ -914,94 +991,7 @@ def extract_question_topic(user_input: str) -> str:
         return "general"
 # TAROT_CARDS는 별도 모듈에서 import 하도록 처리 필요 (실제 정의가 위에 추가됨)
 
-def integrate_search_results_with_tarot(tarot_cards: List[Dict], search_results: dict, user_concern: str) -> str:
-    """검색 결과를 타로 해석에 통합"""
-    if not search_results.get("success") or not search_results.get("results"):
-        return ""
-    # 검색 결과 요약
-    search_summary = ""
-    results_data = search_results["results"]
-    # 딕셔너리인 경우 처리
-    if isinstance(results_data, dict):
-        if "results" in results_data:
-            results = results_data["results"]
-        elif "data" in results_data:
-            results = results_data["data"]
-        else:
-            results = [results_data]
-    elif isinstance(results_data, list):
-        results = results_data
-    else:
-        return ""
-    if isinstance(results, list) and len(results) > 0:
-        top_results = results[:3]
-        search_summary = "\n".join([
-            f"- {result.get('title', '제목 없음')}: {result.get('content', result.get('snippet', '내용 없음'))[:200]}"
-            for result in top_results
-            if isinstance(result, dict)
-        ])
-    if not search_summary:
-        return ""
-    from langchain_openai import ChatOpenAI
-    from langchain_core.messages import HumanMessage
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
-    card_summary = ", ".join([card.get("name", "알 수 없는 카드") for card in tarot_cards])
-    prompt = f"""
-    타로 카드 해석에 현실적 정보를 통합하여 조언을 제공해주세요.
-    **사용자 고민:** {user_concern}
-    **선택된 타로 카드:** {card_summary}
-    **현실 정보 (웹 검색 결과):**
-    {search_summary}
-    **필수 요구사항:**
-    1. 타로 카드의 상징적 의미와 현실 정보를 균형있게 결합하세요
-    2. 검색 결과에서 얻은 구체적인 정보를 반드시 포함하세요
-    3. 검색 결과를 단순히 언급하는 것이 아니라, 타로 해석과 깊이 통합하세요
-    4. 사용자가 실제로 행동할 수 있는 구체적인 방향을 제시하세요
-    5. 검색 결과와 타로 해석이 상충될 경우, 두 관점을 모두 제시하고 균형잡힌 조언을 제공하세요
-    6. 검색 결과에서 얻은 구체적인 사실, 통계, 전문가 의견 등을 반드시 활용하세요
-    7. 검색 결과의 주요 키워드와 개념을 타로 카드의 상징과 연결하세요
-    **통합 해석 및 조언:**
-    """
-    try:
-        response = llm.invoke([HumanMessage(content=prompt)])
-        integration_result = response.content.strip()
-        print(f"✨ 타로-현실 통합 해석 생성 완료 ({len(integration_result)}자)")
-        return integration_result
-    except Exception as e:
-        print(f"❌ 통합 해석 생성 오류: {e}")
-        return ""
-def format_search_results_for_display(search_results: dict) -> str:
-    """검색 결과를 사용자에게 보여줄 형태로 포맷"""
-    if not search_results.get("success") or not search_results.get("results"):
-        return ""
-    results_data = search_results["results"]
-    # 딕셔너리인 경우 처리
-    if isinstance(results_data, dict):
-        if "results" in results_data:
-            results = results_data["results"]
-        elif "data" in results_data:
-            results = results_data["data"]
-        else:
-            results = [results_data]
-    elif isinstance(results_data, list):
-        results = results_data
-    else:
-        return ""
-    if not isinstance(results, list) or len(results) == 0:
-        return ""
-    formatted = f"\n\n📊 **참고한 현실 정보** (출처: {search_results.get('source', '웹 검색')}):\n"
-    for i, result in enumerate(results[:3], 1):
-        if isinstance(result, dict):
-            title = result.get('title', '제목 없음')
-            content = result.get('content', result.get('snippet', '내용 없음'))
-            url = result.get('url', '')
-            if len(content) > 150:
-                content = content[:150] + "..."
-            formatted += f"{i}. **{title}**\n   {content}\n"
-            if url:
-                formatted += f"   🔗 {url}\n"
-            formatted += "\n"
-    return formatted
+# 웹 검색 관련 함수들 제거됨
 def get_current_context() -> dict:
    """현재 시간 맥락 정보 생성"""
    # 한국 시간 기준

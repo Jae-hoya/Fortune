@@ -21,8 +21,6 @@ from .analysis import *
 
 from .timing import *
 
-from .web_search import *
-
 from .translation import *
 
 from .helpers import *
@@ -262,18 +260,12 @@ def consultation_handler(state: TarotState) -> TarotState:
     elif recent_concern:
         print(f"🔧 최근 고민으로 상담 시작: '{recent_concern}'")
         state["user_input"] = recent_concern  # 최근 고민으로 교체
-    # Phase 1 리팩토링: 4개 노드를 순차 실행하여 동일한 결과 제공
+    # Phase 1 리팩토링: 웹 검색 제거 후 2개 노드 순차 실행
     try:
         # 1. 감정 분석
         result1 = emotion_analyzer_node(state)
         state.update(result1)
-        # 2. 웹 검색 판단
-        result2 = web_search_decider_node(state)
-        state.update(result2)
-        # 3. 웹 검색 실행
-        result3 = web_searcher_node(state)
-        state.update(result3)
-        # 4. 스프레드 추천
+        # 2. 스프레드 추천 (웹 검색 관련 코드 제거됨)
         result4 = spread_recommender_node(state)
         state.update(result4)
         print("✅ 실제 상담 성공적으로 완료")
@@ -336,53 +328,8 @@ def general_handler(state: TarotState) -> TarotState:
        
        return {"messages": [AIMessage(content=date_response)]}
 
-   # 웹 검색 필요성 판단
-
-   conversation_context = ""
-
-   messages = state.get("messages", [])
-
-   if len(messages) >= 2:
-       last_ai = None
-       for msg in reversed(messages):
-           if isinstance(msg, AIMessage):
-               last_ai = msg.content[:100] + "..." if len(msg.content) > 100 else msg.content
-               break
-       if last_ai:
-           conversation_context = f"직전 대화: {last_ai}"
-
-   search_decision = decide_web_search_need_with_llm(user_input, conversation_context)
-
-   # 웹 검색 실행 (필요한 경우)
-
-   search_results = None
-
-   if search_decision.get("need_search", False) and search_decision.get("confidence", 0) > 0.5:
-       search_query = search_decision.get("search_query", user_input)
-       search_type = search_decision.get("search_type", "general")
-       print(f"🔍 웹 검색 실행: {search_query} (타입: {search_type})")
-       search_results = perform_web_search(search_query, search_type)
-
    # 일반 질문 처리
-
    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
-
-   # 검색 결과가 있으면 프롬프트에 포함
-
-   search_context = ""
-
-   if search_results and search_results.get("success"):
-       search_summary = ""
-       results = search_results.get("results", [])
-       if isinstance(results, list) and len(results) > 0:
-           top_results = results[:2]
-           search_summary = "\n".join([
-               f"- {result.get('title', '제목 없음')}: {result.get('content', result.get('snippet', '내용 없음'))[:150]}"
-               for result in top_results
-               if isinstance(result, dict)
-           ])
-       if search_summary:
-           search_context = f"\n\n**참고 정보 (웹 검색 결과):**\n{search_summary}\n\n위 정보를 참고하여 더 현실적이고 구체적인 조언을 제공해주세요."
 
    # 🆕 일상 대화 감지 및 자연스러운 응답
 
@@ -394,32 +341,21 @@ def general_handler(state: TarotState) -> TarotState:
        prompt = f"""
        사용자가 일상적인 대화를 시작했습니다: "{user_input}"
        타로 상담사로서 친근하고 자연스럽게 응답해주세요. 
-       타로적 관점을 살짝 섞되, 과하지 않게 일상 대화처럼 답변하세요.{search_context}
+       타로적 관점을 살짝 섞되, 과하지 않게 일상 대화처럼 답변하세요.
        마지막에 "카드 한 장 뽑아서 알아보길 원하시면 '네'라고 답해주세요."라고 명확하게 제안해주세요.
        😊 친근하고 따뜻한 톤으로 답변하세요.
        """
    else:
        prompt = f"""
        사용자가 타로나 점술에 대한 일반적인 질문을 했습니다: "{user_input}"
-       타로 상담사로서 친근하고 도움이 되는 답변을 해주세요.{search_context}
+       타로 상담사로서 친근하고 도움이 되는 답변을 해주세요.
        마지막에 "카드 한 장 뽑아서 알아보길 원하시면 '네'라고 답해주세요. 본격적인 타로 상담을 원하시면 '타로 봐줘'라고 말씀해주세요!"라고 덧붙여주세요.
        🔮 따뜻하고 전문적인 톤으로 답변하세요.
        """
    
    try:
        response = llm.invoke([HumanMessage(content=prompt)])
-       # 검색 결과 표시 추가 (있는 경우)
-       final_response = response.content
-       if search_results and search_results.get("success"):
-           search_display = format_search_results_for_display(search_results)
-           if search_display:
-               final_response += search_display
-       # 상태에 검색 정보 저장
-       updated_state = {"messages": [AIMessage(content=final_response)]}
-       if search_results:
-           updated_state["search_results"] = search_results
-           updated_state["search_decision"] = search_decision
-       return updated_state
+       return {"messages": [AIMessage(content=response.content)]}
 
    except Exception as e:
        fallback_msg = "🔮 질문에 답변드리는 중 문제가 생겼어요. 다시 질문해주시면 더 정확히 답변드릴게요!\n\n카드 한 장 뽑아서 알아보길 원하시면 '네'라고 답해주세요. 다른 궁금한 점이 있으시면 언제든 말씀해주세요!"
@@ -509,30 +445,219 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
         if isinstance(msg, HumanMessage):
             user_input = msg.content.strip()
             break
+    # 🔧 기본 스프레드 이름 감지 우선 처리
+    default_spreads = get_default_spreads()
+    selected_default_spread = None
+    
+    # 기본 스프레드 이름 매칭
+    spread_name_mapping = {
+        "세 장": "THE THREE CARD SPREAD",
+        "세장": "THE THREE CARD SPREAD", 
+        "3장": "THE THREE CARD SPREAD",
+        "쓰리카드": "THE THREE CARD SPREAD",
+        "켈틱": "THE CELTIC CROSS SPREAD",
+        "셀틱": "THE CELTIC CROSS SPREAD",
+        "크로스": "THE CELTIC CROSS SPREAD",
+        "켈틱크로스": "THE CELTIC CROSS SPREAD",
+        "10장": "THE CELTIC CROSS SPREAD",
+        "말굽": "THE HORSESHOE TAROT CARD SPREAD",
+        "호스슈": "THE HORSESHOE TAROT CARD SPREAD",
+        "horseshoe": "THE HORSESHOE TAROT CARD SPREAD",
+        "7장": "THE HORSESHOE TAROT CARD SPREAD"
+    }
+    
+    user_input_lower = user_input.lower()
+    for keyword, spread_name in spread_name_mapping.items():
+        if keyword in user_input_lower:
+            # 해당 기본 스프레드 찾기
+            for spread in default_spreads:
+                if spread['spread_name'] == spread_name:
+                    selected_default_spread = spread
+                    print(f"🎯 기본 스프레드 선택됨: {spread_name}")
+                    break
+            break
+    
+    # 기본 스프레드가 선택된 경우 바로 처리
+    if selected_default_spread:
+        # 카드 선택 안내 메시지
+        emotional_analysis = consultation_data.get("emotional_analysis", {})
+        emotion = emotional_analysis.get('primary_emotion', '알 수 없음')
+        
+        # 감정별 카드 선택 안내
+        if emotion == "불안":
+            emotional_guidance = "🌟 마음을 진정시키고, 직감을 믿어보세요. 처음 떠오르는 숫자들이 당신에게 필요한 메시지를 담고 있을 거예요."
+        elif emotion == "슬픔":
+            emotional_guidance = "💙 힘든 마음이지만, 카드가 위로와 희망의 메시지를 전해줄 거예요. 마음이 이끄는 대로 숫자를 선택해보세요."
+        elif emotion == "걱정":
+            emotional_guidance = "🌟 걱정이 많으시겠지만, 카드가 안심할 수 있는 답변을 제시해줄 거예요. 직감적으로 떠오르는 숫자들을 선택해보세요."
+        else:
+            emotional_guidance = "✨ 직감을 믿고 마음이 이끄는 대로 숫자들을 선택해보세요. 카드가 당신에게 필요한 메시지를 전해줄 거예요."
+        
+        card_count = selected_default_spread.get("card_count", 3)
+        spread_name_kr = translate_text_with_llm(selected_default_spread['spread_name'], "spread_name")
+        
+        card_selection_msg = f"""✅ **{spread_name_kr}**를 선택하셨습니다!
+
+{emotional_guidance}
+
+🎴 **카드 선택 방법:**
+
+타로 카드는 총 78장이 있습니다. 
+
+1부터 78 사이의 숫자를 **{card_count}장** 선택해주세요.
+
+**예시:** 7, 23, 45, 12, 56
+
+💫 **팁:** 숫자를 고민하지 마시고, 직감적으로 떠오르는 숫자들을 말씀해주세요. 
+
+당신의 무의식이 이미 답을 알고 있을 거예요."""
+        
+        # consultation_data 업데이트
+        updated_consultation_data = consultation_data.copy()
+        updated_consultation_data.update({
+            "selected_spread": selected_default_spread,
+            "status": "card_selection"
+        })
+        
+        return {
+            "messages": [AIMessage(content=card_selection_msg)],
+            "consultation_data": updated_consultation_data
+        }
+    
     # 🔧 사용자 맞춤 스프레드 요청 감지
-    custom_request_keywords = ["원하는", "다른", "새로운", "특별한", "맞춤", "추천", "더", "별도"]
+    custom_request_keywords = ["원하는", "다른", "새로운", "특별한", "맞춤", "추천", "더", "별도", "보여줘", "찾아줘", "알려줘", "관련", "다시"]
     has_custom_request = any(keyword in user_input for keyword in custom_request_keywords)
+    
+    print(f"🔍 맞춤 스프레드 요청 체크: '{user_input}' -> {has_custom_request}")
+    print(f"🔍 매칭된 키워드: {[keyword for keyword in custom_request_keywords if keyword in user_input]}")
+    
     if has_custom_request:
         print(f"🔧 사용자 맞춤 스프레드 요청 감지: '{user_input}'")
         # 기존 고민 정보 유지하면서 새 스프레드 검색
         user_concern = consultation_data.get("concern", "")
-        keywords = extract_concern_keywords(user_concern + " " + user_input)
+        
+        # 🆕 특정 주제 키워드 감지 및 우선순위 적용
+        topic_keywords = {
+            "돈": ["돈", "금전", "재정", "수입", "연봉", "월급", "투자", "부", "wealth", "money", "financial"],
+            "연애": ["연애", "사랑", "남친", "여친", "결혼", "이별", "love", "romance", "relationship"],
+            "직업": ["직업", "취업", "일", "회사", "커리어", "job", "career", "work"],
+            "건강": ["건강", "몸", "질병", "치료", "health", "medical"],
+            "가족": ["가족", "부모", "자식", "형제", "family", "parent"]
+        }
+        
+        requested_topic = None
+        for topic, keywords in topic_keywords.items():
+            if any(keyword in user_input.lower() for keyword in keywords):
+                requested_topic = topic
+                print(f"🎯 특정 주제 감지: {topic}")
+                break
+        
+        # 키워드 추출 시 특정 주제 우선 반영
+        if requested_topic:
+            keywords = extract_concern_keywords(f"{user_concern} {requested_topic} {user_input}")
+        else:
+            keywords = extract_concern_keywords(user_concern + " " + user_input)
+        
         # 새로운 스프레드 검색 수행
-        new_spreads = perform_multilayer_spread_search(keywords, user_input)
+        new_spreads = perform_multilayer_spread_search(keywords, user_input, requested_topic)
+        
         if new_spreads:
+            # 🆕 특정 주제 관련 스프레드 우선 선택
+            if requested_topic:
+                # 주제별 스프레드 필터링
+                topic_related_spreads = []
+                other_spreads = []
+                
+                for spread in new_spreads:
+                    spread_name = spread.get('spread_name', '').lower()
+                    spread_desc = spread.get('description', '').lower()
+                    
+                    if requested_topic == "돈":
+                        if any(keyword in spread_name + spread_desc for keyword in ["money", "financial", "wealth", "business", "career"]):
+                            topic_related_spreads.append(spread)
+                        else:
+                            other_spreads.append(spread)
+                    elif requested_topic == "연애":
+                        if any(keyword in spread_name + spread_desc for keyword in ["love", "relationship", "romance", "heart"]):
+                            topic_related_spreads.append(spread)
+                        else:
+                            other_spreads.append(spread)
+                    else:
+                        other_spreads.append(spread)
+                
+                # 주제 관련 스프레드를 앞으로 배치
+                if topic_related_spreads:
+                    final_spreads = topic_related_spreads[:2] + other_spreads[:1]
+                    print(f"🎯 {requested_topic} 관련 스프레드 우선 선택: {len(topic_related_spreads)}개")
+                else:
+                    final_spreads = new_spreads[:3]
+                    print(f"⚠️ {requested_topic} 관련 스프레드 없음, 일반 스프레드 사용")
+            else:
+                final_spreads = new_spreads[:3]
+            
             # 상담 데이터 업데이트 (새 스프레드로)
             updated_consultation_data = consultation_data.copy()
             updated_consultation_data.update({
-                "recommended_spreads": new_spreads,
+                "recommended_spreads": final_spreads,
                 "status": "spread_selection"
             })
+            
+            # 🆕 자세한 스프레드 설명 생성 (목적과 효과 포함)
+            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+            
+            detailed_spread_info = ""
+            for spread in final_spreads:
+                positions = spread.get('positions', [])
+                position_meanings = []
+                for pos in positions:
+                    if isinstance(pos, dict):
+                        meaning = pos.get('position_meaning', '')
+                        if meaning:
+                            position_meanings.append(meaning)
+                
+                detailed_spread_info += f"""
+스프레드명: {spread['spread_name']}
+카드 수: {spread['card_count']}장
+설명: {spread.get('description', '')}
+포지션 의미들: {' | '.join(position_meanings)}
+---
+"""
+            
+            explanation_prompt = f"""
+사용자가 "{user_input}"라고 요청했습니다.
+기존 고민: "{user_concern}"
+{f"특별히 요청한 주제: {requested_topic}" if requested_topic else ""}
+
+다음 스프레드들에 대해 각각 목적과 효과를 포함한 자세한 설명을 작성해주세요:
+
+{detailed_spread_info}
+
+각 스프레드에 대해 다음 형식으로 작성:
+**[번호]. [스프레드명 한국어 번역]** ([카드 수]장)
+- 목적: [포지션 의미들을 자연스럽게 조합해서 이 스프레드가 사용자 고민에 어떻게 도움이 될지 설명]
+- 효과: [사용자의 감정 상태를 고려한 따뜻하고 희망적인 효과 설명]
+
+중요 지침:
+- position_name을 직접 언급하지 말고, position_meaning의 내용을 자연스럽게 활용
+- 사용자의 특정 주제 요청({requested_topic if requested_topic else "없음"})을 반영
+- 따뜻하고 희망적인 톤으로 작성
+- 각 스프레드가 사용자 고민에 어떻게 구체적으로 도움이 될지 명확히 설명
+"""
+            
+            try:
+                response = llm.invoke([HumanMessage(content=explanation_prompt)])
+                spread_explanations = response.content
+            except Exception as e:
+                print(f"⚠️ 스프레드 설명 생성 실패: {e}")
+                spread_explanations = ""
+                for idx, spread in enumerate(final_spreads, 1):
+                    spread_name_kr = translate_text_with_llm(spread['spread_name'], "spread_name")
+                    spread_explanations += f"**{idx}. {spread_name_kr}** ({spread['card_count']}장)\n"
+                    spread_explanations += f"   📝 {spread.get('description', '')}\n\n"
+            
             # 새 스프레드 옵션 제시
-            spread_msg = "🔮 **맞춤 스프레드를 새로 찾았습니다!**\n\n"
-            for idx, spread in enumerate(new_spreads[:3], 1):
-                spread_name_kr = translate_text_with_llm(spread['spread_name'], "spread_name")
-                spread_msg += f"**{idx}. {spread_name_kr}** ({spread['card_count']}장)\n"
-                spread_msg += f"   📝 {spread['description']}\n\n"
-            spread_msg += "어떤 스프레드로 진행하시겠어요? (1, 2, 3 중 선택)"
+            spread_msg = f"🔮 **맞춤 스프레드를 새로 찾았습니다!**\n\n{spread_explanations}\n어떤 스프레드로 진행하시겠어요? (1, 2, 3 중 선택)"
+            
             return {
                 "messages": [AIMessage(content=spread_msg)],
                 "consultation_data": updated_consultation_data
@@ -698,7 +823,7 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 
    # 개별 해석 생성
 
-   llm = ChatOpenAI(model="gpt-4o", temperature=0.5)
+   llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
 
    user_concern = consultation_data.get("concern", "")
 
@@ -712,19 +837,11 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 
    # 웹 검색 결과 가져오기 (있는 경우)
 
-   search_results = state.get("search_results", {})
 
-   search_integration = ""
 
-   # 검색 결과가 있으면 통합 해석 생성
 
-   if search_results and search_results.get("success") and selected_cards:
-       search_integration = integrate_search_results_with_tarot(selected_cards, search_results, user_concern)
-       print(f"🌐 웹 검색 결과 통합: {len(search_integration)}자")
-       # 검색 결과 표시도 추가
-       search_display = format_search_results_for_display(search_results)
-       if search_display:
-           cards_display += f"\n\n{search_display}"
+
+   # 웹 검색 관련 코드 제거됨
 
    # rag_system 사용 전 global 선언 및 import
 
@@ -989,9 +1106,7 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 
 - 추천사항: {integrated_analysis['recommendation']}
 
-**웹 검색 통합 분석:**
-
-{search_integration if search_integration else ""}
+**종합 분석:**
 
 **중요 원칙:**
 
@@ -1200,7 +1315,7 @@ def consultation_individual_handler(state: TarotState) -> TarotState:
    # 마지막에 LLM에게 통합 해석 요청
    formatted_timing += "\n💫 **이 시간 흐름을 하나의 스토리로 연결해서 자연스럽게 해석해주세요.**\n"
    # 향상된 상세 조언 생성
-   llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+   llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
    detailed_advice_prompt = f"""
    당신은 정확하고 솔직한 타로 상담사입니다. 이미 생성된 개별 카드 해석들을 종합해서 전체적인 스토리로 연결하여 사용자의 고민을 해결해주세요.
    **사용자 고민:** {user_concern}
@@ -1345,7 +1460,7 @@ def consultation_final_handler(state: TarotState) -> TarotState:
            new_state["consultation_data"] = None  # 기존 데이터 초기화
            return consultation_handler(new_state)
        # 3. 기존 트리거 시스템
-       trigger_result = simple_trigger_check(user_input)
+       trigger_result = simple_trigger_check(user_input_orig)
        if trigger_result == "new_consultation":
            print("🔧 summary_shown에서 새 상담 시작 트리거 감지")
            return consultation_handler(state)
@@ -1355,7 +1470,7 @@ def consultation_final_handler(state: TarotState) -> TarotState:
            return {"messages": [AIMessage(content="🔮 상담이 도움이 되었기를 바랍니다! 다른 고민이 있으시면 언제든 말씀해주세요. ✨")]}
        else:
            # 🆕 추가 질문으로 분류 - context_reference_handler로 라우팅
-           print(f"🎯 summary_shown에서 추가 질문 감지: '{user_input}' -> context_reference_handler로 라우팅")
+           print(f"🎯 summary_shown에서 추가 질문 감지: '{user_input_orig}' -> context_reference_handler로 라우팅")
            return context_reference_handler(state)
    elif status == "card_selection":
        # 카드 선택 단계
@@ -1378,19 +1493,42 @@ def context_reference_handler(state: TarotState) -> TarotState:
                break
    if ai_messages:
        recent_ai_content = "\n\n".join(reversed(ai_messages))
-   llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
+   llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
    # 🔧 **핵심 개선**: 타로 관련 vs 일상 질문 구분
    classification_prompt = f"""
    최근 대화 내용: "{recent_ai_content[:500]}..."
    사용자 새 질문: "{user_input}"
+   
    이 질문이 다음 중 어떤 유형인지 판단해주세요:
-   A) TAROT_RELATED: 최근 타로 상담/해석과 관련된 추가 질문
-      - 예: "그 카드 의미가 뭐야?", "왜 그렇게 해석되는거야?", "시기는 언제야?"
-   B) CASUAL_NEW: 완전히 새로운 일상적 질문  
-      - 예: "짬뽕 vs 짜장면?", "오늘 뭐 입을까?", "비 올까?"
-   **판단 기준**:
-   - 최근 대화에 타로 카드/해석이 있고, 새 질문이 그것과 연관되면 → A
-   - 완전히 다른 주제의 가벼운 질문이면 → B
+   
+   A) TAROT_RELATED: 최근 타로 상담/해석 **자체**에 대한 추가 질문
+      - 예: "그 카드 의미가 뭐야?", "왜 그렇게 해석되는거야?", "시기는 언제야?", "카드 이름이 뭐야?"
+      - 예: "결론은 뭐야?", "요약해줘", "정리하면?", "그래서 어떻게 되는거야?"
+      - 예: "확률이 어떻게 돼?", "성공할 수 있어?", "가능성은?", "전망은?"
+      - 예: "수비학적으로 5는 어떻게 나온거야?", "어떻게 계산된거야?", "왜 그 숫자가 나왔어?"
+      - 예: "카드 조합은 뭐야?", "원소 균형이 뭐야?", "시너지 점수는 어떻게 나온거야?"
+      - 타로 카드나 해석 방법에 대한 직접적인 질문
+      - 뽑힌 카드의 세부사항이나 해석 과정에 대한 질문
+      - **타로 상담 결과에 대한 확인, 요약, 결론 요청**
+      - **타로 해석에 사용된 수비학, 원소, 시너지 등의 계산 방법 질문**
+   
+   B) CASUAL_NEW: 완전히 새로운 질문 (타로와 무관한 일반적 조언/정보 요청)
+      - 예: "짬뽕 vs 짜장면?", "오늘 뭐 입을까?", "비 올까?", "다른 직업은 어때?"
+      - 실용적 조언이나 방법론을 묻는 질문 (타로 결과와 무관)
+      - 타로 해석과 관계없이 독립적으로 답변 가능한 질문
+   
+   **핵심 판단 기준**:
+   - 사용자가 **타로 카드나 해석 자체**에 대해 궁금해하는가? → A
+   - 사용자가 **타로 상담 결과를 확인/요약/결론**을 원하는가? → A
+   - 사용자가 **일반적인 조언이나 방법**을 원하는가? → B
+   - 타로 없이도 답변 가능한 질문인가? → B
+   
+   **특별 주의사항**:
+   - "결론은", "요약하면", "정리하면", "그래서" 등은 타로 결과에 대한 질문이므로 A
+   - "확률", "가능성", "전망" 등도 타로 해석 결과에 대한 질문이므로 A
+   - "어떻게 나온거야", "어떻게 계산된거야", "왜 그 숫자가" 등은 타로 해석 과정에 대한 질문이므로 A
+   - "수비학", "원소", "시너지", "카드 조합" 등 타로 해석 요소에 대한 질문은 A
+   
    답변: A 또는 B만 출력
    """
    try:
@@ -1740,11 +1878,7 @@ def consultation_router(state: TarotState) -> str:
     consultation_status = state.get("consultation_status", "start")
     print(f"🔧 상담 라우터: 현재 상태 = {consultation_status}")
     if consultation_status == "emotion_analyzed":
-        return "web_search_decider_node"
-    elif consultation_status == "search_decided":
-        return "web_searcher_node"
-    elif consultation_status == "search_completed":
-        return "spread_recommender_node"
+        return "spread_recommender_node"  # 웹 검색 단계 건너뛰기
     elif consultation_status == "spreads_recommended":
         return "END"  # 스프레드 추천 완료
     else:
@@ -1768,7 +1902,7 @@ def supervisor_llm_node(state: TarotState) -> TarotState:
         if last_ai:
             recent_context = f"직전 AI 응답: {last_ai}"
     llm = ChatOpenAI(
-        model="gpt-4o", 
+        model="gpt-4o-mini", 
         temperature=0.1,
         model_kwargs={"response_format": {"type": "json_object"}}
     )
@@ -1907,80 +2041,6 @@ def emotion_analyzer_node(state: TarotState) -> TarotState:
         "emotional_greeting": emotional_greeting,
         "consultation_status": "emotion_analyzed"
     }
-def web_search_decider_node(state: TarotState) -> TarotState:
-    """웹 검색 필요성 판단 전용 노드 - LLM 1개만 사용"""
-    user_input = state.get("user_input") or get_last_user_input(state)
-    print("🔧 웹 검색 판단 노드 실행")
-    # 기존 로직 완전 보존 - 대화 맥락 구성
-    conversation_context = ""
-    messages = state.get("messages", [])
-    if len(messages) >= 2:
-        last_ai = None
-        for msg in reversed(messages):
-            if isinstance(msg, AIMessage):
-                last_ai = msg.content[:100] + "..." if len(msg.content) > 100 else msg.content
-                break
-        if last_ai:
-            conversation_context = f"직전 대화: {last_ai}"
-    # 기존 함수 그대로 사용
-    search_decision = decide_web_search_need_with_llm(user_input, conversation_context)
-    return {
-        "search_decision": search_decision,
-        "needs_web_search": search_decision.get("need_search", False) and search_decision.get("confidence", 0) > 0.4,
-        "consultation_status": "search_decided"
-    }
-def web_searcher_node(state: TarotState) -> TarotState:
-    """웹 검색 실행 전용 노드 - LLM 없음"""
-    print("🔧 웹 검색 실행 노드 실행")
-    # 웹 검색이 필요하지 않은 경우
-    if not state.get("needs_web_search", False):
-        return {
-            "search_results": None,
-            "consultation_status": "search_completed"
-        }
-    # 기존 로직 완전 보존
-    search_decision = state.get("search_decision", {})
-    user_input = state.get("user_input", "")
-    search_query = search_decision.get("search_query", user_input)
-    search_type = search_decision.get("search_type", "general")
-    print(f"🔍 상담 중 웹 검색 실행: {search_query} (타입: {search_type})")
-    search_results = perform_web_search(search_query, search_type)
-    # 검색 결과 로깅 추가
-    if search_results and search_results.get("success") and search_results.get("results"):
-        results_data = search_results.get("results", [])
-        print(f"🔍 검색 결과 구조 확인: {type(results_data)}")
-        # 딕셔너리인 경우 처리
-        if isinstance(results_data, dict):
-            # 딕셔너리에서 실제 결과 리스트 찾기
-            if "results" in results_data:
-                results_list = results_data["results"]
-            elif "data" in results_data:
-                results_list = results_data["data"]
-            else:
-                # 딕셔너리 자체가 하나의 결과일 수 있음
-                results_list = [results_data]
-        elif isinstance(results_data, list):
-            results_list = results_data
-        else:
-            results_list = []
-        if isinstance(results_list, list) and len(results_list) > 0:
-            result_count = len(results_list)
-            print(f"✅ 웹 검색 성공: {result_count}개 결과 발견")
-            # 첫 번째 결과 미리보기
-            try:
-                first_result = results_list[0]
-                title = first_result.get('title', '제목 없음') if isinstance(first_result, dict) else '제목 없음'
-                print(f"🔍 첫 번째 결과: {title}")
-            except (IndexError, KeyError, TypeError) as e:
-                print(f"🔍 첫 번째 결과 처리 중 오류: {e}")
-        else:
-            print(f"❌ 웹 검색 결과 처리 실패: {type(results_data)}")
-    else:
-        print("❌ 웹 검색 실패 또는 결과 없음")
-    return {
-        "search_results": search_results,
-        "consultation_status": "search_completed"
-    }
 def spread_recommender_node(state: TarotState) -> TarotState:
     """스프레드 추천 전용 노드 - 개선된 다층적 검색"""
     user_input = state.get("user_input") or get_last_user_input(state)
@@ -1995,19 +2055,6 @@ def spread_recommender_node(state: TarotState) -> TarotState:
     emotion = emotional_analysis.get('primary_emotion', '알 수 없음')
     intensity = emotional_analysis.get('emotion_intensity', '보통')
     search_context = ""
-    search_results = state.get("search_results")
-    if search_results and search_results.get("success"):
-        search_summary = ""
-        results = search_results.get("results", [])
-        if isinstance(results, list) and len(results) > 0:
-            top_results = results[:2]
-            search_summary = "\n".join([
-                f"- {result.get('title', '제목 없음')}: {result.get('content', result.get('snippet', '내용 없음'))[:150]}"
-                for result in top_results
-                if isinstance(result, dict)
-            ])
-        if search_summary:
-            search_context = f"\n\n**최신 정보 (웹 검색 결과):**\n{search_summary}\n\n위 최신 정보를 참고하여 더 현실적이고 구체적인 조언을 제공해주세요."
     detailed_spreads_info = ""
     for i, spread in enumerate(recommended_spreads, 1):
         detailed_spreads_info += f"\n=== 스프레드 {i}: {spread['spread_name']} ===\n"
@@ -2052,8 +2099,16 @@ def spread_recommender_node(state: TarotState) -> TarotState:
     - 목적: [position_meaning들을 자연스럽게 조합해서 이 스프레드가 사용자 고민에 어떻게 도움이 될지 설명]
     - 효과: [감정 상태를 고려한 따뜻한 효과 설명]
     💫 **어떤 스프레드가 마음에 드시나요? 번호로 답해주세요 (1, 2, 3).**
+    
+    **반드시 다음 안내 문구를 마지막에 그대로 추가해주세요:**
+    
+    원하는 키워드의 스프레드를 말씀해주거나 기본 스프레드인 **세 장 스프레드**, **켈틱 크로스 스프레드**, **말굽 스프레드**로 볼 수도 있어요. 원하는 스프레드를 말씀해주세요.
+    
     중요: position_name을 직접 언급하지 말고, position_meaning의 내용을 바탕으로 자연스럽고 매끄러운 설명을 작성해주세요.
     감정적으로 따뜻하고 희망적인 톤으로 작성해주세요.
+    
+    **📌 필수 요구사항: 응답 마지막에 반드시 다음 문구를 그대로 포함해주세요:**
+    "원하는 키워드의 스프레드를 말씀해주거나 기본 스프레드인 **세 장 스프레드**, **켈틱 크로스 스프레드**, **말굽 스프레드**로 볼 수도 있어요. 원하는 스프레드를 말씀해주세요."
     """
     try:
         response = llm.invoke([HumanMessage(content=recommendation_prompt)], {"metadata": {"final_response": "yes", "handler": "spread_recommender_node"}})
@@ -2069,9 +2124,6 @@ def spread_recommender_node(state: TarotState) -> TarotState:
             },
             "consultation_status": "spreads_recommended"
         }
-        if search_results:
-            updated_state["search_results"] = search_results
-            updated_state["search_decision"] = state.get("search_decision")
         return updated_state
     except Exception as e:
         empathy_message = state.get("empathy_message", "")
@@ -2095,7 +2147,7 @@ def spread_extractor_node(state: TarotState) -> TarotState:
     specified_spread = supervisor_decision.get("specific_spread", "")
     # 2순위: LLM이 사용자 입력에서 스프레드 추출 (기존 로직 보존)
     if not specified_spread:
-        llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
         extract_prompt = f"""
         사용자 입력에서 타로 스프레드를 추출해주세요: "{user_input}"
         사용자가 특정 스프레드를 언급했다면 그 이름을 답해주세요.
@@ -2277,18 +2329,12 @@ def specific_consultation_router(state: TarotState) -> str:
 def start_actual_consultation(state: TarotState) -> TarotState:
     """고민을 받은 후 실제 상담 진행"""
     user_input = state.get("user_input", "")
-    # Phase 1 리팩토링: 4개 노드를 순차 실행하여 동일한 결과 제공
+    # Phase 1 리팩토링: 웹 검색 제거 후 2개 노드 순차 실행
     try:
         # 1. 감정 분석
         result1 = emotion_analyzer_node(state)
         state.update(result1)
-        # 2. 웹 검색 판단
-        result2 = web_search_decider_node(state)
-        state.update(result2)
-        # 3. 웹 검색 실행
-        result3 = web_searcher_node(state)
-        state.update(result3)
-        # 4. 스프레드 추천
+        # 2. 스프레드 추천 (웹 검색 관련 코드 제거됨)
         result4 = spread_recommender_node(state)
         state.update(result4)
         print("✅ 실제 상담 성공적으로 완료")

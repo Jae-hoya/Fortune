@@ -33,6 +33,3 @@ class TarotState(TypedDict):
     # 시간 맥락 정보 (새로 추가)
     temporal_context: Optional[Dict[str, Any]]
     search_timestamp: Optional[str]
-    # 웹 검색 관련 필드 (새로 추가)
-    search_results: Optional[Dict[str, Any]]
-    search_decision: Optional[Dict[str, Any]]
