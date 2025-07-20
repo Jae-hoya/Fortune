@@ -10,8 +10,8 @@ from langchain.tools import DuckDuckGoSearchResults
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 # 사주 계산 모듈 import
-from saju_calculator import SajuCalculator, format_saju_analysis
-from reranker import create_saju_compression_retriever
+from Fortune.saju_calculator import SajuCalculator, format_saju_analysis
+from Fortune.reranker import create_saju_compression_retriever
 
 
 # =============================================================================

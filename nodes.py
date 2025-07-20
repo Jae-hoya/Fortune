@@ -5,9 +5,9 @@ from typing import Literal
 import functools
 import json
 
-from agents import AgentManager
-from prompts import PromptManager
-from tools import calculate_saju_tool
+from Fortune.agents import AgentManager
+from Fortune.prompts import PromptManager
+from Fortune.tools import calculate_saju_tool
 
 members = ["search", "manse", "general_qa"]
 options_for_next = ["FINISH"] + members

@@ -1,9 +1,9 @@
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
 
-from state import AgentState
-from nodes import get_node_manager
-from nodes import members
+from Fortune.state import AgentState
+from Fortune.nodes import get_node_manager
+from Fortune.nodes import members
 
 
 def create_workflow():

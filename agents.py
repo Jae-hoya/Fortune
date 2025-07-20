@@ -3,8 +3,8 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from datetime import datetime
 
-from prompts import PromptManager
-from tools import (
+from Fortune.prompts import PromptManager
+from Fortune.tools import (
     retriever_tool,
     web_tools,
     manse_tools,

@@ -98,6 +98,7 @@ requests = "^2.32.3"
 beautifulsoup4 = "^4.13.4"
 python-dateutil = "^2.9.0.post0"
 pytz = "^2025.2"
+fastapi = {extras = ["standard"], version = "^0.116.1"}
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"

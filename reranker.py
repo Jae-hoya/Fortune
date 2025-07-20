@@ -51,7 +51,7 @@ def create_saju_compression_retriever():
     Returns:
         사주 전용 ContextualCompressionRetriever 객체
     """
-    from vector_store import create_saju_retriever
+    from Fortune.vector_store import create_saju_retriever
     
     # 사주 전용 기본 검색기 생성
     base_retriever = create_saju_retriever(k=20)
