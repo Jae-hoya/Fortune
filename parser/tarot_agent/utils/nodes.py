@@ -847,7 +847,7 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 
    global rag_system
 
-   from parsing.parser.tarot_agent.utils.tools import rag_system
+   from Fortune.parsing.parser.tarot_agent.utils.tools import rag_system
 
    for card in selected_cards:
        position_index = card.get("position", "")

@@ -10,7 +10,7 @@ from ..utils.translation import translate_korean_to_english_with_llm
 
 from ..utils.helpers import convert_numpy_types
 
-from parsing.parser.tarot_rag_system import TarotRAGSystem
+from Fortune.parser.tarot_rag_system import TarotRAGSystem
 
 rag_system = None
 

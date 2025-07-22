@@ -492,7 +492,7 @@ def determine_target_handler(state: TarotState) -> str:
 def perform_multilayer_spread_search(keywords: str, user_input: str, requested_topic: str = None) -> List[Dict]:
     """다층적 스프레드 검색 - 개선된 버전"""
     global rag_system
-    from parsing.parser.tarot_agent.utils.tools import rag_system
+    from Fortune.parser.tarot_agent.utils.tools import rag_system
     
     print(f"🔍 다층적 스프레드 검색 시작: keywords='{keywords}', user_input='{user_input}', requested_topic='{requested_topic}'")
     

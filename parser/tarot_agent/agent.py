@@ -48,7 +48,7 @@ from langgraph.prebuilt import ToolNode
 
 # 기존 RAG 시스템 import
 
-from parsing.parser.tarot_rag_system import TarotRAGSystem
+from Fortune.parser.tarot_rag_system import TarotRAGSystem
 
 # 웹 검색 관련 imports 제거됨
 

@@ -12,7 +12,7 @@ from typing import Annotated, Any, Dict, List, Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.messages.ai import AIMessageChunk
 from langgraph.checkpoint.memory import MemorySaver
 from pydantic import BaseModel
@@ -34,48 +34,87 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# 전역 변수
+# 전역 변수 - Saju 시스템
 memory = None
 compiled_graph = None
 session_store: Dict[str, Dict] = {}
 debug_mode = True  # 디버깅 모드
+
+# 전역 변수 - Tarot 시스템
+rag_system = None
+tarot_compiled_graph = None
+tarot_session_store: Dict[str, Dict] = {}
+
+# 전역 함수 변수 - Tarot
+initialize_rag_system = None
+create_optimized_tarot_graph = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """애플리케이션 생명주기 관리"""
     # Startup
-    global memory, compiled_graph
+    global memory, compiled_graph, rag_system, tarot_compiled_graph
 
     debug_log("🔧 FortuneAI 시스템 초기화 시작...")
 
     # 1단계: 모듈 임포트 확인
     debug_log("1️⃣ 단계 1: 모듈 임포트 확인")
     create_workflow_func, import_success = safe_import_modules()
+    tarot_import_success = safe_import_tarot_modules()
 
     if not import_success:
-        debug_log("❌ 모듈 임포트 실패로 시스템 초기화 중단", "ERROR")
+        debug_log("❌ Saju 모듈 임포트 실패로 시스템 초기화 중단", "ERROR")
         yield
         return
 
-    # 2단계: 워크플로 생성
-    debug_log("2️⃣ 단계 2: 워크플로 생성")
-    try:
-        compiled_graph = create_workflow_func()
-        debug_log(f"✅ 워크플로 생성 성공: {type(app)}")
-    except Exception as e:
-        debug_log(f"❌ 워크플로 생성 실패: {e}", "ERROR")
-        debug_log(f"❌ 상세 오류: {traceback.format_exc()}", "ERROR")
+    if not tarot_import_success:
+        debug_log("❌ Tarot 모듈 임포트 실패로 시스템 초기화 중단", "ERROR")
         yield
         return
 
-    # 3단계: 메모리 초기화
-    debug_log("3️⃣ 단계 3: 메모리 초기화")
+    # 2단계: 메모리 초기화
+    debug_log("2️⃣ 단계 2: 메모리 초기화")
     try:
         memory = MemorySaver()
         debug_log(f"✅ 메모리 초기화 성공: {type(memory)}")
     except Exception as e:
         debug_log(f"❌ 메모리 초기화 실패: {e}", "ERROR")
+        yield
+        return
+
+    # 3단계: Saju 워크플로 생성
+    debug_log("3️⃣ 단계 3: Saju 워크플로 생성")
+    try:
+        if create_workflow_func:
+            compiled_graph = create_workflow_func()
+            debug_log(f"✅ Saju 워크플로 생성 성공: {type(compiled_graph)}")
+        else:
+            debug_log("❌ create_workflow_func가 로드되지 않음", "ERROR")
+            yield
+            return
+    except Exception as e:
+        debug_log(f"❌ Saju 워크플로 생성 실패: {e}", "ERROR")
+        debug_log(f"❌ 상세 오류: {traceback.format_exc()}", "ERROR")
+        yield
+        return
+
+    # 4단계: Tarot 시스템 초기화
+    debug_log("4️⃣ 단계 4: Tarot 시스템 초기화")
+    try:
+        if initialize_rag_system and create_optimized_tarot_graph:
+            rag_system = initialize_rag_system()
+            tarot_compiled_graph = create_optimized_tarot_graph().compile(
+                checkpointer=memory
+            )
+            debug_log(f"✅ Tarot 시스템 초기화 성공: {type(tarot_compiled_graph)}")
+        else:
+            debug_log("❌ Tarot 함수들이 로드되지 않음", "ERROR")
+            yield
+            return
+    except Exception as e:
+        debug_log(f"❌ Tarot 시스템 초기화 실패: {e}", "ERROR")
+        debug_log(f"❌ 상세 오류: {traceback.format_exc()}", "ERROR")
         yield
         return
 
@@ -90,7 +129,7 @@ async def lifespan(app: FastAPI):
 # FastAPI 앱 초기화
 app = FastAPI(
     title="FortuneAI API",
-    description="Supervisor 패턴 기반 사주 계산기 웹 서비스",
+    description="Supervisor 패턴 기반 사주 계산기 및 타로 상담 웹 서비스",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -112,30 +151,43 @@ def debug_log(message: str, level: str = "INFO"):
 
 
 def safe_import_modules():
-    """안전한 모듈 임포트"""
-    # try:
-    debug_log("📦 모듈 임포트 시작...")
+    """안전한 모듈 임포트 - Saju"""
+    debug_log("📦 Saju 모듈 임포트 시작...")
 
-    # langgraph_system.graph 임포트 시도
+    try:
+        from Fortune.graph import create_workflow
 
-    from Fortune.graph import create_workflow
+        debug_log("✅ graph 임포트 성공")
+        return create_workflow, True
+    except ImportError as e:
+        debug_log(f"❌ graph 임포트 실패: {e}", "ERROR")
+        return None, False
+    except Exception as e:
+        debug_log(f"❌ graph 예상치 못한 오류: {e}", "ERROR")
+        return None, False
 
-    debug_log("✅ langgraph_system.graph 임포트 성공")
-    return create_workflow, True
-    # except ImportError as e:
-    #     debug_log(f"❌ langgraph_system.graph 임포트 실패: {e}", "ERROR")
-    #     return None, False
-    # except Exception as e:
-    #     debug_log(f"❌ langgraph_system.graph 예상치 못한 오류: {e}", "ERROR")
-    #     return None, False
 
-    # except Exception as e:
-    #     debug_log(f"❌ 전체 모듈 임포트 실패: {e}", "ERROR")
-    #     return None, False
+def safe_import_tarot_modules():
+    """안전한 모듈 임포트 - Tarot"""
+    global initialize_rag_system, create_optimized_tarot_graph
+    debug_log("📦 Tarot 모듈 임포트 시작...")
+
+    try:
+        from Fortune.parser.tarot_agent.agent import create_optimized_tarot_graph
+        from Fortune.parser.tarot_agent.utils.tools import initialize_rag_system
+
+        debug_log("✅ tarot_agent 모듈 임포트 성공")
+        return True
+    except ImportError as e:
+        debug_log(f"❌ tarot_agent 모듈 임포트 실패: {e}", "ERROR")
+        return False
+    except Exception as e:
+        debug_log(f"❌ tarot_agent 예상치 못한 오류: {e}", "ERROR")
+        return False
 
 
 def initialize_session(session_id: str) -> Dict:
-    """새 세션 초기화"""
+    """새 세션 초기화 - Saju"""
     session_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     session_data = {
@@ -150,13 +202,41 @@ def initialize_session(session_id: str) -> Dict:
     }
 
     session_store[session_id] = session_data
-    debug_log(f"🆔 새 세션 생성: {session_id}")
+    debug_log(f"🆔 새 Saju 세션 생성: {session_id}")
+
+    return session_data
+
+
+def initialize_tarot_session(session_id: str) -> Dict:
+    """새 세션 초기화 - Tarot"""
+    session_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    session_data = {
+        "messages": [
+            AIMessage(
+                content="🔮 안녕하세요! 타로 상담사입니다. 오늘은 어떤 도움이 필요하신가요?"
+            )
+        ],
+        "user_intent": "unknown",
+        "user_input": "",
+        "consultation_data": None,
+        "supervisor_decision": None,
+        "session_id": session_id,
+        "session_start_time": session_start_time,
+        "query_count": 0,
+        "conversation_history": [],
+        "is_active": True,
+        "last_activity": datetime.now(),
+    }
+
+    tarot_session_store[session_id] = session_data
+    debug_log(f"🆔 새 Tarot 세션 생성: {session_id}")
 
     return session_data
 
 
 def get_or_create_session(session_id: str) -> Dict:
-    """세션 가져오기 또는 생성"""
+    """세션 가져오기 또는 생성 - Saju"""
     if session_id not in session_store:
         return initialize_session(session_id)
 
@@ -164,7 +244,16 @@ def get_or_create_session(session_id: str) -> Dict:
     return session_store[session_id]
 
 
-def generate_fallback_response(user_input: str, error_msg: str = None) -> str:
+def get_or_create_tarot_session(session_id: str) -> Dict:
+    """세션 가져오기 또는 생성 - Tarot"""
+    if session_id not in tarot_session_store:
+        return initialize_tarot_session(session_id)
+
+    tarot_session_store[session_id]["last_activity"] = datetime.now()
+    return tarot_session_store[session_id]
+
+
+def generate_fallback_response(user_input: str, error_msg: Optional[str] = None) -> str:
     """폴백 응답 생성"""
     base_responses = [
         f"안녕하세요! '{user_input}'에 대한 질문을 받았습니다.",
@@ -198,11 +287,11 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
         - 메시지 수신 및 처리 루프 실행 (타임아웃 및 오류 처리 포함)
         - 연결 종료 시 세션 정리 및 로그 기록
     """
-    debug_log(f"🔌 WebSocket 연결 요청: {session_id}")
+    debug_log(f"🔌 Saju WebSocket 연결 요청: {session_id}")
 
     try:
         await websocket.accept()
-        debug_log(f"✅ WebSocket 연결 성공: {session_id}")
+        debug_log(f"✅ Saju WebSocket 연결 성공: {session_id}")
 
         # 세션 초기화
         session_data = get_or_create_session(session_id)
@@ -236,7 +325,7 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
                     continue
 
                 if not user_input:
-                    debug_log(websocket, "❓ 질문을 입력해주세요.")
+                    debug_log("❓ 질문을 입력해주세요.")
                     continue
 
                 # 쿼리 처리 시작
@@ -245,7 +334,7 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
 
                 # 처리 중 메시지
                 processing_msg = f"⏳ 분석 중... (질문 #{session_data['query_count']})"
-                debug_log(websocket, processing_msg)
+                debug_log(processing_msg)
                 debug_log("📤 처리 중 메시지 전송 완료")
 
                 # 응답 생성 (타임아웃 포함)
@@ -288,9 +377,8 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
                     # 채팅 모델 스트림 이벤트 및 최종 노드 태그 필터링
                     elif kind == "on_chat_model_stream":
                         if (
-                            "SajuExpert" in event["metadata"]["langgraph_checkpoint_ns"]
-                            and "retriever"
-                            in event["metadata"]["langgraph_checkpoint_ns"]
+                            "manse" in event["metadata"]["langgraph_checkpoint_ns"]
+                            and "agent" in event["metadata"]["langgraph_checkpoint_ns"]
                         ) or (
                             "GeneralQA" in event["metadata"]["langgraph_checkpoint_ns"]
                         ):
@@ -337,7 +425,7 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
 
                 try:
                     error_msg = f"❌ 처리 중 오류가 발생했습니다: {str(e)}"
-                    debug_log(websocket, error_msg)
+                    debug_log(error_msg)
                     debug_log("📤 오류 메시지 전송 완료")
                 except:
                     debug_log("❌ 오류 메시지 전송 실패", "ERROR")
@@ -350,12 +438,13 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
         # 세션 정리
         if session_id in session_store:
             session_store[session_id]["is_active"] = False
-        debug_log(f"🔌 WebSocket 연결 종료: {session_id}")
+        debug_log(f"🔌 Saju WebSocket 연결 종료: {session_id}")
+
 
 @app.websocket("/ws/chat/tarot/{session_id}")
 async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
     """
-    WebSocket 연결을 통해 클라이언트와 실시간 채팅 메시지를 주고받는 엔드포인트입니다.
+    WebSocket 연결을 통해 클라이언트와 실시간 타로 상담 메시지를 주고받는 엔드포인트입니다.
 
     Args:
         websocket (WebSocket): FastAPI WebSocket 객체
@@ -367,18 +456,18 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
         - 메시지 수신 및 처리 루프 실행 (타임아웃 및 오류 처리 포함)
         - 연결 종료 시 세션 정리 및 로그 기록
     """
-    debug_log(f"🔌 WebSocket 연결 요청: {session_id}")
+    debug_log(f"🔌 Tarot WebSocket 연결 요청: {session_id}")
 
     try:
         await websocket.accept()
-        debug_log(f"✅ WebSocket 연결 성공: {session_id}")
+        debug_log(f"✅ Tarot WebSocket 연결 성공: {session_id}")
 
         # 세션 초기화
-        session_data = get_or_create_session(session_id)
+        session_data = get_or_create_tarot_session(session_id)
 
         # 환영 메시지 전송
-        # welcome_msg = f"🔮 FortuneAI에 오신 것을 환영합니다!"
-        # await websocket.send_text(welcome_msg)
+        welcome_msg = f"🔮 FortuneAI에 오신 것을 환영합니다!"
+        await websocket.send_text(welcome_msg)
         debug_log(f"📤 환영 메시지 전송 완료")
 
         # 메인 루프 (연결 상태 확인 포함)
@@ -405,17 +494,8 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
                     continue
 
                 if not user_input:
-                    debug_log(websocket, "❓ 질문을 입력해주세요.")
+                    debug_log("❓ 질문을 입력해주세요.")
                     continue
-
-                # 쿼리 처리 시작
-                session_data["query_count"] += 1
-                debug_log(f"🔄 쿼리 #{session_data['query_count']} 처리 시작")
-
-                # 처리 중 메시지
-                processing_msg = f"⏳ 분석 중... (질문 #{session_data['query_count']})"
-                debug_log(websocket, processing_msg)
-                debug_log("📤 처리 중 메시지 전송 완료")
 
                 # 응답 생성 (타임아웃 포함)
                 start_time = time.time()
@@ -439,10 +519,10 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
                     return info[0].split(":")[0], "parent graph"
 
                 kind = None
-
-                async for event in compiled_graph.astream_events(
+                config = {"configurable": {"thread_id": session_id}}
+                async for event in tarot_compiled_graph.astream_events(
                     session_data,
-                    config={"configurable": {"thread_id": session_id}},
+                    config=config,
                     version="v2",
                     subgraphs=True,
                 ):
@@ -456,20 +536,17 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
 
                     # 채팅 모델 스트림 이벤트 및 최종 노드 태그 필터링
                     elif kind == "on_chat_model_stream":
-                        if (
-                            "SajuExpert" in event["metadata"]["langgraph_checkpoint_ns"]
-                            and "retriever"
-                            in event["metadata"]["langgraph_checkpoint_ns"]
-                        ) or (
-                            "GeneralQA" in event["metadata"]["langgraph_checkpoint_ns"]
-                        ):
-                            # 이벤트 데이터 추출
-                            data = event["data"]
+                        try:
+                            if event["metadata"]["final_response"]:
+                                # 이벤트 데이터 추출
+                                data = event["data"]
 
-                            # 토큰 단위의 스트리밍 출력
-                            if data["chunk"].content:
-                                await websocket.send_text(data["chunk"].content)
-                                # print(data["chunk"].content, end="", flush=True)
+                                # 토큰 단위의 스트리밍 출력
+                                if data["chunk"].content:
+                                    await websocket.send_text(data["chunk"].content)
+                                    # print(data["chunk"].content, end="", flush=True)
+                        except:
+                            continue
 
                     elif kind == "on_tool_start":
                         print(f"\n========= tool_start =========\n")
@@ -491,6 +568,27 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
                 # 완료 정보 전송
                 completion_msg = f"✅ 완료 (실행시간: {execution_time:.2f}초)"
 
+                new_state = await tarot_compiled_graph.aget_state(config)
+                new_state = new_state.values
+
+                logging.info("NEW_STATE")
+                logging.info(new_state)
+                logging.info(type(new_state))
+
+                tarot_session_store[session_id] = new_state  # last state emitted
+                print("state: ", new_state)
+                send_state = new_state.copy()
+                send_state.pop("messages", None)
+                # Optionally notify front-end of current step
+                await websocket.send_json(
+                    send_state,
+                )
+
+                # Optionally notify front-end of current step
+                # await websocket.send_json(
+                #     send_state,
+                # )
+
                 debug_log("📤 완료 메시지 전송 완료")
                 debug_log(f"🔍 완료 메시지: {completion_msg}")
 
@@ -506,7 +604,7 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
 
                 try:
                     error_msg = f"❌ 처리 중 오류가 발생했습니다: {str(e)}"
-                    debug_log(websocket, error_msg)
+                    debug_log(error_msg)
                     debug_log("📤 오류 메시지 전송 완료")
                 except:
                     debug_log("❌ 오류 메시지 전송 실패", "ERROR")
@@ -517,11 +615,9 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
         debug_log(f"❌ 상세 오류: {traceback.format_exc()}", "ERROR")
     finally:
         # 세션 정리
-        if session_id in session_store:
-            session_store[session_id]["is_active"] = False
-        debug_log(f"🔌 WebSocket 연결 종료: {session_id}")
-
-
+        if session_id in tarot_session_store:
+            tarot_session_store[session_id]["is_active"] = False
+        debug_log(f"🔌 Tarot WebSocket 연결 종료: {session_id}")
 
 
 # 디버깅용 엔드포인트들
@@ -533,14 +629,19 @@ async def system_status():
         "system_components": {
             "memory": memory is not None,
             "compiled_graph": compiled_graph is not None,
+            "rag_system": rag_system is not None,
+            "tarot_compiled_graph": tarot_compiled_graph is not None,
         },
         "sessions": {
-            "total": len(session_store),
-            "active": len([s for s in session_store.values() if s["is_active"]]),
+            "saju_total": len(session_store),
+            "saju_active": len([s for s in session_store.values() if s["is_active"]]),
+            "tarot_total": len(tarot_session_store),
+            "tarot_active": len(
+                [s for s in tarot_session_store.values() if s["is_active"]]
+            ),
         },
         "debug_mode": debug_mode,
     }
-
 
 
 @app.get("/api/health")
@@ -552,6 +653,8 @@ async def health_check():
         "system_loaded": {
             "compiled_graph": compiled_graph is not None,
             "memory": memory is not None,
+            "rag_system": rag_system is not None,
+            "tarot_compiled_graph": tarot_compiled_graph is not None,
         },
     }
 
@@ -564,6 +667,10 @@ async def root():
         "version": "1.0.0",
         "debug_mode": debug_mode,
         "status": "running",
+        "endpoints": {
+            "saju": "/ws/chat/saju/{session_id}",
+            "tarot": "/ws/chat/tarot/{session_id}",
+        },
     }
 
 
