@@ -147,7 +147,7 @@ def debug_log(message: str, level: str = "INFO"):
     """디버깅 로그 출력"""
     if debug_mode:
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        print(f"[{timestamp}] [{level}] {message}")
+        logger.info(f"[{timestamp}] [{level}] {message}")
 
 
 def safe_import_modules():
@@ -271,171 +271,89 @@ def generate_fallback_response(user_input: str, error_msg: Optional[str] = None)
 
     return response
 
+# import asyncio
+# from fastapi import WebSocket
 
 @app.websocket("/ws/chat/saju/{session_id}")
 async def chat_websocket_saju(websocket: WebSocket, session_id: str):
-    """
-    WebSocket 연결을 통해 클라이언트와 실시간 채팅 메시지를 주고받는 엔드포인트입니다.
-
-    Args:
-        websocket (WebSocket): FastAPI WebSocket 객체
-        session_id (str): 클라이언트 세션 식별자
-
-    동작:
-        - 클라이언트 연결 요청 수락
-        - 세션 초기화 및 환영 메시지 전송
-        - 메시지 수신 및 처리 루프 실행 (타임아웃 및 오류 처리 포함)
-        - 연결 종료 시 세션 정리 및 로그 기록
-    """
     debug_log(f"🔌 Saju WebSocket 연결 요청: {session_id}")
 
     try:
         await websocket.accept()
         debug_log(f"✅ Saju WebSocket 연결 성공: {session_id}")
 
-        # 세션 초기화
         session_data = get_or_create_session(session_id)
+        message_queue = asyncio.Queue()
 
-        # 환영 메시지 전송
-        # welcome_msg = f"🔮 FortuneAI에 오신 것을 환영합니다!"
-        # await websocket.send_text(welcome_msg)
-        debug_log(f"📤 환영 메시지 전송 완료")
-
-        # 메인 루프 (연결 상태 확인 포함)
-        while True:
-            try:
-                debug_log("👂 사용자 입력 대기 중...")
-
-                # 연결 상태 확인
-                if websocket.client_state.name != "CONNECTED":
-                    debug_log(
-                        f"🔌 WebSocket 연결 상태 변경: {websocket.client_state.name}",
-                        "WARN",
-                    )
+        # 메시지 수신 태스크
+        async def receive_messages():
+            while True:
+                try:
+                    data = await websocket.receive_text()
+                    user_input = data.strip()
+                    if user_input:
+                        await message_queue.put(user_input)
+                        debug_log(f"📝 사용자 입력 큐에 추가: {user_input}")
+                except Exception as e:
+                    debug_log(f"❌ 메시지 수신 오류: {e}", "ERROR")
                     break
 
-                # 타임아웃과 함께 메시지 수신 (무한 대기 방지)
-                try:
-                    data = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
-                    user_input = data.strip()
-                    debug_log(f"📝 사용자 입력 수신: {user_input}")
-
-                except asyncio.TimeoutError:
-                    # 1초마다 연결 상태 확인
-                    continue
-
-                if not user_input:
-                    debug_log("❓ 질문을 입력해주세요.")
-                    continue
-
-                # 쿼리 처리 시작
+        # 메시지 처리 태스크
+        async def process_messages():
+            while True:
+                user_input = await message_queue.get()
                 session_data["query_count"] += 1
+                session_data["messages"].append(HumanMessage(content=user_input))
                 debug_log(f"🔄 쿼리 #{session_data['query_count']} 처리 시작")
 
-                # 처리 중 메시지
-                processing_msg = f"⏳ 분석 중... (질문 #{session_data['query_count']})"
-                debug_log(processing_msg)
-                debug_log("📤 처리 중 메시지 전송 완료")
-
-                # 응답 생성 (타임아웃 포함)
-                start_time = time.time()
-
-                session_data["messages"].append(HumanMessage(content=user_input))
-
-                # 네임스페이스 문자열을 보기 좋은 형식으로 변환하는 포맷팅 함수
-                def format_namespace(namespace):
-                    return (
-                        namespace[-1].split(":")[0]
-                        if len(namespace) > 0
-                        else "parent graph"
-                    )
-
-                sent_message_ids = set()
-
-                def parse_namespace_info(info: tuple) -> tuple[str, str]:
-                    if len(info) > 1:
-                        namespace, node_name = info
-                        return node_name.split(":")[0], namespace.split(":")[0]
-                    return info[0].split(":")[0], "parent graph"
-
-                kind = None
-
-                async for event in compiled_graph.astream_events(
-                    session_data,
-                    config={"configurable": {"thread_id": session_id}},
-                    version="v2",
-                    subgraphs=True,
-                ):
-                    kind = event["event"]
-                    with open("log.json", "a") as f:
-                        logger.info(event)
-
-                    # 이벤트 종류와 태그 정보 추출
-                    if kind == "on_chat_model_start":
-                        print(f"\n========= on_chat_model_start =========\n")
-
-                    # 채팅 모델 스트림 이벤트 및 최종 노드 태그 필터링
-                    elif kind == "on_chat_model_stream":
-                        if (
-                            "manse" in event["metadata"]["langgraph_checkpoint_ns"]
-                            and "agent" in event["metadata"]["langgraph_checkpoint_ns"]
-                        ) or (
-                            "GeneralQA" in event["metadata"]["langgraph_checkpoint_ns"]
-                        ):
-                            # 이벤트 데이터 추출
-                            data = event["data"]
-
-                            # 토큰 단위의 스트리밍 출력
-                            if data["chunk"].content:
-                                await websocket.send_text(data["chunk"].content)
-                                # print(data["chunk"].content, end="", flush=True)
-
-                    elif kind == "on_tool_start":
-                        print(f"\n========= tool_start =========\n")
-                        data = event["data"]
-                        if "input" in data:
-                            tool_msg = data["input"]
-                            print(tool_msg)
-
-                    elif kind == "on_tool_end":
-                        print(f"\n========= tool_end =========\n")
-                        data = event["data"]
-                        if "output" in data:
-                            tool_msg = data["output"]
-                            print(tool_msg.content)
-                execution_time = time.time() - start_time
-
-                debug_log(f"✅ 응답 생성 완료 ({execution_time:.2f}초)")
-
-                # 완료 정보 전송
-                completion_msg = f"✅ 완료 (실행시간: {execution_time:.2f}초)"
-
-                debug_log("📤 완료 메시지 전송 완료")
-                debug_log(f"🔍 완료 메시지: {completion_msg}")
-
-            except WebSocketDisconnect:
-                debug_log("🔌 WebSocket 연결 끊어짐 (사용자 측)", "WARN")
-                break
-            except ConnectionClosed:
-                debug_log("🔌 WebSocket 연결 닫힘 (ConnectionClosed)", "WARN")
-                break
-            except Exception as e:
-                debug_log(f"❌ WebSocket 처리 오류: {str(e)}", "ERROR")
-                debug_log(f"❌ 상세 오류: {traceback.format_exc()}", "ERROR")
-
                 try:
-                    error_msg = f"❌ 처리 중 오류가 발생했습니다: {str(e)}"
-                    debug_log(error_msg)
-                    debug_log("📤 오류 메시지 전송 완료")
-                except:
-                    debug_log("❌ 오류 메시지 전송 실패", "ERROR")
-                    break
+                    async for event in compiled_graph.astream_events(
+                        session_data,
+                        config={"configurable": {"thread_id": session_id}},
+                        version="v2",
+                        subgraphs=True,
+                    ):
+                        kind = event["event"]
+                        if kind == "on_chat_model_stream":
+                            if (
+                                "manse" in event["metadata"]["langgraph_checkpoint_ns"]
+                                and "agent" in event["metadata"]["langgraph_checkpoint_ns"]
+                            ) or (
+                                "GeneralQA" in event["metadata"]["langgraph_checkpoint_ns"]
+                            ):
+                                data = event["data"]
+                                if data["chunk"].content:
+                                    await websocket.send_json({
+                                        "type": "stream",
+                                        "content": str(data["chunk"].content)
+                                    })
+                    await websocket.send_json({
+                        "type": "complete",
+                        "content": f"✅ 완료 (질문 #{session_data['query_count']})"
+                    })
+                    
+
+                
+                except Exception as e:
+                    debug_log(f"❌ LangGraph 처리 오류: {e}", "ERROR")
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": f"❌ 처리 중 오류가 발생했습니다: {str(e)}"
+                    })
+
+        # 두 태스크를 동시에 실행
+        receive_task = asyncio.create_task(receive_messages())
+        process_task = asyncio.create_task(process_messages())
+
+        # WebSocket 연결이 끊길 때까지 대기
+        await receive_task
+        process_task.cancel()
+        debug_log("🔌 WebSocket 연결 종료 (receive_task 종료)")
 
     except Exception as e:
         debug_log(f"❌ WebSocket 연결 실패: {str(e)}", "ERROR")
         debug_log(f"❌ 상세 오류: {traceback.format_exc()}", "ERROR")
     finally:
-        # 세션 정리
         if session_id in session_store:
             session_store[session_id]["is_active"] = False
         debug_log(f"🔌 Saju WebSocket 연결 종료: {session_id}")
@@ -443,178 +361,80 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
 
 @app.websocket("/ws/chat/tarot/{session_id}")
 async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
-    """
-    WebSocket 연결을 통해 클라이언트와 실시간 타로 상담 메시지를 주고받는 엔드포인트입니다.
-
-    Args:
-        websocket (WebSocket): FastAPI WebSocket 객체
-        session_id (str): 클라이언트 세션 식별자
-
-    동작:
-        - 클라이언트 연결 요청 수락
-        - 세션 초기화 및 환영 메시지 전송
-        - 메시지 수신 및 처리 루프 실행 (타임아웃 및 오류 처리 포함)
-        - 연결 종료 시 세션 정리 및 로그 기록
-    """
     debug_log(f"🔌 Tarot WebSocket 연결 요청: {session_id}")
 
     try:
         await websocket.accept()
         debug_log(f"✅ Tarot WebSocket 연결 성공: {session_id}")
 
-        # 세션 초기화
         session_data = get_or_create_tarot_session(session_id)
+        message_queue = asyncio.Queue()
 
-        # 환영 메시지 전송
-        welcome_msg = f"🔮 FortuneAI에 오신 것을 환영합니다!"
-        await websocket.send_text(welcome_msg)
-        debug_log(f"📤 환영 메시지 전송 완료")
-
-        # 메인 루프 (연결 상태 확인 포함)
-        while True:
-            try:
-                debug_log("👂 사용자 입력 대기 중...")
-
-                # 연결 상태 확인
-                if websocket.client_state.name != "CONNECTED":
-                    debug_log(
-                        f"🔌 WebSocket 연결 상태 변경: {websocket.client_state.name}",
-                        "WARN",
-                    )
-                    break
-
-                # 타임아웃과 함께 메시지 수신 (무한 대기 방지)
+        # 메시지 수신 태스크
+        async def receive_messages():
+            while True:
                 try:
-                    data = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
+                    data = await websocket.receive_text()
                     user_input = data.strip()
-                    debug_log(f"📝 사용자 입력 수신: {user_input}")
+                    if user_input:
+                        await message_queue.put(user_input)
+                        debug_log(f"📝 사용자 입력 큐에 추가: {user_input}")
+                except Exception as e:
+                    debug_log(f"❌ 메시지 수신 오류: {e}", "ERROR")
+                    break
 
-                except asyncio.TimeoutError:
-                    # 1초마다 연결 상태 확인
-                    continue
-
-                if not user_input:
-                    debug_log("❓ 질문을 입력해주세요.")
-                    continue
-
-                # 응답 생성 (타임아웃 포함)
-                start_time = time.time()
-
+        # 메시지 처리 태스크
+        
+        async def process_messages():
+            while True:
+                user_input = await message_queue.get()
+                session_data["query_count"] += 1
                 session_data["messages"].append(HumanMessage(content=user_input))
-
-                # 네임스페이스 문자열을 보기 좋은 형식으로 변환하는 포맷팅 함수
-                def format_namespace(namespace):
-                    return (
-                        namespace[-1].split(":")[0]
-                        if len(namespace) > 0
-                        else "parent graph"
-                    )
-
-                sent_message_ids = set()
-
-                def parse_namespace_info(info: tuple) -> tuple[str, str]:
-                    if len(info) > 1:
-                        namespace, node_name = info
-                        return node_name.split(":")[0], namespace.split(":")[0]
-                    return info[0].split(":")[0], "parent graph"
-
-                kind = None
-                config = {"configurable": {"thread_id": session_id}}
-                async for event in tarot_compiled_graph.astream_events(
-                    session_data,
-                    config=config,
-                    version="v2",
-                    subgraphs=True,
-                ):
-                    kind = event["event"]
-                    with open("log.json", "a") as f:
-                        logger.info(event)
-
-                    # 이벤트 종류와 태그 정보 추출
-                    if kind == "on_chat_model_start":
-                        print(f"\n========= on_chat_model_start =========\n")
-
-                    # 채팅 모델 스트림 이벤트 및 최종 노드 태그 필터링
-                    elif kind == "on_chat_model_stream":
-                        try:
-                            if event["metadata"]["final_response"]:
-                                # 이벤트 데이터 추출
-                                data = event["data"]
-
-                                # 토큰 단위의 스트리밍 출력
-                                if data["chunk"].content:
-                                    await websocket.send_text(data["chunk"].content)
-                                    # print(data["chunk"].content, end="", flush=True)
-                        except:
-                            continue
-
-                    elif kind == "on_tool_start":
-                        print(f"\n========= tool_start =========\n")
-                        data = event["data"]
-                        if "input" in data:
-                            tool_msg = data["input"]
-                            print(tool_msg)
-
-                    elif kind == "on_tool_end":
-                        print(f"\n========= tool_end =========\n")
-                        data = event["data"]
-                        if "output" in data:
-                            tool_msg = data["output"]
-                            print(tool_msg.content)
-                execution_time = time.time() - start_time
-
-                debug_log(f"✅ 응답 생성 완료 ({execution_time:.2f}초)")
-
-                # 완료 정보 전송
-                completion_msg = f"✅ 완료 (실행시간: {execution_time:.2f}초)"
-
-                new_state = await tarot_compiled_graph.aget_state(config)
-                new_state = new_state.values
-
-                logging.info("NEW_STATE")
-                logging.info(new_state)
-                logging.info(type(new_state))
-
-                tarot_session_store[session_id] = new_state  # last state emitted
-                print("state: ", new_state)
-                send_state = new_state.copy()
-                send_state.pop("messages", None)
-                # Optionally notify front-end of current step
-                await websocket.send_json(
-                    send_state,
-                )
-
-                # Optionally notify front-end of current step
-                # await websocket.send_json(
-                #     send_state,
-                # )
-
-                debug_log("📤 완료 메시지 전송 완료")
-                debug_log(f"🔍 완료 메시지: {completion_msg}")
-
-            except WebSocketDisconnect:
-                debug_log("🔌 WebSocket 연결 끊어짐 (사용자 측)", "WARN")
-                break
-            except ConnectionClosed:
-                debug_log("🔌 WebSocket 연결 닫힘 (ConnectionClosed)", "WARN")
-                break
-            except Exception as e:
-                debug_log(f"❌ WebSocket 처리 오류: {str(e)}", "ERROR")
-                debug_log(f"❌ 상세 오류: {traceback.format_exc()}", "ERROR")
+                debug_log(f"🔄 쿼리 #{session_data['query_count']} 처리 시작")
 
                 try:
-                    error_msg = f"❌ 처리 중 오류가 발생했습니다: {str(e)}"
-                    debug_log(error_msg)
-                    debug_log("📤 오류 메시지 전송 완료")
-                except:
-                    debug_log("❌ 오류 메시지 전송 실패", "ERROR")
-                    break
+                    config = {"configurable": {"thread_id": session_id}}
+                    async for event in tarot_compiled_graph.astream_events(
+                        session_data,
+                        config=config,
+                        version="v2",
+                        subgraphs=True,
+                    ):
+                        kind = event["event"]
+                        if kind == "on_chat_model_stream":
+                            data = event.get("data", {})
+                            chunk = data.get("chunk", None)
+                            content = getattr(chunk, "content", None)
+                            if content:
+                                await websocket.send_text(content)
+                    # 쿼리 처리 후 최종 state를 프론트로 전송
+                    state = await tarot_compiled_graph.aget_state(config)
+                    state_dict = state.values if hasattr(state, "values") else state
+                    send_state = dict(state_dict)
+                    send_state.pop("messages", None)
+                    await websocket.send_json({
+                        "type": "final_state",
+                        "state": send_state
+                    })
+                except Exception as e:
+                    debug_log(f"❌ LangGraph 처리 오류: {e}", "ERROR")
+                    await websocket.send_json({
+                        "type": "error",
+                        "content": f"❌ 처리 중 오류가 발생했습니다: {str(e)}"
+                    })
+        # 두 태스크를 동시에 실행
+        receive_task = asyncio.create_task(receive_messages())
+        process_task = asyncio.create_task(process_messages())
+
+        # WebSocket 연결이 끊길 때까지 대기
+        await receive_task
+        process_task.cancel()
+        debug_log("🔌 WebSocket 연결 종료 (receive_task 종료)")
 
     except Exception as e:
         debug_log(f"❌ WebSocket 연결 실패: {str(e)}", "ERROR")
         debug_log(f"❌ 상세 오류: {traceback.format_exc()}", "ERROR")
     finally:
-        # 세션 정리
         if session_id in tarot_session_store:
             tarot_session_store[session_id]["is_active"] = False
         debug_log(f"🔌 Tarot WebSocket 연결 종료: {session_id}")
