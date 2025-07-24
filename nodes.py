@@ -85,10 +85,26 @@ class NodeManager:
     
     def search_agent_node(self, state):
         user_input = state.get("question") or (state["messages"][0].content if state.get("messages") else "")
-        if any(k in user_input for k in ["자료", "문서", "pdf", "검색", "출처"]):
+        category = self._classify_search_llm(user_input)
+        if category == "retriever":
             return self.create_retriever_tool_agent_node()(state)
         else:
             return self.create_web_tool_agent_node()(state)
+        
+    def _classify_search_llm(self, user_input):
+        prompt = """
+        - 사주에 대한 자세한 설명이 필요하면 retriever
+        - 특별한 내부 언급이 없거나, 일반적/공개 정보/공식/인터넷/최신/정의/설명/이론/근거/출처 등은 web
+        - 십신분석의 개념, 사주개념, 또는 사주 오행의 개념적 질문이 들어오면, web
+        둘 중 가장 적합한 카테고리( retriever / web )만 답변하세요.
+        
+
+        질문: "{user_input}"
+        정답:
+        """.format(user_input=user_input)
+        result = self.llm.invoke(prompt)
+        
+        return result.content.strip().lower()
     
 
 

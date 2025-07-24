@@ -34,7 +34,7 @@ class AgentManager:
         retriever_tools = [retriever_tool]
         
         saju_prompt = ChatPromptTemplate.from_messages([
-            ("system", f"Today is {self.now}"),
+            ("system", f"Today is {self.now}, 사주에 대해서 자세한 설명이 필요하면 retriever를 사용해 답합니다."),
             ("system", retriever_tool_prompt),
             MessagesPlaceholder("messages"),
         ])
@@ -52,11 +52,7 @@ class AgentManager:
         """일반 QA 에이전트 생성 (노트북 방식으로 단순화)"""
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         
-        general_qa_prompt = """
-        일반적인 질문을 나의 사주와 관련하여 답변합니다.
-        만약 state에 birth_info 또는 saju_result가 포함되어 있다면, 그 정보를 참고해서 답변에 반영하세요.
-        birth_info: {birth_info}
-        saju_result: {saju_result}
-        """
+        general_qa_prompt = PromptManager().general_qa_prompt()
+
         return create_react_agent(llm, tools=general_qa_tools, prompt=general_qa_prompt).with_config({"tags": ["final_answer_agent"]})
     
