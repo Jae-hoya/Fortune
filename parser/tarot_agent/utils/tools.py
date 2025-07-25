@@ -6,9 +6,9 @@
 
 from langchain_core.tools import tool
 
-from ..utils.translation import translate_korean_to_english_with_llm
+from Fortune.parser.tarot_agent.utils.translation import translate_korean_to_english_with_llm
 
-from ..utils.helpers import convert_numpy_types
+from Fortune.parser.tarot_agent.utils.helpers import convert_numpy_types
 
 from Fortune.parser.tarot_rag_system import TarotRAGSystem
 
@@ -31,7 +31,7 @@ def search_tarot_spreads(query: str) -> str:
         return "RAG 시스템이 초기화되지 않았습니다."
     try:
         english_query = translate_korean_to_english_with_llm(query)
-        results = rag_system.search_spreads(english_query, final_k=5)
+        results = rag_system.search_spreads(english_query, final_k=3)
         safe_results = convert_numpy_types(results)
         print(f"🔮 SPREAD SEARCH: {query} -> {english_query}")
         print(f"🔍 검색 결과: {len(safe_results)}개")

@@ -5,12 +5,42 @@
 """
 
 import json
-
+import os
 from langchain_openai import ChatOpenAI
-
 from langchain_core.messages import HumanMessage
 
+# 캐시 파일 경로
+CACHE_FILE_PATH = "Fortune/parser/tarot_agent/utils/translation_cache.json"
+
 _translation_cache = {}
+
+def load_cache_from_file():
+    """파일에서 번역 캐시를 로드합니다"""
+    global _translation_cache
+    try:
+        if os.path.exists(CACHE_FILE_PATH):
+            with open(CACHE_FILE_PATH, 'r', encoding='utf-8') as f:
+                _translation_cache = json.load(f)
+                print(f"✅ 번역 캐시 로드 완료: {len(_translation_cache)}개 항목")
+        else:
+            print("📝 번역 캐시 파일이 없어서 새로 생성합니다")
+    except Exception as e:
+        print(f"⚠️ 번역 캐시 로드 실패: {e}")
+        _translation_cache = {}
+
+def save_cache_to_file():
+    """번역 캐시를 파일에 저장합니다"""
+    try:
+        # 디렉토리가 없으면 생성
+        os.makedirs(os.path.dirname(CACHE_FILE_PATH), exist_ok=True)
+        
+        with open(CACHE_FILE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(_translation_cache, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ 번역 캐시 저장 실패: {e}")
+
+# 서버 시작시 캐시 로드
+load_cache_from_file()
 
 def translate_text_with_llm(english_text: str, text_type: str = "general") -> str:
     """LLM을 사용해서 영어 텍스트를 한국어로 번역 (캐싱 포함)"""
@@ -51,12 +81,20 @@ def translate_text_with_llm(english_text: str, text_type: str = "general") -> st
         
         # 캐시에 저장
         _translation_cache[cache_key] = result
+        
+        # 파일에 영구 저장
+        save_cache_to_file()
+        
         return result
         
     except Exception as e:
         print(f"번역 중 오류 발생: {e}")
         # 오류 시에도 캐시에 원본 저장 (재시도 방지)
         _translation_cache[cache_key] = english_text
+        
+        # 파일에 영구 저장
+        save_cache_to_file()
+        
         return english_text
     
 def translate_card_info(english_name, direction_text):

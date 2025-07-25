@@ -10,6 +10,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated, Any, Dict, List, Optional
 
+from langchain_core._api.beta_decorator import warn_beta
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import HumanMessage, AIMessage
@@ -21,6 +23,7 @@ from websockets.exceptions import ConnectionClosed
 
 # 현재 디렉토리를 Python 경로에 추가
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 
 # 1) Simple: basicConfig with filename
 logging.basicConfig(
@@ -401,20 +404,32 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
                         subgraphs=True,
                     ):
                         kind = event["event"]
+                        
+                        debug_log(event)
                         if kind == "on_chat_model_stream":
-                            data = event.get("data", {})
-                            chunk = data.get("chunk", None)
-                            content = getattr(chunk, "content", None)
-                            if content:
-                                await websocket.send_text(content)
+                            try:
+                                if event['metadata']['final_response'] == "yes":
+                                        data = event.get("data", {})
+                                        chunk = data.get("chunk", None)
+                                        content = getattr(chunk, "content", None)
+                                    
+                                        if content:
+                                            await websocket.send_json({"type": "stream", "content": str(content)})
+                            except Exception as e:
+                                continue
                     # 쿼리 처리 후 최종 state를 프론트로 전송
                     state = await tarot_compiled_graph.aget_state(config)
                     state_dict = state.values if hasattr(state, "values") else state
                     send_state = dict(state_dict)
                     send_state.pop("messages", None)
+                    
                     await websocket.send_json({
                         "type": "final_state",
                         "state": send_state
+                    })
+                    await websocket.send_json({
+                        "type": "complete",
+                        "content": f"✅ 완료 (질문 #{session_data['query_count']})"
                     })
                 except Exception as e:
                     debug_log(f"❌ LangGraph 처리 오류: {e}", "ERROR")
@@ -501,23 +516,27 @@ def signal_handler(signum, frame):
 
 
 if __name__ == "__main__":
-    import uvicorn
+    
+    from Fortune.parser.tarot_agent.agent import create_optimized_tarot_graph
+    app = create_optimized_tarot_graph()
 
-    # 신호 핸들러 등록
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    # import uvicorn
 
-    debug_log("🚀 FortuneAI FastAPI 서버 시작...")
+    # # 신호 핸들러 등록
+    # signal.signal(signal.SIGINT, signal_handler)
+    # signal.signal(signal.SIGTERM, signal_handler)
 
-    try:
-        uvicorn.run(
-            "main:app",
-            host="0.0.0.0",
-            port=8000,
-            reload=False,  # 디버깅 시 reload 비활성화
-            log_level="info",
-        )
-    except KeyboardInterrupt:
-        debug_log("🛑 서버 종료", "WARN")
-    except Exception as e:
-        debug_log(f"❌ 서버 실행 오류: {e}", "ERROR")
+    # debug_log("🚀 FortuneAI FastAPI 서버 시작...")
+
+    # try:
+    #     uvicorn.run(
+    #         "main:app",
+    #         host="0.0.0.0",
+    #         port=8000,
+    #         reload=False,  # 디버깅 시 reload 비활성화
+    #         log_level="info",
+    #     )
+    # except KeyboardInterrupt:
+    #     debug_log("🛑 서버 종료", "WARN")
+    # except Exception as e:
+    #     debug_log(f"❌ 서버 실행 오류: {e}", "ERROR")

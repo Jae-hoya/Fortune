@@ -303,8 +303,8 @@ class TarotRAGSystem:
     
     def search_cards(self, 
                     query: str, 
-                    hybrid_k: int = 20, 
-                    final_k: int = 5,
+                    hybrid_k: int = 5, 
+                    final_k: int = 3,
                     show_details: bool = True) -> List[Tuple[Document, float]]:
         """
         카드 의미 검색

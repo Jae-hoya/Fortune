@@ -3,7 +3,7 @@ import random
 from typing import List, Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage
-from .state import TarotState
+from Fortune.parser.tarot_agent.utils.state import TarotState
 import pytz
 from datetime import datetime, timedelta
 import json
@@ -549,14 +549,14 @@ def perform_multilayer_spread_search(keywords: str, user_input: str, requested_t
                 print(f"🔍 {i}차 검색: {query}")
                 
                 # 하이브리드 검색 실행
-                hybrid_results = rag_system.search_spreads(query, hybrid_k=40, final_k=20)
+                hybrid_results = rag_system.search_spreads(query, hybrid_k=6, final_k=5)
                 
                 # 리랭킹 적용
                 if hybrid_results and len(hybrid_results) > 0:
                     print(f"⚡ 리랭킹 {len(hybrid_results)}개 문서...")
                     # hybrid_results는 (Document, score) 튜플의 리스트이므로 Document만 추출
                     docs_only = [doc for doc, score in hybrid_results]
-                    reranked_results = rag_system.reranker.rerank(query, docs_only, top_k=20)
+                    reranked_results = rag_system.reranker.rerank(query, docs_only, top_k=3)
                     print(f"✅ 리랭킹 완료. 최고 점수: {reranked_results[0][1]:.4f}")
                     safe_results = convert_numpy_types(reranked_results)
                 else:
@@ -927,7 +927,12 @@ def handle_tarot_related_question(state: TarotState, user_input: str, recent_ai_
 
 "설명이 도움이 되셨을까요? 개별 카드 해석을 보고 싶으시다면 \"네\" 또는 \"보고 싶어\"라고 말해주세요! 😊" """
     prompt = f"""
-    당신은 타로 상담사입니다. 사용자가 방금 전 답변에 대해 추가 질문을 했습니다.
+    당신은 타로 상담사입니다. 사용자가 방금 전 답변에 대해 추가 질문을 했습니다. 
+
+**중요한 호칭 규칙:**
+- 사용자를 지칭할 때는 '내담자님'으로만 하세요 ('당신', '사용자님', '고객님' 금지)
+- 한국어 특성상 주어를 자연스럽게 생략할 수 있는 곳에서는 생략해도 됩니다
+- 어미는 '~입니다' 대신 '~이에요/~해요' 등 친근한 어미로 말해주세요
     **사용자 추가 질문:** "{user_input}"
     **방금 전 내가 한 답변들:**
     {recent_ai_content}

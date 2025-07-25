@@ -17,11 +17,11 @@ from .helpers import (
 
 )
 
-from .analysis import *
+from Fortune.parser.tarot_agent.utils.analysis import *
 
-from .timing import *
+from Fortune.parser.tarot_agent.utils.timing import *
 
-from .translation import *
+from Fortune.parser.tarot_agent.utils.translation import *
 
 from .helpers import *
 
@@ -148,6 +148,11 @@ def simple_card_handler(state: TarotState) -> TarotState:
        사용자가 간단한 질문을 했습니다: "{question_for_interpretation}"
        뽑힌 카드: {card_name_kr}
        **중요: 반드시 사용자의 구체적인 질문에 카드로 답변해주세요!**
+       
+**중요한 호칭 규칙:**
+- 사용자를 지칭할 때는 '내담자님'으로만 하세요 ('당신', '사용자님', '고객님' 금지)
+- 한국어 특성상 주어를 자연스럽게 생략할 수 있는 곳에서는 생략해도 됩니다
+- 어미는 '~입니다' 대신 '~이에요/~해요' 등 친근한 어미로 말해주세요
        **답변 구조:**
        1. **반드시 첫 문장은: "{card_name_kr} 카드가 뽑혔네요!"로 시작**
        2. 뽑힌 카드 간단 소개 (1줄)
@@ -183,7 +188,32 @@ def consultation_handler(state: TarotState) -> TarotState:
     print(f"🔧 사용자 입력 설정: '{user_input}'")
     # 🆕 단순한 "타로 봐줘"만 있는 경우 처리 개선
     simple_triggers = ["타로 봐줘", "타로봐줘", "타로 상담", "점 봐줘", "운세 봐줘"]
-    # 🔧 대화 맥락 추출 - 사용자의 원래 질문 찾기
+    # 🆕 새로운 상담 요청 키워드 (이전 히스토리 무시)
+    new_consultation_triggers = ["새로 봐줘", "새로봐줘", "새로 상담", "다시 봐줘", "다시봐줘", "새로운 상담", "새 상담"]
+    
+    # 새로운 상담 요청인지 확인
+    is_new_consultation_request = any(trigger in user_input.lower() for trigger in new_consultation_triggers)
+    
+    if is_new_consultation_request:
+        print(f"🆕 새로운 상담 요청 감지: '{user_input}' - 이전 히스토리 무시")
+        return {
+            "messages": [AIMessage(content="""🔮 
+
+어떤 고민이나 궁금한 점이 있으신가요? 편하게 이야기해주세요. 
+
+💫 **예시:**
+- 연애, 진로, 인간관계, 건강 등 어떤 주제든 괜찮아요
+- "요즘 직장에서 스트레스가 많아서..."
+- "새로운 연애를 시작할지 고민이에요"
+- "이직을 해야 할지 모르겠어요"
+
+무엇이든 편하게 이야기해주시면, 가장 적합한 타로 스프레드로 답을 찾아드릴게요! ✨""")],
+            "consultation_data": {
+                "status": "waiting_for_concern"
+            }
+        }
+    
+    # 🔧 대화 맥락 추출 - 사용자의 원래 질문 찾기 (새로운 상담이 아닌 경우에만)
     conversation_context = ""
     original_user_question = ""
     messages = state.get("messages", [])
@@ -281,7 +311,7 @@ def consultation_handler(state: TarotState) -> TarotState:
         }
 
 def general_handler(state: TarotState) -> TarotState:
-   """일반 질문 핸들러 - 날짜 질문 특별 처리 및 웹 검색 통합"""
+   """일반 질문 핸들러 - 날짜 질문 특별 처리 """
    user_input = state["user_input"]
    # 🔧 LLM 기반 날짜 질문 감지 (하드코딩 제거)
    def is_date_question(text: str) -> bool:
@@ -302,7 +332,7 @@ def general_handler(state: TarotState) -> TarotState:
            JSON 형식으로 답변:
            {{"is_date_question": true/false, "reasoning": "판단 근거"}}
            """
-           response = llm.invoke([HumanMessage(content=prompt)], {"metadata": {"final_response": "yes", "handler": "general_handler"}})
+           response = llm.invoke([HumanMessage(content=prompt)])
            import json
            result = json.loads(response.content.strip())
            return result.get("is_date_question", False)
@@ -341,6 +371,11 @@ def general_handler(state: TarotState) -> TarotState:
        prompt = f"""
        사용자가 일상적인 대화를 시작했습니다: "{user_input}"
        타로 상담사로서 친근하고 자연스럽게 응답해주세요. 
+
+**중요한 호칭 규칙:**
+- 사용자를 지칭할 때는 '내담자님'으로만 하세요 ('당신', '사용자님', '고객님' 금지)
+- 한국어 특성상 주어를 자연스럽게 생략할 수 있는 곳에서는 생략해도 됩니다
+- 어미는 '~입니다' 대신 '~이에요/~해요' 등 친근한 어미로 말해주세요
        타로적 관점을 살짝 섞되, 과하지 않게 일상 대화처럼 답변하세요.
        마지막에 "카드 한 장 뽑아서 알아보길 원하시면 '네'라고 답해주세요."라고 명확하게 제안해주세요.
        😊 친근하고 따뜻한 톤으로 답변하세요.
@@ -348,13 +383,18 @@ def general_handler(state: TarotState) -> TarotState:
    else:
        prompt = f"""
        사용자가 타로나 점술에 대한 일반적인 질문을 했습니다: "{user_input}"
-       타로 상담사로서 친근하고 도움이 되는 답변을 해주세요.
+       타로 상담사로서 친근하고 도움이 되는 답변을 해주세요. 
+
+**중요한 호칭 규칙:**
+- 사용자를 지칭할 때는 '내담자님'으로만 하세요 ('당신', '사용자님', '고객님' 금지)
+- 한국어 특성상 주어를 자연스럽게 생략할 수 있는 곳에서는 생략해도 됩니다
+- 어미는 '~입니다' 대신 '~이에요/~해요' 등 친근한 어미로 말해주세요
        마지막에 "카드 한 장 뽑아서 알아보길 원하시면 '네'라고 답해주세요. 본격적인 타로 상담을 원하시면 '타로 봐줘'라고 말씀해주세요!"라고 덧붙여주세요.
        🔮 따뜻하고 전문적인 톤으로 답변하세요.
        """
    
    try:
-       response = llm.invoke([HumanMessage(content=prompt)])
+       response = llm.invoke([HumanMessage(content=prompt)], {"metadata": {"final_response": "yes", "handler": "general_handler"}})
        return {"messages": [AIMessage(content=response.content)]}
 
    except Exception as e:
@@ -423,7 +463,7 @@ def consultation_flow_handler(state: TarotState) -> TarotState:
            return consultation_handler(state)
        elif trigger_result == "individual_reading":
            # 이미 완료된 상태에서 개별 해석 재요청 - 안내 메시지
-           return {"messages": [AIMessage(content="이미 개별 해석을 모두 보여드렸습니다. 새로운 고민이 있으시면 '타로 봐줘'라고 말씀해주세요!")]}
+                       return {"messages": [AIMessage(content="이미 개별 해석을 모두 보여드렸습니다. 새로운 고민이 있으시면 '새로 봐줘'라고 말씀해주세요!")]}
        else:
            # context_reference - 추가 질문으로 처리
            print("🔧 추가 질문으로 처리")
@@ -510,7 +550,7 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
 
 💫 **팁:** 숫자를 고민하지 마시고, 직감적으로 떠오르는 숫자들을 말씀해주세요. 
 
-당신의 무의식이 이미 답을 알고 있을 거예요."""
+내담자님의의 무의식이 이미 답을 알고 있을 거예요."""
         
         # consultation_data 업데이트
         updated_consultation_data = consultation_data.copy()
@@ -710,9 +750,7 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
 
 💫 **팁:** 숫자를 고민하지 마시고, 직감적으로 떠오르는 숫자들을 말씀해주세요. 
 
-당신의 무의식이 이미 답을 알고 있을 거예요.
-
-"""
+내담자님의 무의식이 이미 답을 알고 있을 거예요."""
     
     # 상담 데이터 업데이트
     updated_consultation_data = consultation_data.copy()
@@ -847,9 +885,11 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 
    global rag_system
 
-   from Fortune.parsing.parser.tarot_agent.utils.tools import rag_system
+   from Fortune.parser.tarot_agent.utils.tools import rag_system
+   from concurrent.futures import ThreadPoolExecutor, as_completed
 
-   for card in selected_cards:
+   def process_card(card):
+       """단일 카드 처리"""
        position_index = card.get("position", "")
        card_name = card.get("name", "")
        orientation = card.get("orientation", "")
@@ -872,7 +912,20 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
        # 카드 해석 프롬프트
        interpretation_prompt = f"""
 
-당신은 정확하고 솔직한 타로 상담사입니다. 현실을 직시하게 하되 건설적인 방향을 제시하세요.
+당신은 20년 경력의 베테랑 타로 상담사 '미라'입니다. 수많은 내담자들과 상담하며 쌓은 직관력과 따뜻한 공감 능력으로 유명합니다. 
+
+**미라의 상담 스타일:**
+- 카드의 메시지를 솔직하게 전달
+- 내담자의 감정을 깊이 이해하고 공감하는 따뜻한 어조
+- 현실적이면서도 격려가 되는 조언
+- 마치 오랜 친구처럼 편안하지만 전문적인 태도
+
+**미라의 말하기 방식:**
+- 내담자님을 부를 때는 자연스럽게 '내담자님' 또는 주어 생략
+- 상담가다운 표현을 **다양하게 섞어서** 사용: "카드가 말하고 있어요", "제가 느끼기론", "직감적으로 보이는 건", "이 카드에서 보이는 건", "카드의 메시지는" 등
+- 어미는 '~이에요', '~해요', '~네요', '~것 같아요' 등으로 친근하고 부드럽게  
+- 간투사도 **적절히 변화**: "음...", "아...", "그런데요...", "이상하게도...", 또는 간투사 없이 바로 시작
+- **매 카드마다 다른 시작** 방식으로 자연스럽게 변화를 주세요
 
 [사용자 상황]
 
@@ -904,19 +957,22 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 
 5. 무조건적 긍정 금지 - 균형잡힌 시각 유지
 
-**해석 구조:**
+**미라의 해석 방식:**
 
-🃏 **{card_name_kr}가 뽑힌 위치의 의미: {position_name_kr}**
+🃏 **{card_name_kr}가 {position_name_kr} 자리에 나왔네요**
 
-이 위치가 무엇을 나타내는지 {position_meaning}을 참고해 명확히 설명하세요.
+"{card_name_kr} 카드가 나온 자리는 [{position_meaning}을 구체적이고 이해하기 쉽게 풀어서 설명]을 보여주는 자리예요." 
+형식으로 {position_meaning}의 내용을 자연스러운 한국어로 명확하게 설명해주세요.
 
-**{card_name_kr}({orientation_kr})의 메시지**
+**카드가 속삭이는 이야기**
 
-카드가 전하는 핵심 메시지를 직설적으로 전달하세요. 
+다양한 표현으로 시작하세요: "이 카드에서 보이는 건...", "카드의 메시지는...", "여기서 느껴지는 에너지는...", "이 카드가 전하는 건..." 등
+{card_name_kr}({orientation_kr})의 메시지를 자연스럽고 다양한 방식으로 전달하세요.
 
-**당신 상황에 적용하면**
+**내담자님 상황에서는...**
 
-카드가 {position_index}에 위치한다면 어떤 걸 의미하는 지 2-3문장으로 설명하세요.   
+"그래서 내담자님의 경우에는..." "이걸 내담자님 상황에 적용해보면..." 하며 친근하게 연결해서
+실제 상황에 어떻게 적용되는지 2-3문장으로 따뜻하게 설명하세요.   
 
 - 당신은 타로 상담가가 되어 포지션별 카드의 의미를 사용자 고민과 구체적으로 연결해 해석해주세요.
 
@@ -991,6 +1047,11 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
            "timing": actual_timing,
            "enhanced_timing": timing_result
        })
+   # 병렬 처리 실행
+   with ThreadPoolExecutor(max_workers=min(len(selected_cards), 8)) as executor:
+       futures = [executor.submit(process_card, card) for card in selected_cards]
+       for future in as_completed(futures):
+           future.result()  # 완료 대기
 
    # 시기 정보 구조화
 
@@ -1122,13 +1183,12 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 
 6. 🆕 과학적 분석 결과를 근거로 활용
 
-7. 🌐 웹 검색 결과가 있다면 반드시 활용하여 현실적 정보 통합
 
 다음과 같이 명확하게 답변하세요:
 
 ## 🔮 **타로가 전하는 명확한 답변**
 
-**결론 우선순위:**
+**결론:**
 
 1. 스프레드 스토리 > 성공 확률 (카드의 전체적 메시지가 우선)
 
@@ -1136,7 +1196,6 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 
 3. 양쪽 관점을 모두 언급하되 현실적 조언 우선
 
-4. 웹 검색 결과가 있다면 반드시 타로 해석과 통합하여 현실적 조언 제공
 
 **불일치 상황별 대응:**
 
@@ -1146,41 +1205,29 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 
 - 애매한 스프레드 + 명확한 성공률 → 성공률을 주요 판단 기준으로 활용
 
-- 타로 해석과 웹 검색 결과 불일치 → 두 관점을 모두 제시하고 균형잡힌 조언 제공
 
-**단도직입적으로 말할게요**
+**타로가 전하는 결론**
 
-[사용자 고민에 대해 네/아니오 또는 구체적 결론을 명확히 제시. 개별 카드 해석들의 "당신 상황에 적용하면" 내용들을 종합해서 나온 사용자 고민에 대한 스프레드 해석을 우선으로 하되, 과학적 분석의 성공 확률({integrated_analysis['success_analysis']['success_probability']:.1%})과 상충될 경우 양쪽을 모두 고려한 현실적 결론 제시. 웹 검색 결과가 있다면 반드시 통합하여 현실적 정보를 제공.]
+[미라의 따뜻하고 직관적인 말투로 사용자 고민에 대한 명확한 답변 제시. "자, 카드들이 전체적으로 말하고 있는 건요...", "제가 20년간 상담하면서 느낀 바로는..." 같은 미라다운 표현으로 시작. 개별 카드 해석들을 하나의 이야기로 엮어서 전달하되, 과학적 분석 결과도 "흥미롭게도 과학적으로도..." 식으로 자연스럽게 포함]
 
-**과학적 근거:**
+**과학적 분석 해석:**
 
-[통합 분석 결과를 바탕으로 논리적 설명]
+[미라가 과학적 분석을 자연스럽게 해석하는 톤으로 설명. "이 결과를 보니까요...", "수치로 봤을 때는..." 같은 표현 사용]
 
-- 성공 확률 {integrated_analysis['success_analysis']['success_probability']:.1%}의 의미
+- 성공 확률 {integrated_analysis['success_analysis']['success_probability']:.1%}가 의미하는 바
+- 카드들의 조합이 만들어내는 시너지
+- 원소들의 균형 상태가 주는 메시지  
+- 수비학적 관점에서의 의미
 
-- 카드 조합 시너지 효과
 
-- 원소 균형이 미치는 영향
 
-- 수비학적 의미
+**시기적 흐름:**
 
-- 웹 검색에서 발견한 현실적 정보 (있는 경우)
+[미라가 timing_detailed 정보를 자연스럽게 해석하는 방식으로 설명. "카드들이 보여주는 시간의 흐름을 보면요...", "제가 느끼기로는..." 같은 표현 사용]
 
-**시기적으로 언제 어떻게 될 것인가:**
-
-위에 제시된 timing_detailed 데이터를 활용하여 간단하고 명확한 시기 요약을 제공하세요:
-
-- 사용자 고민 "{user_concern}"의 해결 과정을 시간 순서대로 간단히 서술
-
-- 중복되거나 비슷한 시기는 하나로 통합하여 설명  
-
-- "7월 초-중순: 정보 수집", "8월: 결정 실행", "가을: 결과 확인" 식으로 핵심만 간략하게
-
-- 개별 카드 시기는 언급하지 말고, 전체 여정의 핵심 타임라인만 3-4줄로 제시
-
-- 너무 상세하지 말고 사용자가 한눈에 파악할 수 있는 수준으로 요약
-
-**중요**: 상세한 시기 해석은 개별 해석에서 다룰 예정이므로, 여기서는 핵심 흐름만 간단히 제시하세요.
+- 내담자님의 고민 "{user_concern}" 해결 과정을 미라의 시각에서 시간 순서대로 따뜻하게 설명
+- "7월에는...", "8월쯤 되면...", "가을이 되면..." 식으로 자연스럽게 풀어서 설명
+- 너무 기계적이지 않고 미라가 직접 이야기해주는 것처럼 부드럽게 전달
 
 ## 💡 **지금 당장 해야 할 일 (우선순위별)**
 
@@ -1229,7 +1276,7 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 
 💫 **다음 중 원하시는 것을 선택해주세요:**
 
-🔮 **새로운 고민 상담**: "타로 봐줘" 또는 "새로 봐줘"
+🔮 **새로운 고민 상담**: "새로 봐줘"
 
 📖 **개별 카드 해석**: "네" 또는 "보고싶어"  
 
@@ -1317,7 +1364,17 @@ def consultation_individual_handler(state: TarotState) -> TarotState:
    # 향상된 상세 조언 생성
    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
    detailed_advice_prompt = f"""
-   당신은 정확하고 솔직한 타로 상담사입니다. 이미 생성된 개별 카드 해석들을 종합해서 전체적인 스토리로 연결하여 사용자의 고민을 해결해주세요.
+   당신은 20년 경력의 베테랑 타로 상담사 '미라'입니다. 이미 해석한 개별 카드들의 메시지를 하나의 완전한 이야기로 엮어서 내담자님의 고민에 대한 명확한 답변을 드려야 합니다.
+
+**미라의 종합 해석 스타일:**
+- "자, 이제 카드들이 전체적으로 어떤 이야기를 하고 있는지 정리해볼게요"
+- "카드들을 쭉 보니까 하나의 큰 그림이 보이네요"  
+- "전체적으로 카드들이 내담자님께 전하고 싶은 메시지는..." 
+
+**중요한 호칭 규칙:**
+- 사용자를 지칭할 때는 '내담자님'으로만 하세요 ('당신', '사용자님', '고객님' 금지)
+- 한국어 특성상 주어를 자연스럽게 생략할 수 있는 곳에서는 생략해도 됩니다
+- 어미는 '~입니다' 대신 '~이에요/~해요' 등 친근한 어미로 말해주세요
    **사용자 고민:** {user_concern}
    **이전 종합 분석:** {comprehensive_analysis}
    **향상된 개별 카드 해석들:**
@@ -1382,7 +1439,7 @@ def consultation_individual_handler(state: TarotState) -> TarotState:
 
    ---
 
-   상담이 도움이 되셨나요? 이 결과에 대해 더 궁금한 점이나 다른 고민이 있으시면 언제든 말씀해 주세요. ✨
+   오늘 상담이 내담자님께 조금이라도 도움이 되었으면 좋겠어요. 카드들이 전한 메시지들이 앞으로 가실 길에 작은 등불이 되기를 바라며... 혹시 이 결과에 대해 더 궁금한 점이 있거나 다른 고민이 생기시면 언제든 편하게 찾아와 주세요. 미라가 항상 여기 있을게요. ✨💫
 
    """
    
@@ -1407,7 +1464,7 @@ def consultation_individual_handler(state: TarotState) -> TarotState:
 
 💫 **다음 중 원하시는 것을 선택해주세요:**
 
-🔮 **새로운 고민 상담**: "타로 봐줘" 또는 "새로 봐줘"  
+🔮 **새로운 고민 상담**: "새로 봐줘"  
 
 ❓ **추가 질문**: 방금 상담 내용에 대해 자유롭게 질문하세요!
 
@@ -2081,10 +2138,14 @@ def spread_recommender_node(state: TarotState) -> TarotState:
     위 스프레드들의 실제 설명과 포지션 정보를 바탕으로, 사용자의 고민 "{user_input}"에 각 스프레드가 어떻게 도움이 될 수 있는지 구체적으로 설명해주세요.
 
     **⚠️ 중요한 작성 지침:**
+         **중요한 호칭 규칙:**
+     - 사용자를 지칭할 때는 '내담자님'으로만 하세요 ('당신', '사용자님', '고객님' 금지)
+     - 한국어 특성상 주어를 자연스럽게 생략할 수 있는 곳에서는 생략해도 됩니다
+     - 어미는 '~입니다' 대신 '~이에요/~해요' 등 친근한 어미로 말해주세요
     - position_name (예: "Ambition", "Fear or doubt", "Current situation")을 직접 언급하지 마세요
     - 대신 position_meaning의 내용을 자연스럽게 조합해서 스프레드의 목적과 효과를 설명하세요
-    - 예시: "Ambition 포지션을 통해..." (X) → "당신이 진정으로 원하는 것을 명확히 하고..." (O)
-    - 예시: "Fear or doubt 포지션에서..." (X) → "당신의 불안 요소를 인식할 수 있으며..." (O)
+    - 예시: "Ambition 포지션을 통해..." (X) → "내담자가 진정으로 원하는 것을 명확히 하고..." (O)
+    - 예시: "Fear or doubt 포지션에서..." (X) → "내담자의 불안 요소를 인식할 수 있으며..." (O)
     - 예시: "Current situation에서..." (X) → "현재의 상황을 깊이 있게 분석하여..." (O)
 
     다음 형식으로 정확히 추천해주세요:

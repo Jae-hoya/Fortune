@@ -105,7 +105,7 @@ def predict_timing_from_card_metadata(card_info: dict) -> dict:
     """카드 메타데이터로 시기 예측 - 개선된 버전"""
     timing_info = {
         "time_frame": "알 수 없음",
-        "days_min": 0,
+        "days_min": 1,
         "days_max": 365,
         "speed": "보통",
         "description": "시기 정보가 부족합니다.",
