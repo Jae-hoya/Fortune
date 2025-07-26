@@ -10,7 +10,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 
 # 캐시 파일 경로
-CACHE_FILE_PATH = "Fortune/parser/tarot_agent/utils/translation_cache.json"
+CACHE_FILE_PATH = "parsing/parser/tarot_agent/utils/translation_cache.json"
 
 _translation_cache = {}
 

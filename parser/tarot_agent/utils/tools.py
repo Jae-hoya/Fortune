@@ -6,9 +6,9 @@
 
 from langchain_core.tools import tool
 
-from Fortune.parser.tarot_agent.utils.translation import translate_korean_to_english_with_llm
+from ..utils.translation import translate_korean_to_english_with_llm
 
-from Fortune.parser.tarot_agent.utils.helpers import convert_numpy_types
+from ..utils.helpers import convert_numpy_types
 
 from Fortune.parser.tarot_rag_system import TarotRAGSystem
 

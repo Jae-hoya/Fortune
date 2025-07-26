@@ -3,7 +3,7 @@ import random
 from typing import List, Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage
-from Fortune.parser.tarot_agent.utils.state import TarotState
+from .state import TarotState
 import pytz
 from datetime import datetime, timedelta
 import json
@@ -431,15 +431,18 @@ def simple_trigger_check(user_input: str) -> str:
     """
     user_input_lower = user_input.lower()
     
-    # 1. 새 상담 시작 트리거
-    new_consultation_keywords = ["타로 봐줘", "새로 봐줘", "처음부터"]
+    # 1. 새 상담 시작 트리거 (완전히 새로운 주제만)
+    new_consultation_keywords = [
+        "새로 봐줘", "새로봐줘", "새로 봐주", "새로봐주",
+        "새로 상담", "새 상담", "다시 봐줘", "다시봐줘", "처음부터"
+    ]
     if any(keyword in user_input_lower for keyword in new_consultation_keywords):
         matched_keyword = next(keyword for keyword in new_consultation_keywords if keyword in user_input_lower)
         print(f"🎯 새 상담 트리거 감지: '{matched_keyword}' in '{user_input}'")
         return "new_consultation"
     
     # 2. 개별 해석 트리거 (개선된 매칭)
-    individual_keywords = ["네", "yes", "보고싶", "보고 싶", "개별", "자세히", "더 보고", "카드 해석"]
+    individual_keywords = ["상세 해석", "상세해석"]
     if any(keyword in user_input_lower for keyword in individual_keywords):
         matched_keyword = next(keyword for keyword in individual_keywords if keyword in user_input_lower)
         print(f"🎯 개별 해석 트리거 감지: '{matched_keyword}' in '{user_input}'")
@@ -872,7 +875,7 @@ def handle_casual_new_question(user_input: str, llm) -> TarotState:
     2. 강요하지 않고 자연스럽게 타로 옵션을 제안해주세요
     **답변 형식**:
     [질문에 대한 가벼운 답변]
-    만약 카드 한 장을 뽑아 [질문 관련 주제]를 더 깊이 알아보길 원하신다면 '네'라고 답해 주세요. 그리고 본격적인 타로 상담을 원하신다면 '타로 봐줘'라고 말씀해 주세요!
+    🔮 **카드 한 장으로 간단한 조언**을 원하시면 '네'를, **여러 장으로 깊은 상담**을 원하시면 '타로 봐줘'라고 말씀해주세요! 새로운 고민 상담을 원하시면 "새로 봐줘"라고 해주세요!
     **예시**:
     - "짬뽕 vs 짜장면" → "당신의 선택 성향을"
     - "오늘 뭐 입을까" → "당신의 스타일 감각을"
@@ -883,49 +886,56 @@ def handle_casual_new_question(user_input: str, llm) -> TarotState:
         return {"messages": [response]}
     except Exception as e:
         return {
-            "messages": [AIMessage(content=f"🔮 {user_input}에 대해서는 여러 가지 관점이 있을 수 있어요! 만약 카드 한 장을 뽑아 이 선택에 대한 직감을 더 깊이 알아보길 원하신다면 '네'라고 답해 주세요. 그리고 본격적인 타로 상담을 원하신다면 '타로 봐줘'라고 말씀해 주세요!")]
+            "messages": [AIMessage(content=f"🔮 {user_input}에 대해서는 여러 가지 관점이 있을 수 있어요! 🔮 **카드 한 장으로 간단한 조언**을 원하시면 '네'를, **여러 장으로 깊은 상담**을 원하시면 '타로 봐줘'라고 말씀해주세요! 새로운 고민 상담을 원하시면 \"새로 봐줘\"라고 해주세요!")]
         }
 def handle_tarot_related_question(state: TarotState, user_input: str, recent_ai_content: str, llm) -> TarotState:
     """🔧 타로 관련 질문 처리 (기존 로직)"""
     conversation_memory = state.get("conversation_memory", {})
-    # 🔧 개별 카드 해석이 이미 나왔는지 확인
+    
+    # 🔧 개별 카드 해석이 이미 나왔는지 확인 (더 정확한 판단)
     already_showed_individual = False
     if recent_ai_content:
-        # 개별 카드 해석 완료를 나타내는 여러 패턴 확인
-        completion_patterns = [
-            "## 🔮 **카드 해석**",
-            "🔮 **이제 종합적으로 말해줄게요**",
-            "상담이 완료되었습니다!",
-            "## 💡 **상세한 실용적 조언**",
-            "종합 해석:",
-            "🃏 **아래처럼 카드를 뽑으셨네요**",  # 개별 카드 해석 시작 패턴
-            "**시간의 흐름을 읽어보면:**",  # 시기 해석 패턴
-            "**단계별 실행 계획**",  # 상세 조언 패턴
-            "**구체적 행동 지침**",  # 상세 조언 패턴
-            "**마음가짐과 태도**",  # 상세 조언 패턴
+        # 🔧 개별 해석 완료의 확실한 신호만 확인
+        individual_completion_signals = [
+            "## 🔮 **카드 해석**",  # 개별 해석의 실제 시작
+            "🔮 **이제 종합적으로 말해줄게요**",  # 개별 해석 내 종합 부분
+            "## 💡 **상세한 실용적 조언**",  # 개별 해석의 마지막 부분
+            "상담이 완료되었습니다!",  # 개별 해석 완료 후 메시지
+            "**단계별 실행 계획**",  # 개별 해석 내 상세 조언
+            "**구체적 행동 지침**",  # 개별 해석 내 상세 조언
+            "**마음가짐과 태도**",  # 개별 해석 내 상세 조언
+            "오늘 상담이 내담자님께 조금이라도 도움이 되었으면 좋겠어요"  # 개별 해석 완료 시 특별 메시지
         ]
-        # 패턴이 여러 개 발견되면 개별 해석이 이미 완료된 것으로 판단
-        pattern_count = sum(1 for pattern in completion_patterns if pattern in recent_ai_content)
-        if pattern_count >= 3:  # 3개 이상 패턴이 발견되면 개별 해석 완료로 판단
-            already_showed_individual = True
-            print(f"🔧 개별 해석 완료 감지: {pattern_count}개 패턴 발견")
         
-        # 추가 확인: 상담 완료 상태 키워드
-        completion_keywords = ["상담이 완료되었습니다", "다음 중 원하시는 것을 선택해주세요", "새로운 고민 상담", "추가 질문"]
-        if any(keyword in recent_ai_content for keyword in completion_keywords):
+        # 개별 해석이 실제로 완료되었는지 확인
+        individual_signals_found = sum(1 for signal in individual_completion_signals if signal in recent_ai_content)
+        
+        # 🔧 종합 분석과 개별 해석 구분
+        # "🃏 **아래처럼 카드를 뽑으셨네요**"는 종합 분석에서도 나오므로 제외
+        # 진짜 개별 해석 완료는 최소 2개 이상의 신호가 있어야 함
+        if individual_signals_found >= 2:
             already_showed_individual = True
-            print(f"🔧 상담 완료 상태 키워드 감지: 개별 해석 완료로 판단")
+            print(f"🔧 개별 해석 완료 감지: {individual_signals_found}개 신호 발견")
+        else:
+            print(f"🔧 아직 종합 분석 단계: {individual_signals_found}개 신호만 발견")
+        
+        # 추가 확인: consultation_data에서 상태도 체크
+        consultation_data = state.get("consultation_data", {})
+        if consultation_data and consultation_data.get("status") == "completed":
+            already_showed_individual = True
+            print(f"🔧 consultation_data에서 completed 상태 확인")
+
     # 🔧 개별 해석 여부에 따라 다른 프롬프트 사용
     if already_showed_individual:
         ending_instruction = """자연스럽고 도움이 되는 답변을 해주세요.
 **반드시 마지막에 다음 문구를 추가**:
 
-"도움이 되셨나요? 추가로 궁금한 점이 있으시면 언제든 말씀해주세요! 😊" """
+"도움이 되셨나요? 추가로 궁금한 점이 있으시면 언제든 말씀해주세요! 새로운 고민 상담을 하려면 \"새로 봐줘\"라고 해주세요.😊" """
     else:
         ending_instruction = """자연스럽고 도움이 되는 답변을 해주세요.
 **반드시 마지막에 다음 문구를 추가**:
 
-"설명이 도움이 되셨을까요? 개별 카드 해석을 보고 싶으시다면 \"네\" 또는 \"보고 싶어\"라고 말해주세요! 😊" """
+"설명이 도움이 되셨을까요? 더 자세한 해석을 보고 싶으시다면 \"상세 해석\"이라고 말해주세요! 새로운 고민 상담을 하려면 \"새로 봐줘\"라고 해주세요. 😊" """
     prompt = f"""
     당신은 타로 상담사입니다. 사용자가 방금 전 답변에 대해 추가 질문을 했습니다. 
 
@@ -974,7 +984,7 @@ def handle_tarot_related_question(state: TarotState, user_input: str, recent_ai_
         if already_showed_individual:
             error_msg = "🔮 설명하는 중 문제가 생겼어요. 다른 방식으로 질문해주시겠어요? 추가로 궁금한 점이 있으시면 언제든 말씀해주세요! 😊"
         else:
-            error_msg = "🔮 설명하는 중 문제가 생겼어요. 다른 방식으로 질문해주시겠어요? 개별 카드 해석을 보고 싶으시다면 \"네\" 또는 \"보고 싶어\"라고 말해주세요! 😊"
+            error_msg = "🔮 설명하는 중 문제가 생겼어요. 다른 방식으로 질문해주시겠어요? 자세한 해석을 보고 싶으시다면 \"상세 해석\" 이라고 말해주세요! 😊"
         return {
             "messages": [AIMessage(content=error_msg)]
         }
