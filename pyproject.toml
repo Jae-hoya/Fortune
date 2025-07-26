@@ -98,8 +98,11 @@ requests = "^2.32.3"
 beautifulsoup4 = "^4.13.4"
 python-dateutil = "^2.9.0.post0"
 pytz = "^2025.2"
+
+# backend 배포 관련 패키지
 fastapi = {extras = ["standard"], version = "^0.116.1"}
 duckduckgo-search = "^8.1.1"
+langgraph-cli = "^0.3.6"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
