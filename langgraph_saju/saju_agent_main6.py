@@ -16,7 +16,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools.retriever import create_retriever_tool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
-from langchain_teddynote.messages import stream_graph, random_uuid, invoke_graph, stream_graph_v2
+from langchain_teddynote.messages import stream_graph, random_uuid, invoke_graph
 from langchain_teddynote.tools.tavily import TavilySearch
 from langchain_community.tools import DuckDuckGoSearchResults
 from langgraph.checkpoint.memory import MemorySaver
@@ -86,7 +86,6 @@ retriever_tool = create_retriever_tool(
     ),
 )
 
-
 # manse tool
 manse_tools = [calculate_saju_tool]
 manse_tool_prompt = """
@@ -101,6 +100,7 @@ manse_tool_prompt = """
 항목별로 비슷한 문장이 반복되지 않도록 주의해 주시고, 구체적으로 설명해주세요.
 답변 마지막에는 "더 궁금하신 점이 있으시면 언제든 질문해 주세요."와 같은 마무리 멘트를 넣어주세요.
 """
+
 llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
 manse_tool_agent = create_react_agent(llm, manse_tools, prompt=manse_tool_prompt).with_config({"tags": ["final_answer_agent"]})
 
@@ -147,13 +147,13 @@ def agent_node(state, agent, name):
 
 def parse_birth_info_with_llm(user_input, llm):
     prompt = f"""
-아래 문장에서 출생 정보를 추출해서 JSON 형태로 반환하세요.
-필드: year, month, day, hour, minute, is_male, is_leap_month
-예시 입력: "1996년 12월 13일 남자, 10시 30분 출생"
-예시 출력: {{"year": 1996, "month": 12, "day": 13, "hour": 10, "minute": 30, "is_male": true, "is_leap_month": false}}
+    아래 문장에서 출생 정보를 추출해서 JSON 형태로 반환하세요.
+    필드: year, month, day, hour, minute, is_male, is_leap_month
+    예시 입력: "1996년 12월 13일 남자, 10시 30분 출생"
+    예시 출력: {{"year": 1996, "month": 12, "day": 13, "hour": 10, "minute": 30, "is_male": true, "is_leap_month": false}}
 
-입력: {user_input}
-"""
+    입력: {user_input}
+    """
     result = llm.invoke(prompt)
     try:
         birth_info = json.loads(result.content)
@@ -195,6 +195,7 @@ options_for_next = ["FINISH"] + members
 
 class RouteResponse(BaseModel):
     next: Literal[*options_for_next]
+
 supervisor_system_prompt = (
     f"오늘 날짜는 {{now}}입니다.\n"
     "당신은 다음과 같은 전문 에이전트들을 조율하는 Supervisor입니다: {members}.\n"
@@ -203,6 +204,7 @@ supervisor_system_prompt = (
     "- manse: 생년월일/시간 등 사주풀이, 운세 해석, 상세 분석 담당\n"
     "- general_qa: 사주와 무관한 일반 상식, 과학, 프로그래밍 등 모든 질문에 답변\n"
     "입력에 따라 가장 적합한 에이전트로 라우팅하세요."
+    "무한루프에 빠지지 않도록 주의해주세요."
 )
 
 supervisor_prompt = ChatPromptTemplate.from_messages(
@@ -212,6 +214,7 @@ supervisor_prompt = ChatPromptTemplate.from_messages(
         ("system", "위 대화를 참고하여, 다음 중 누가 다음 행동을 해야 하는지 선택하세요: {options}"),
     ]
 )
+
 def supervisor_agent(state):
     supervisor_chain = (
         supervisor_prompt.partial(options=str(options_for_next), members=", ".join(members), now=now)
@@ -292,3 +295,8 @@ def main():
 
 if __name__ == "__main__":
     main() 
+
+# 메모리 저장할때, 요약해서 저장. 
+# 최종 출력전에 요약을 해서, state에 저장을 하고 출력은 하지 않음.
+
+# 12시 30분
