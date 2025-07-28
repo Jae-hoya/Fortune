@@ -609,7 +609,7 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
         })
         
         return {
-            "messages": [AIMessage(content=card_selection_msg)],
+            "messages": [AIMessage(content=card_selection_msg, additional_kwargs={"metadata": {"final_response": "yes"}})],
             "consultation_data": updated_consultation_data
         }
     
@@ -808,7 +808,7 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
         "status": "card_selection"
     })
     return {
-        "messages": [AIMessage(content=card_selection_msg)],
+        "messages": [AIMessage(content=card_selection_msg, additional_kwargs={"metadata": {"final_response": "yes"}})],
         "consultation_data": updated_consultation_data
     }
 

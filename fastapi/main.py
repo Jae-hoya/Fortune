@@ -1,4 +1,5 @@
 import asyncio
+from doctest import debug
 import os
 import signal
 import sys
@@ -30,7 +31,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s %(levelname)-8s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    filename="app.log",  # ← writes all logs to this file
+    filename="app_250729_1.log",  # ← writes all logs to this file
     filemode="a",  # ← "w" to overwrite each run, "a" to append
 )
 
@@ -422,8 +423,8 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
                 debug_log(f"[BEFORE] session_data['messages']: {session_data['messages']}")
                 # session_data["query_count"] += 1
                 try:
-                    session_data["messages"].append(HumanMessage(content=user_input))
                     user_input_dict = json.loads(user_input)
+                    session_data["messages"].append(HumanMessage(content=user_input_dict['message']))
                     session_data["user_input"] = user_input_dict['message']
                 except Exception as e:
                     debug_log(f"❌ 메시지 처리 오류: {e}", "ERROR")
@@ -445,8 +446,9 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
                         version="v2",
                         subgraphs=True,
                     ):
+                        debug_log(event)
                         kind = event["event"]
-                        debug_log(f"[EVENT] kind={kind} | metadata={event.get('metadata', {})}")
+                        # debug_log(f"[EVENT] kind={kind} | metadata={event.get('metadata', {})}")
                         if kind == "on_chat_model_stream":
                             try:
                                 if event['metadata'].get('final_response') == "yes":
@@ -458,11 +460,26 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
                             except Exception as e:
                                 debug_log(f"[STREAM ERROR] {e}", "ERROR")
                                 continue
+                        # if kind == "on_chat_model_stream_end":
+                        #     data = event.get("data", {})
+                        #     chunk = data.get("chunk", None)
+                        #     content = getattr(chunk, "messages", None)
+                        #     if content:
+                        #         content=1
+                        #         await websocket.send_json({"type": "stream", "content": str(content)})
                     # 쿼리 처리 후 최종 state를 프론트로 전송
                     
                     final_state = await tarot_compiled_graph.aget_state(
                         {"configurable": {"thread_id": session_id}}
                     )
+                    debug_log(f"final_state: {final_state.values}")
+                    
+                    final_messages_list = final_state.values.get("messages")
+                    
+                    if final_state.values.get("messages"):
+                        if final_messages_list[-1].additional_kwargs:
+                            if final_messages_list[-1].additional_kwargs.get("metadata").get("final_response") == "yes":
+                                await websocket.send_json({"type": "stream", "content": str(final_messages_list[-1].content)})
                     
                     if final_state and final_state.values:
                         # session_data를 최종 상태로 완전 교체

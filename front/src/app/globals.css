@@ -75,6 +75,12 @@
 }
 
 @layer utilities {
+  .grid-cols-13 {
+    grid-template-columns: repeat(13, minmax(0, 1fr));
+  }
+}
+
+@layer utilities {
   .animate-gradient {
     background-size: 200% 200%;
     animation: gradient 8s ease infinite;

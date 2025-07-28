@@ -5,6 +5,7 @@ import { format } from "date-fns"
 import { ko } from "date-fns/locale"
 import { Card } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
 import { useSidebarStore } from "@/store/sidebar"
 import { SIDEBAR_WIDTH } from "@/components/layout/Sidebar"
 import { useTarotChatStore } from "@/store/tarotChat"
@@ -13,6 +14,13 @@ import { v4 as uuidv4 } from "uuid"
 export default function TarotPage() {
   const [sessionId, setSessionId] = useState<string>("")
   const [isSessionReady, setIsSessionReady] = useState(false)
+  const [showSpreadSelection, setShowSpreadSelection] = useState(false)
+  const [showCardSelection, setShowCardSelection] = useState(false)
+  const [recommendedSpreads, setRecommendedSpreads] = useState<any[]>([])
+  const [selectedCards, setSelectedCards] = useState<number[]>([])
+  const [requiredCardCount, setRequiredCardCount] = useState(0)
+  const [animatedCards, setAnimatedCards] = useState<number[]>([])
+  const [flippedCards, setFlippedCards] = useState<number[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const isSidebarOpen = useSidebarStore((state) => state.isOpen)
@@ -34,23 +42,20 @@ export default function TarotPage() {
     reset,
     setCurrentSessionId,
     lastJsonData,
-    finalStateData // <--- Add this line
+    finalStateData
   } = useTarotChatStore()
 
-  // Session ID management (similar to Saju)
+  // Session ID management - Always create new session on page reload
   useEffect(() => {
-    const stored = window.sessionStorage.getItem("tarot_session_id")
-    if (stored) {
-      setSessionId(stored)
-      setCurrentSessionId(stored)
-    } else {
+    // Always create a new session ID on page reload
       const newId = uuidv4()
       window.sessionStorage.setItem("tarot_session_id", newId)
       setSessionId(newId)
       setCurrentSessionId(newId)
-    }
+    // Reset chat store for new session
+    reset()
     setIsSessionReady(true)
-  }, [])
+  }, [reset])
 
   // Scroll event handler to track if user is at bottom
   const handleScroll = useCallback(() => {
@@ -97,7 +102,41 @@ export default function TarotPage() {
   useEffect(() => {
     if (finalStateData) {
       console.log('final_state 데이터 수신:', finalStateData)
-      // TODO: Use finalStateData as needed in this page
+      
+      // Check if consultation_data.status is "spread_selection"
+      if (finalStateData.state?.consultation_data?.status === "spread_selection") {
+        console.log('스프레드 선택 모드 활성화')
+        setShowSpreadSelection(true)
+        setShowCardSelection(false)
+        setSelectedCards([])
+        setRecommendedSpreads(finalStateData.state.consultation_data.recommended_spreads || [])
+      } 
+      // Check if consultation_data.status is "card_selection"
+      else if (finalStateData.state?.consultation_data?.status === "card_selection") {
+        console.log('카드 선택 모드 활성화')
+        setShowSpreadSelection(false)
+        setShowCardSelection(true)
+        setSelectedCards([])
+        setAnimatedCards([])
+        setFlippedCards([])
+        setRequiredCardCount(finalStateData.state.consultation_data.selected_spread?.card_count || 0)
+        
+        // Start card spreading animation
+        setTimeout(() => {
+          const totalCards = 78
+          const animationDuration = 2000 // 2 seconds total
+          const delayPerCard = animationDuration / totalCards
+          
+          for (let i = 0; i < totalCards; i++) {
+            setTimeout(() => {
+              setAnimatedCards(prev => [...prev, i + 1])
+            }, i * delayPerCard)
+          }
+        }, 100)
+      } else {
+        setShowSpreadSelection(false)
+        setShowCardSelection(false)
+      }
     }
   }, [finalStateData])
 
@@ -140,6 +179,47 @@ export default function TarotPage() {
     }
   }
 
+  const handleSpreadSelection = async (index: number) => {
+    console.log('스프레드 선택 (위치):', index + 1)
+    setShowSpreadSelection(false)
+    await sendMessage((index + 1).toString())
+  }
+
+  const handleCardSelection = (cardIndex: number) => {
+    setSelectedCards(prev => {
+      const isSelected = prev.includes(cardIndex)
+      if (isSelected) {
+        // Remove card if already selected
+        setFlippedCards(flipped => flipped.filter(card => card !== cardIndex))
+        return prev.filter(card => card !== cardIndex)
+      } else {
+        // Add card if not selected and under limit
+        if (prev.length < requiredCardCount) {
+          // Trigger flip animation
+          setTimeout(() => {
+            setFlippedCards(flipped => [...flipped, cardIndex])
+          }, 300) // Start flip after selection
+          return [...prev, cardIndex].sort((a, b) => a - b)
+        }
+        return prev
+      }
+    })
+  }
+
+  const handleCardSelectionSubmit = async () => {
+    if (selectedCards.length === requiredCardCount) {
+      console.log('선택된 카드들:', selectedCards)
+      setShowCardSelection(false)
+      const cardString = selectedCards.join(', ')
+      await sendMessage(cardString)
+    }
+  }
+
+  const handleCardSelectionReset = () => {
+    setSelectedCards([])
+    setFlippedCards([])
+  }
+
   if (!isSessionReady || !sessionId) {
     return (
       <div className="flex min-h-screen bg-white dark:bg-gradient-to-br dark:from-slate-950 dark:to-slate-900 transition-colors items-center justify-center">
@@ -171,13 +251,13 @@ export default function TarotPage() {
       <div
         ref={scrollAreaRef}
         onScroll={handleScroll}
-        className="fixed overflow-y-auto px-1 pt-20 pb-32 bg-white dark:bg-transparent transition-colors"
+        className="fixed overflow-y-auto px-1 pt-20 bg-white dark:bg-transparent transition-colors"
         style={{
           left,
           width,
           top: 72,
-          bottom: 96,
-          height: "calc(100vh - 72px - 96px)",
+          bottom: showCardSelection ? 600 : 96, // 카드 선택 UI가 활성화되면 더 많은 공간 확보
+          height: showCardSelection ? "calc(100vh - 72px - 600px)" : "calc(100vh - 72px - 96px)",
           transition,
           maxWidth: "100vw",
           zIndex: 10,
@@ -272,7 +352,161 @@ export default function TarotPage() {
         )}
       </div>
       
-      {/* 입력창 */}
+      {/* 스프레드 선택 UI */}
+      {showSpreadSelection && (
+        <div className="fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-slate-900 py-4 border-t border-gray-200 dark:border-slate-700 z-50 transition-colors" style={{ left, width, transition }}>
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-purple-800 dark:text-purple-300 mb-2">
+                추천 스프레드를 선택해주세요
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                질문에 가장 적합한 타로 스프레드를 선택하세요
+              </p>
+            </div>
+            <div className="flex gap-4 justify-center">
+              {recommendedSpreads.map((spread, index) => (
+                <Button
+                  key={spread.number}
+                  onClick={() => handleSpreadSelection(index)}
+                  className="flex-1 max-w-xs h-auto p-4 flex flex-col items-center gap-2 bg-gradient-to-br from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <div className="text-sm font-semibold text-center leading-tight">
+                    {spread.spread_name}
+                  </div>
+                  <div className="text-xs opacity-90">
+                    {spread.card_count}장의 카드
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 카드 선택 UI */}
+      {showCardSelection && (
+        <div className="fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-slate-900 py-6 border-t border-gray-200 dark:border-slate-700 z-50 transition-colors" style={{ left, width, transition }}>
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-purple-800 dark:text-purple-300 mb-2">
+                {requiredCardCount}장의 카드를 선택해주세요
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                반원형으로 펼쳐진 카드 중에서 선택하세요 • 선택된 카드: {selectedCards.length}/{requiredCardCount}
+              </p>
+              {selectedCards.length > 0 && (
+                <p className="text-xs text-purple-600 dark:text-purple-400">
+                  선택된 카드: {selectedCards.join(', ')}
+                </p>
+              )}
+            </div>
+            
+            {/* 카드 반원형 스프레드 */}
+            <div className="relative mb-3 overflow-hidden">
+              <div className="flex justify-center">
+                <div className="relative" style={{ width: '800px', height: '500px' }}>
+                  {/* 반원형 카드 배치 */}
+                  {Array.from({ length: 78 }, (_, i) => i + 1).map((cardIndex) => {
+                    // 반원형 배치 계산 (180도 스프레드) - 90도 왼쪽으로 회전
+                    const angle = ((cardIndex - 1) / 77) * (90 * Math.PI / 180) - (Math.PI) +0.75;
+                    const radius = 500
+                    const x = Math.cos(angle) * radius + 400 // 중앙에서 400px
+                    const y = Math.sin(angle) * radius + 600 // 중앙에서 200px (더 아래로 이동)
+                    const rotation = (angle * 180) / Math.PI + 90
+                    const isAnimated = animatedCards.includes(cardIndex)
+                    const isSelected = selectedCards.includes(cardIndex)
+                    const isFlipped = flippedCards.includes(cardIndex)
+                    
+                    // If card is flipped, position it at the bottom
+                    if (isFlipped) {
+                      const selectedIndex = selectedCards.indexOf(cardIndex)
+                      const bottomX = 400 + (selectedIndex - Math.floor(selectedCards.length / 2)) * 100 // Center the cards horizontally
+                      const bottomY = 420 // Position higher up from the bottom
+                      
+                      return (
+                        <button
+                          key={cardIndex}
+                          className="absolute w-20 h-28 rounded-lg border-2 transition-all duration-700 transform z-20 bg-gradient-to-br from-purple-500 to-fuchsia-500 text-white border-purple-400 shadow-lg shadow-purple-500/50"
+                          style={{
+                            left: `${bottomX}px`,
+                            top: `${bottomY}px`,
+                            transform: 'translate(-50%, -50%) rotateY(180deg)',
+                          }}
+                        >
+                          <div className="w-full h-full flex items-center justify-center relative">
+                            <img 
+                              src="/tarot/cardback.png" 
+                              alt={`Card ${cardIndex}`}
+                              className="w-full h-full object-cover rounded-lg"
+                              style={{ transform: 'rotateY(180deg)' }}
+                            />
+                            <div className="absolute top-1 right-1 bg-black/70 text-white text-xs font-bold px-1 py-0.5 rounded">
+                              {cardIndex}
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    }
+                    
+                    return (
+                      <button
+                        key={cardIndex}
+                        onClick={() => handleCardSelection(cardIndex)}
+                        className={`absolute w-20 h-28 rounded-lg border-2 transition-all duration-500 transform hover:scale-110 ${
+                          isSelected
+                            ? 'bg-gradient-to-br from-purple-500 to-fuchsia-500 text-white border-purple-400 shadow-lg shadow-purple-500/50 z-10'
+                            : 'bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-600 hover:border-purple-400 dark:hover:border-purple-400 hover:shadow-md'
+                        } ${isAnimated ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}
+                        style={{
+                          left: `${x}px`,
+                          top: `${y}px`,
+                          transform: `translate(-50%, -50%) rotate(${rotation}deg) ${isAnimated ? 'scale(1)' : 'scale(0.75)'}`,
+                          zIndex: isSelected ? 10 : 1
+                        }}
+                      >
+                        <div className="w-full h-full flex items-center justify-center relative">
+                          <img 
+                            src="/tarot/cardback.png" 
+                            alt={`Card ${cardIndex}`}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                          <div className="absolute top-1 right-1 bg-black/70 text-white text-xs font-bold px-1 py-0.5 rounded">
+                            {cardIndex}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* 액션 버튼들 */}
+            <div className="flex gap-2 justify-center">
+              <Button
+                onClick={handleCardSelectionReset}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                초기화
+              </Button>
+              <Button
+                onClick={handleCardSelectionSubmit}
+                disabled={selectedCards.length !== requiredCardCount}
+                className="bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-600 text-white"
+                size="sm"
+              >
+                카드 선택 완료 ({selectedCards.length}/{requiredCardCount})
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 입력창 - 스프레드 선택이나 카드 선택 중에는 숨김 */}
+      {!showSpreadSelection && !showCardSelection && (
       <form
         onSubmit={handleSubmit}
         className="fixed bottom-0 left-0 right-0 w-full flex justify-center items-center bg-white dark:bg-slate-900 py-4 border-t border-gray-200 dark:border-slate-700 z-50 transition-colors"
@@ -288,6 +522,7 @@ export default function TarotPage() {
           />
         </div>
       </form>
+      )}
     </div>
   )
 }
