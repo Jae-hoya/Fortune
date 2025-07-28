@@ -22,6 +22,7 @@ export default function TarotPage() {
   const [requiredCardCount, setRequiredCardCount] = useState(0)
   const [animatedCards, setAnimatedCards] = useState<number[]>([])
   const [flippedCards, setFlippedCards] = useState<number[]>([])
+  const [shuffledCards, setShuffledCards] = useState<number[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const isSidebarOpen = useSidebarStore((state) => state.isOpen)
@@ -122,6 +123,10 @@ export default function TarotPage() {
         setFlippedCards([])
         setRequiredCardCount(finalStateData.state.consultation_data.selected_spread?.card_count || 0)
         
+        // Shuffle cards before displaying
+        const shuffled = shuffleCards()
+        setShuffledCards(shuffled)
+        
         // Start card spreading animation
         setTimeout(() => {
           const totalCards = 78
@@ -130,7 +135,7 @@ export default function TarotPage() {
           
           for (let i = 0; i < totalCards; i++) {
             setTimeout(() => {
-              setAnimatedCards(prev => [...prev, i + 1])
+              setAnimatedCards(prev => [...prev, shuffled[i]])
             }, i * delayPerCard)
           }
         }, 100)
@@ -214,6 +219,16 @@ export default function TarotPage() {
       const cardString = selectedCards.join(', ')
       await sendMessage(cardString)
     }
+  }
+
+  // Fisher-Yates shuffle algorithm
+  const shuffleCards = () => {
+    const cards = Array.from({ length: 78 }, (_, i) => i + 1)
+    for (let i = cards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[cards[i], cards[j]] = [cards[j], cards[i]]
+    }
+    return cards
   }
 
   const handleCardSelectionReset = () => {
@@ -414,9 +429,9 @@ export default function TarotPage() {
               <div className="flex justify-center">
                 <div className="relative" style={{ width: '800px', height: '500px' }}>
                   {/* 반원형 카드 배치 */}
-                  {Array.from({ length: 78 }, (_, i) => i + 1).map((cardIndex) => {
+                  {shuffledCards.length > 0 && shuffledCards.map((cardIndex, arrayIndex) => {
                     // 반원형 배치 계산 (180도 스프레드) - 90도 왼쪽으로 회전
-                    const angle = ((cardIndex - 1) / 77) * (90 * Math.PI / 180) - (Math.PI) +0.75;
+                    const angle = (arrayIndex / 77) * (90 * Math.PI / 180) - (Math.PI) +0.75;
                     const radius = 500
                     const x = Math.cos(angle) * radius + 400 // 중앙에서 400px
                     const y = Math.sin(angle) * radius + 600 // 중앙에서 200px (더 아래로 이동)
