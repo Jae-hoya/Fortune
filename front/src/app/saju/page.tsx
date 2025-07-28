@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
+import { Markdown } from "@/components/ui/markdown"
 import { useSajuChatStore } from "@/store/sajuChat"
 import { useSidebarStore } from "@/store/sidebar"
 import { SIDEBAR_WIDTH } from "@/components/layout/Sidebar"
@@ -224,7 +225,11 @@ export default function SajuPage() {
                 <div className="text-sm font-semibold mb-1">
                   {message.role === "user" ? "나" : "사주 마스터"}
                 </div>
-                <div className="whitespace-pre-line">{message.content}</div>
+                {message.role === "user" ? (
+                  <div className="whitespace-pre-line">{message.content}</div>
+                ) : (
+                  <Markdown>{message.content}</Markdown>
+                )}
                 <div className="text-xs text-right mt-1 opacity-60">
                   {format(new Date(message.timestamp), "a h:mm", { locale: ko })}
                 </div>
@@ -238,7 +243,7 @@ export default function SajuPage() {
               <div className="max-w-[80vw] px-3 py-2 rounded-2xl shadow-lg bg-white dark:bg-slate-950/90 text-purple-700 dark:text-purple-300 border border-gray-200 dark:border-slate-800 rounded-bl-none ml-[10vw]">
                 <div className="text-sm font-semibold mb-1">사주 마스터</div>
                 <div className="whitespace-pre-line">
-                  {currentStreamingMessage}
+                  <Markdown>{currentStreamingMessage}</Markdown>
                   <span className="animate-pulse">▋</span>
                 </div>
                 <div className="text-xs text-right mt-1 opacity-60">

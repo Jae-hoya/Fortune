@@ -180,7 +180,7 @@ cython_debug/
 # pyproject.toml
 files/
 output_md/
-*.png
+# *.png
 *.pkl
 *.faiss
 launch.json
