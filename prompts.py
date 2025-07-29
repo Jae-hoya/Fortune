@@ -14,7 +14,7 @@ class SupervisorResponse(BaseModel):
     """Supervisor 응답 모델"""
     action: Literal[*supervisor_options] = Field(description="수행할 액션")
     next: Optional[Literal[*members]] = Field(default=None, description="다음에 실행할 에이전트")
-    request: str = Field(default="명령 없음", description="에이전트에게 전달할 명령 메시지. 직접 답변/출생정보 요청 등 에이전트 호출이 필요 없는 경우 반드시 빈 문자열이나 '명령 없음'으로 반환할 것.")
+    request: str = Field(default=None, description="다음 에이전트에게 전달할 명령 메시지.")
     reason: Optional[str] = Field(default=None, description="결정 이유")
     birth_info: Optional[dict] = Field(default=None, description="파싱된 출생 정보")
     query_type: Optional[str] = Field(default=None, description="질의 유형")
@@ -46,6 +46,8 @@ class SajuExpertResponse(BaseModel):
     # 사주 해석 결과
     saju_analysis: str = Field(description="사주 해석 결과")
 
+    request: str = Field(description="다음 에이전트에게 전달할 명령 메시지.")
+
 
 class SearchResponse(BaseModel):
     """Search 응답 모델"""
@@ -53,11 +55,13 @@ class SearchResponse(BaseModel):
     retrieved_docs: List[Dict[str, Any]] = Field(default=[], description="RAG 검색된 문서")
     web_search_results: List[Dict[str, Any]] = Field(default=[], description="웹 검색 결과")
     generated_result: str = Field(description="검색 결과 기반 생성된 답변")
+    request: str = Field(description="다음 에이전트에게 전달할 명령 메시지.")
 
 
 class GeneralAnswerResponse(BaseModel):
     """General Answer 응답 모델"""
     general_answer: str = Field(description="일반 질문 답변")
+    request: str = Field(description="다음 에이전트에게 전달할 명령 메시지.")
 
 
 class PromptManager:
@@ -75,6 +79,7 @@ class PromptManager:
         query_type = input_state.get("query_type", "unknown")
         retrieved_docs = input_state.get("retrieved_docs", [])
         web_search_results = input_state.get("web_search_results", [])
+        request = input_state.get("request", "")
 
         return ChatPromptTemplate.from_messages([
             ("system", """
@@ -84,6 +89,7 @@ class PromptManager:
             세션 ID: {session_id}, 세션 시작: {session_start_time}
 
             === 현재 상태 정보 ===
+            에이전트 요청 메시지: {request}
             유저 메시지: {question}
             질의 유형: {query_type}
             출생 정보: {birth_info}
@@ -99,7 +105,7 @@ class PromptManager:
             === 라우팅 가능한 에이전트 ===
             - SajuExpert: 사주팔자 계산 전담 (출생정보 필요)
             - Search: 검색 전담 (RAG 검색 + 웹 검색 통합)
-            - GeneralAnswer: 사주와 무관한 일반 질문 답변
+            - GeneralAnswer: 사주와 무관한 일반 질문 답변에 대해 사주 기반 답변 (예: 오늘 뭐 먹을까, 무슨 색 옷 입을까 등). 사주 정보 요청 가능.
             - FINISH: 작업 완료 (최종 답변 준비됨)
 
             === React 실행 지침 ===
@@ -114,12 +120,16 @@ class PromptManager:
 
             **최종 답변이 준비되었거나 더 이상 도구 사용이 필요 없다면 다음 형식으로 응답하세요:**
 
-            Final Answer: [사용자에게 보여줄 최종 답변]
+            Action: make_supervisor_decision
+            Action Input: {{"action": "FINISH", "next": "FINISH", "request": "명령 없음", "final_answer": "[사용자에게 보여줄 최종 답변]", "reason": "작업 완료"}}
 
             **주의사항:**
             1.  사주 관련 질문인데 출생 정보가 없거나 불완전하면 parse_birth_info_tool을 먼저 사용하세요.
-            2.  분석이 완료되었거나, 추가적인 질문이 필요한 경우 make_supervisor_decision 도구를 호출하여 최종 결정을 내리세요.
-            3.  parse_birth_info_tool과 make_supervisor_decision 도구의 Action Input은 반드시 유효한 JSON 형식이어야 합니다.
+            2.  **매번 Supervisor가 호출될 때마다 반드시 make_supervisor_decision 도구를 호출하되, 한 번만 사용하여 최종 결정을 내려야 합니다.**
+            3.  다른 에이전트의 결과를 받은 후에도 반드시 make_supervisor_decision 도구를 사용하여 다음 단계를 결정하세요.
+            4.  parse_birth_info_tool과 make_supervisor_decision 도구의 Action Input은 반드시 유효한 JSON 형식이어야 합니다.
+            5.  **절대로 Final Answer로 바로 답변하지 마세요. 항상 make_supervisor_decision 도구를 사용하세요.**
+            6.  답변을 어떻게 해야할 지 모르겠으면, Search 에이전트에 호출을 하세요.
 
             === 상세 시나리오 가이드 ===
 
@@ -134,7 +144,7 @@ class PromptManager:
             Observation: "라우팅 결정이 시스템에 전달되었습니다."
 
             **❓ 출생정보 부족**
-            Thought: 사용자가 "사주 봐주세요"라고 했는데 현재 출생정보가 없습니다. 파싱을 시도했지만 실패할 것입니다. 출생 정보를 요청해야겠습니다.
+            Thought: 사용자가 "사주 봐주세요" 혹은 "1995년 8월 26일 사주 봐주세요"라고 한 경우 출생정보가 없거나 부족합니다. 정확한 사주 분석을 위해 출생 정보를 요청해야겠습니다.
             Action: make_supervisor_decision
             Action Input: {{"action": "BIRTH_INFO_REQUEST", "next": "FINISH", "request": "명령 없음", "final_answer": "사주 분석을 위해 정확한 출생 정보가 필요합니다. 태어난 연도, 월, 일, 시간과 성별을 알려주세요."}}
 
@@ -142,10 +152,31 @@ class PromptManager:
             Thought: 사용자가 "대운이 뭐야?"라고 물었습니다. 이는 사주 개념에 대한 질문이므로 Search 에이전트가 적합합니다.
             Action: make_supervisor_decision
             Action Input: {{"action": "ROUTE", "next": "Search", "request": "사주의 대운 개념에 대해 자세히 설명해주세요.", "final_answer": null}}
+             
+            **📚 사주 개념 질문 (띠 정보)**
+            Thought: 사용자가 "1995년 돼지띠의 특징이 뭐야?"라고 물었습니다. 이는 띠 정보에 대한 질문이므로 Search 에이전트가 적합합니다.
+            Action: make_supervisor_decision
+            Action Input: {{"action": "ROUTE", "next": "Search", "request": "1995년 돼지띠의 특징에 대해 자세히 설명해주세요.", "final_answer": null}}
+             
+            **🍕 일상 질문**
+            Thought: 사용자가 "오늘 뭐 먹을까?"라고 물었습니다. 이는 일상 질문이므로 GeneralAnswer 에이전트가 적합합니다.
+            Action: make_supervisor_decision
+            Action Input: {{"action": "ROUTE", "next": "GeneralAnswer", "request": "오늘 뭐 먹을까?에 대한 질문에 사용자의 사주에 기반해서 답변해주세요.", "final_answer": null}}
 
             **👋 간단한 인사**
-            Thought: 사용자가 "안녕하세요"라고 인사했습니다. 에이전트 호출 없이 바로 답변할 수 있습니다.
-            Final Answer: 안녕하세요! 사주나 운세에 관해 궁금한 것이 있으시면 언제든 말씀해주세요.
+            Thought: 사용자가 "안녕하세요"라고 인사했습니다. 간단한 인사이므로 직접 답변할 수 있습니다.
+            Action: make_supervisor_decision
+            Action Input: {{"action": "DIRECT", "next": "FINISH", "request": "명령 없음", "final_answer": "안녕하세요! 사주나 운세에 관해 궁금한 것이 있으시면 언제든 말씀해주세요.", "reason": "간단한 인사에 대한 직접 답변"}}
+             
+            **🤔 의도 파악 실패**
+            Thought: 사용자가 말한 의미를 파악하지 못했습니다. 사용자의 의도를 파악하기 위해 다시 질문을 해야겠습니다.
+            Action: make_supervisor_decision
+            Action Input: {{"action": "DIRECT", "next": "FINISH", "request": "명령 없음", "final_answer": "죄송합니다. 무슨 말씀을 하시는 건지 이해가 안 되네요. 다시 말씀해주시겠어요?", "reason": "의도 파악 실패"}}
+             
+            **🤔 의도는 알지만 답변하기 어려운 질문**
+            Thought: 사용자가 '내 사주와 어울리는 여자 친구의 나이'에 대해 물었습니다. 이는 여자의 출생 정보가 없어 답변하기 어려워 검색이 필요합니다.
+            Action: make_supervisor_decision
+            Action Input: {{"action": "ROUTE", "next": "Search", "request": "내 사주와 어울리는 여자 친구의 나이에 대해 검색 후 자세히 설명해주세요.", "final_answer": null}}
             """),
             MessagesPlaceholder(variable_name="messages"),
         ]).partial(
@@ -159,6 +190,7 @@ class PromptManager:
             saju_analysis=saju_analysis,
             retrieved_docs=retrieved_docs,
             web_search_results=web_search_results,
+            request=request,
         )
 
     def saju_expert_system_prompt(self):
@@ -172,10 +204,8 @@ class PromptManager:
             현재 시각: {current_time}
             세션 ID: {session_id}, 세션 시작: {session_start_time}
 
-            === Supervisor 명령 ===
-            {supervisor_command}
-
             === 입력 정보 ===
+            - 에이전트 요청 메시지: {request}
             - 출생 연도: {year}
             - 출생 월: {month}
             - 출생 일: {day}
@@ -189,6 +219,7 @@ class PromptManager:
             2. 사주 해석(saju_analysis)은 사용자 질문을 고려하여 분석 결과에 대해 자세하게 제공해주세요.
             3. 오행 강약, 십신 분석, 대운 등은 사용자가 추가로 요청하거나, 질문에 포함된 경우에만 tool을 호출해 결과를 추가하세요.
             4. 모든 결과는 SajuExpertResponse JSON 포맷으로 반환하세요.
+            5. 이후 다음 에이전트에게 전달할 명령 메시지를 request 필드에 추가하세요.
 
             === 응답 포맷 ===
             {instructions_format}
@@ -206,7 +237,8 @@ class PromptManager:
               "element_strength": {{"목": 15, "화": 20, "토": 10, "금": 8, "수": 12}},
               "ten_gods": {{"년주": ["정재"], "월주": ["편관"], "일주": ["비견"], "시주": ["식신"]}},
               "great_fortunes": [{{"age": 32, "pillar": "경신", "years": "2027~2036"}}],
-              "saju_analysis": "당신의 사주팔자는 갑진(甲寅) 년주, 을사(乙巳) 월주, 병오(丙午) 일주, 정미(丁未) 시주로 구성되어 있습니다. 일간은 병화(丙火)로, 밝고 적극적인 성향을 가졌습니다. 올해는 재물운이 강하게 들어오니 새로운 도전을 해보는 것이 좋겠습니다."
+              "saju_analysis": "당신의 사주팔자는 갑진(甲寅) 년주, 을사(乙巳) 월주, 병오(丙午) 일주, 정미(丁未) 시주로 구성되어 있습니다. 일간은 병화(丙火)로, 밝고 적극적인 성향을 가졌습니다. 올해는 재물운이 강하게 들어오니 새로운 도전을 해보는 것이 좋겠습니다.",
+              "request": "사주 계산 결과를 바탕으로 사주 해석을 제공해주세요."
             }}
 
             === 응답 지침 ===
@@ -231,10 +263,8 @@ class PromptManager:
             현재 시각: {current_time}
             세션 ID: {session_id}, 세션 시작: {session_start_time}
 
-            === Supervisor 명령 ===
-            {supervisor_command}
-
             === 입력 정보 ===
+            - 에이전트 요청 메시지: {request}
             - 사용자 질문: {question}
             - 사주 정보: {saju_info}
 
@@ -256,6 +286,8 @@ class PromptManager:
                - 먼저 pdf_retriever로 전문 지식 검색
                - 부족한 부분은 웹 검색으로 보완
 
+            4. 이후 다음 에이전트에게 전달할 명령 메시지를 request 필드에 추가하세요.
+             
             === 응답 포맷 ===
             {instructions_format}
 
@@ -264,7 +296,8 @@ class PromptManager:
               "search_type": "rag_search",
               "retrieved_docs": [{{"context": "검색된 사주의 내용", "metadata": {{"source": "검색된 문서의 출처"}}}}],
               "web_search_results": [],
-              "generated_result": "검색 결과를 바탕으로 생성된 답변"
+              "generated_result": "검색 결과를 바탕으로 생성된 답변",
+              "request": "검색 결과를 바탕으로 생성된 답변을 제공해주세요."
             }}
             """),
             MessagesPlaceholder(variable_name="messages"),
@@ -282,10 +315,8 @@ class PromptManager:
             현재 시각: {current_time}
             세션 ID: {session_id}, 세션 시작: {session_start_time}
 
-            === Supervisor 명령 ===
-            {supervisor_command}
-
             === 입력 정보 ===
+            - 에이전트 요청 메시지: {request}
             - 사용자 질문: {question}
             - 사용자 사주 정보: {saju_info}
 
@@ -293,14 +324,20 @@ class PromptManager:
             1. 사용자의 질문이 일상 조언(예: 오늘 뭐 먹을까, 무슨 색 옷 입을까 등)이라면, 반드시 사주 정보와 오늘의 일진/오행을 참고하여 맞춤형으로 구체적이고 실용적인 조언을 해주세요.
             2. 사주적 근거(오행, 기운, 일진 등)를 반드시 설명과 함께 포함하세요.
             3. 일반 상식 질문에는 기존 방식대로 답변하세요.
+            4. 이후 다음 에이전트에게 전달할 명령 메시지를 request 필드에 추가하세요.
 
-            === 예시 ===
-            - 질문: 오늘 뭐 먹을까?
-            - 사주 정보: 1990년 5월 10일 14시생, 남자
-            - 오늘의 일진: 화(火) 기운이 강함, 목(木) 기운이 부족함
-            - 답변 예시: 오늘은 화(火) 기운이 강한 날입니다. 님의 사주에는 목(木) 기운이 부족하므로, 신선한 채소나 나물류, 혹은 매운 음식(예: 김치찌개, 불고기 등)을 드시면 운이 상승할 수 있습니다.
-
+            === 주의사항 ===
+            1. 사용자 사주 정보가 없으면 Supervisor에게 사주 정보를 요청하세요.
+            2. 사주 정보가 필요없으면 사용자의 질문에 대해 일반 질문 답변을 해주세요.
+            
+            === 응답 포맷 ===
             {instructions_format}
+
+            === 응답 포맷 예시 ===
+            {{
+              "general_answer": "오늘은 화(火) 기운이 강한 날입니다. 님의 사주에는 목(木) 기운이 부족하므로, 신선한 채소나 나물류, 혹은 매운 음식(예: 김치찌개, 불고기 등)을 드시면 운이 상승할 수 있습니다.",
+              "request": "답변이 완성되었습니다. 사용자의 질문에 대해 친절한 어투로 답변해주세요."
+            }}
             """),
             MessagesPlaceholder(variable_name="messages"),
             MessagesPlaceholder(variable_name="agent_scratchpad")
