@@ -21,7 +21,6 @@ def print_banner():
     print("🔮 FortuneAI - LangGraph 사주 시스템 🔮")
     print("=" * 70)
     print("✨ Supervisor 패턴 기반 고성능 사주 계산기")
-    print("🎯 98점 전문가 검증 완료")
     print("🚀 LangGraph 멀티 워커 시스템")
     print("-" * 70)
     print("🏗️  시스템 구조:")
@@ -228,7 +227,7 @@ def run_query_with_app(query: str, app, conversation_history: list, session_star
     # 설정 생성 (Checkpointer용)
     config = {
         "configurable": {
-            "thread_id": f"thread_{int(time.time())}"
+            "thread_id": session_id
         }
     }
     
