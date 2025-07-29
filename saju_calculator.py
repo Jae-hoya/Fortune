@@ -3,9 +3,7 @@ from typing import Dict, List
 from dataclasses import dataclass
 import re 
 
-# http://xn--vj1b09xs1b16ct2c.com/share/calendar/?selboxDirect=&y=1995&m=8&d=16
 
-# --- 사주 관련 클래스 ---
 @dataclass
 class SajuPillar:
     heavenly_stem: str
@@ -84,7 +82,6 @@ class SajuCalculator:
         }
 
     def _is_leap_month(self, year: int, month: int) -> bool:
-        """해당 년월이 윤달인지 확인"""
         return year in self.leap_months and self.leap_months[year] == month
 
     def _calculate_international_age(self, birthdate: datetime, now: datetime) -> int:
@@ -97,16 +94,12 @@ class SajuCalculator:
         return now.year - birthdate.year + 1
 
     def calculate_saju(self, year: int, month: int, day: int, hour: int, minute: int = 0, is_male: bool = True, is_leap_month: bool = False) -> SajuChart:
-        # 대한민국 출생자 전용: 무조건 -32분 1초 보정
         birth_datetime = datetime(year, month, day, hour, minute) - timedelta(minutes=32, seconds=1)
         base_date = datetime(1900, 1, 1)
         days_diff = (birth_datetime.date() - base_date.date()).days
-
-        # 나이 계산
         now = datetime.now()
         age = self._calculate_international_age(birth_datetime, now)
         korean_age = self._calculate_korean_age(birth_datetime, now)
-
         year_pillar = self._calculate_year_pillar(year)
         month_pillar = self._calculate_month_pillar_improved(year, month, day, is_leap_month)
         day_pillar = self._calculate_day_pillar(days_diff)
@@ -137,22 +130,18 @@ class SajuCalculator:
     def _calculate_month_pillar_improved(self, year: int, month: int, day: int, is_leap_month: bool = False) -> SajuPillar:
         month_branch_index = self._get_month_branch_by_solar_terms(year, month, day, is_leap_month)    
         year_stem_index = (year - 1984) % 10
-        # 해의 천간별 월간 시작 인덱스 표
-        month_stem_base_table = [2, 4, 6, 8, 0, 2, 4, 6, 8, 0]  # 0:갑, 1:을, 2:병, 3:정, 4:무, 5:기, 6:경, 7:신, 8:임, 9:계
+        month_stem_base_table = [2, 4, 6, 8, 0, 2, 4, 6, 8, 0]
         month_stem_base = month_stem_base_table[year_stem_index]
         month_stem_index = (month_stem_base + ((month_branch_index + 12 - 2) % 12)) % 10
         month_stem = self.heavenly_stems[month_stem_index]
         return SajuPillar(month_stem, self.earthly_branches[month_branch_index])
 
     def _get_month_branch_by_solar_terms(self, year: int, month: int, day: int, is_leap_month: bool = False) -> int:
-        # 윤달인 경우 월간 계산을 조정
         if is_leap_month:
-            # 윤달은 해당 월의 다음 월간을 사용
             month += 1
             if month > 12:
                 month = 1
                 year += 1
-        
         solar_terms = [
             (2, 4, 2),   # 입춘: 2월 4일 → 인(2)
             (3, 6, 3),   # 경칩: 3월 6일 → 묘(3)
@@ -276,15 +265,33 @@ class SajuCalculator:
         return max(1, base_age + adjustment)
 
     def get_element_strength(self, saju_chart: SajuChart) -> Dict[str, int]:
+        # 8점 만점 방식: 4기둥(년,월,일,시)의 천간+지지 8글자만 카운트
         elements = {"목": 0, "화": 0, "토": 0, "금": 0, "수": 0}
-        pillars = [saju_chart.year_pillar, saju_chart.month_pillar, saju_chart.day_pillar, saju_chart.hour_pillar]
-        for pillar in pillars:
-            stem_element = self.five_elements[pillar.heavenly_stem]
-            elements[stem_element] += 20
-            hidden_stems = self.hidden_stems[pillar.earthly_branch]
-            for hidden_stem, strength in hidden_stems:
-                hidden_element = self.five_elements[hidden_stem]
-                elements[hidden_element] += int(strength * 0.15)
+        # 4기둥의 천간/지지 8글자 추출
+        pillars = [
+            saju_chart.year_pillar.heavenly_stem, saju_chart.year_pillar.earthly_branch,
+            saju_chart.month_pillar.heavenly_stem, saju_chart.month_pillar.earthly_branch,
+            saju_chart.day_pillar.heavenly_stem, saju_chart.day_pillar.earthly_branch,
+            saju_chart.hour_pillar.heavenly_stem, saju_chart.hour_pillar.earthly_branch,
+        ]
+        # 오행 매핑
+        wuxing_map = {
+            '목': ['갑', '을', '인', '묘'],
+            '화': ['병', '정', '사', '오'],
+            '토': ['무', '기', '진', '술', '축', '미'],
+            '금': ['경', '신', '신', '유'],
+            '수': ['임', '계', '자', '해'],
+        }
+        char2wuxing = {}
+        for k, v in wuxing_map.items():
+            for ch in v:
+                char2wuxing[ch] = k
+        for ch in pillars:
+            element = char2wuxing.get(ch)
+            if element:
+                elements[element] += 1
+            else:
+                raise ValueError(f"오행 매핑표에 없는 글자: {ch}")
         return elements
 
 def format_saju_analysis(saju_chart: SajuChart, calculator: SajuCalculator) -> str:
@@ -297,25 +304,20 @@ def format_saju_analysis(saju_chart: SajuChart, calculator: SajuCalculator) -> s
     analysis.append(f"일간(日干): {saju_chart.get_day_master()}")
     analysis.append(f"현재 나이: {saju_chart.age}세 / 한국식 나이: {saju_chart.korean_age}세")
     analysis.append(f"기준 시점: {saju_chart.current_datetime}")
-    
-    # 윤달 정보 표시
     if saju_chart.is_leap_month:
         analysis.append("⚠️ 윤달 출생자입니다 (월간 계산이 조정되었습니다)")
     analysis.append("")
-
     elements = calculator.get_element_strength(saju_chart)
-    analysis.append("=== 오행 강약 ===")
+    analysis.append("=== 오행 강약 (8점 만점) ===")
     for element, strength in elements.items():
         analysis.append(f"{element}: {strength}점")
     analysis.append("")
-
     ten_gods = calculator.analyze_ten_gods(saju_chart)
     analysis.append("=== 십신 분석 ===")
     for pillar_name, gods in ten_gods.items():
         if gods:
             analysis.append(f"{pillar_name}: {', '.join(gods)}")
     analysis.append("")
-
     great_fortunes = calculator.calculate_great_fortune_improved(saju_chart)
     analysis.append("=== 대운 (정밀 계산) ===")
     for gf in great_fortunes[:4]:
