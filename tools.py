@@ -16,8 +16,8 @@ from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
 # 사주 계산 모듈 import
-from saju_calculator import SajuCalculator, format_saju_analysis
-from reranker import create_saju_compression_retriever
+from Fortune.saju_calculator import SajuCalculator, format_saju_analysis
+from Fortune.reranker import create_saju_compression_retriever
 
 # =============================================================================
 # 0. Supervisor 도구들
@@ -172,12 +172,12 @@ def create_retriever_tool_for_saju():
         "pdf_retriever",
         "A tool for searching information related to Saju (Four Pillars of Destiny)",
         document_prompt=PromptTemplate.from_template(
-        "<document><context>{page_content}</context><metadata><source>{source}</source></metadata></document>"
-    ),
+            '{{"context": "{page_content}", "metadata": {{"source": "{source}"}}'
+        ),
     )
 
 # 전역으로 생성하여 재사용
-retriever_tool = create_retriever_tool_for_saju()
+saju_retriever_tool = create_retriever_tool_for_saju()
 
 # =============================================================================
 # 3. 웹 검색 도구들 (Web Tools)
@@ -204,7 +204,7 @@ def general_qa_tool(query: str) -> str:
     일반적인 질문이나 상식적인 내용에 대해 답변합니다. 사주와 관련 없는 모든 질문에 사용할 수 있습니다.
     """
     google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
-    return google_llm.invoke(query)
+    return google_llm.invoke(query).content
 
 # =============================================================================
 # 도구 그룹화 (노트북 방식과 동일)
@@ -218,7 +218,8 @@ general_qa_tools = [general_qa_tool]
 
 # 전체 도구 목록
 all_tools = {
-    'manse': manse_tools,
+    'supervisor': supervisor_tools,
+    'saju': saju_tools,
     'search': search_tools,
     'web': web_tools,
     'general_qa': general_qa_tools
@@ -228,12 +229,12 @@ all_tools = {
 __all__ = [
     'parse_birth_info_tool',
     'calculate_saju_tool',
-    'retriever_tool', 
+    'saju_retriever_tool', 
     'tavily_tool',
     'duck_tool',
-    'web_tools',
     'general_qa_tool',
-    'manse_tools',
+    'supervisor_tools',
+    'saju_tools',
     'search_tools',
     'general_qa_tools',
     'all_tools'

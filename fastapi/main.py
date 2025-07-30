@@ -31,8 +31,8 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s %(levelname)-8s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    filename="app_250729_1.log",  # ← writes all logs to this file
-    filemode="a",  # ← "w" to overwrite each run, "a" to append
+    filename="app_250729_2.log",  # ← writes all logs to this file
+    filemode="w",  # ← "w" to overwrite each run, "a" to append
 )
 
 logger = logging.getLogger(__name__)
@@ -332,7 +332,7 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
                 session_data["query_count"] += 1
                 session_data["messages"].append(HumanMessage(content=user_input))
                 debug_log(f"🔄 쿼리 #{session_data['query_count']} 처리 시작")
-
+                send_to_frontend = False
                 try:
                     compiled_graph = websocket.app.state.compiled_graph
                     
@@ -344,19 +344,31 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
                         subgraphs=True,
                     ):
                         kind = event["event"]
-                        if kind == "on_chat_model_stream":
-                            if (
-                                "manse" in event["metadata"]["langgraph_checkpoint_ns"]
-                                and "agent" in event["metadata"]["langgraph_checkpoint_ns"]
-                            ) or (
-                                "GeneralQA" in event["metadata"]["langgraph_checkpoint_ns"]
-                            ):
-                                data = event["data"]
-                                if data["chunk"].content:
-                                    await websocket.send_json({
-                                        "type": "stream",
-                                        "content": str(data["chunk"].content)
-                                    })
+                        debug_log(event)
+                        if kind == "on_chat_model_start":
+                            try:
+                                final_message = event["data"].get('input').get("messages")[0][-1]
+                                if json.loads(final_message.content).get("next") == "FINISH":
+                                    debug_log(f"🔄 FINISH Detected: {final_message.content}")
+                                    send_to_frontend = True
+                            except Exception as e:
+                                debug_log(f"❌ 메시지 처리 오류: {e}", "ERROR")
+                                continue
+
+                                
+                        if kind == "on_chat_model_stream" and send_to_frontend:
+                            # if (
+                            #     "manse" in event["metadata"]["langgraph_checkpoint_ns"]
+                            #     and "agent" in event["metadata"]["langgraph_checkpoint_ns"]
+                            # ) or (
+                            #     "GeneralQA" in event["metadata"]["langgraph_checkpoint_ns"]
+                            # ):
+                            data = event["data"]
+                            if data["chunk"].content:
+                                await websocket.send_json({
+                                    "type": "stream",
+                                    "content": str(data["chunk"].content)
+                                })
                     await websocket.send_json({
                         "type": "complete",
                         "content": f"✅ 완료 (질문 #{session_data['query_count']})"

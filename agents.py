@@ -1,21 +1,30 @@
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+"""
+에이전트 생성 및 관리
+"""
+
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, load_prompt
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langchain.agents import create_tool_calling_agent, AgentExecutor
-from prompts import PromptManager
+from Fortune.prompts import PromptManager
 
 # 단순화된 tools import (노트북 방식)
-from tools import (
+from Fortune.tools import (
     saju_tools,
     search_tools,
     general_qa_tools,
+    supervisor_tools
 )
+
+# 멤버 Agent 목록 정의 (notebook 구조에 맞게 변경)
+members = ["SajuExpert", "Search", "GeneralAnswer"]
 
 
 class AgentManager:
     """에이전트 생성 및 관리 클래스"""
     
     def __init__(self):
+        # 기본 LLM 설정
         self.llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
     
     def create_supervisor_agent(self, input_state):

@@ -1,9 +1,18 @@
+"""
+LangGraph 워크플로 그래프 생성 - Jupyter Notebook 구조 적용
+"""
+
+from langchain_core.messages import BaseMessage
+
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import MemorySaver
 
+# AgentState를 state.py에서 import
 from Fortune.state import AgentState
+
+# NodeManager 사용
 from Fortune.nodes import get_node_manager
-from Fortune.nodes import members
+from Fortune.agents import members
 
 
 def create_workflow():
@@ -16,26 +25,34 @@ def create_workflow():
     node_manager = get_node_manager()
     
     # 노드 생성
-    supervisor_agent = node_manager.supervisor_agent_node
-    manse_tool_agent_node = node_manager.create_manse_tool_agent_node()
+    supervisor_node = node_manager.supervisor_agent_node
+    saju_expert_agent_node = node_manager.saju_expert_agent_node
     search_agent_node = node_manager.search_agent_node
-    general_qa_agent_node = node_manager.create_general_qa_agent_node()
+    general_answer_agent_node = node_manager.general_answer_agent_node
     
     # 그래프에 노드 추가
-    workflow.add_node("search", search_agent_node)
-    workflow.add_node("manse", manse_tool_agent_node)
-    workflow.add_node("general_qa", general_qa_agent_node)
-    workflow.add_node("Supervisor", supervisor_agent)
-
+    workflow.add_node("Supervisor", supervisor_node)
+    workflow.add_node("SajuExpert", saju_expert_agent_node)
+    workflow.add_node("Search", search_agent_node)
+    workflow.add_node("GeneralAnswer", general_answer_agent_node)
+    
+    # 각 에이전트 실행 후 Supervisor로 돌아가도록
     for member in members:
         workflow.add_edge(member, "Supervisor")
+    
+    # 조건부 엣지 추가
     conditional_map = {k: k for k in members}
     conditional_map["FINISH"] = END
     
     def get_next(state):
         return state["next"]
-   
+    
+    # Supervisor 노드에서 조건부 엣지 추가
     workflow.add_conditional_edges("Supervisor", get_next, conditional_map)
+    
     workflow.add_edge(START, "Supervisor")
     
-    return workflow.compile(checkpointer=MemorySaver())
+    # 그래프 컴파일
+    app = workflow.compile(checkpointer=MemorySaver())
+    
+    return app 
