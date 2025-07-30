@@ -116,7 +116,7 @@ export default function SajuPage() {
     if (!hasAssistant) {
       addMessage(
         "assistant",
-        `안녕하세요! 사주 리딩을 도와드릴게요. (세션: ${sessionId})\n어떤 질문이 있으신가요?`
+        `안녕하세요! 사주 리딩을 도와드릴게요. \n어떤 질문이 있으신가요?` //(세션: ${sessionId})
       )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

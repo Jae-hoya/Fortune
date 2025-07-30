@@ -11,6 +11,7 @@ import { useSidebarStore } from "@/store/sidebar"
 import { SIDEBAR_WIDTH } from "@/components/layout/Sidebar"
 import { useTarotChatStore } from "@/store/tarotChat"
 import { v4 as uuidv4 } from "uuid"
+import { getCardImagePath, getCardName } from "@/lib/tarot-utils"
 
 export default function TarotPage() {
   const [sessionId, setSessionId] = useState<string>("")
@@ -158,7 +159,7 @@ export default function TarotPage() {
     if (!hasAssistant) {
       addMessage(
         "assistant",
-        `안녕하세요! 타로 리딩을 도와드릴게요. (세션: ${sessionId})\n어떤 질문이 있으신가요?`
+        `안녕하세요! 타로 리딩을 도와드릴게요. \n어떤 질문이 있으신가요?` //(세션: ${sessionId})
       )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -419,7 +420,7 @@ export default function TarotPage() {
               </p>
               {selectedCards.length > 0 && (
                 <p className="text-xs text-purple-600 dark:text-purple-400">
-                  선택된 카드: {selectedCards.join(', ')}
+                  선택된 카드: {selectedCards.map(cardIndex => getCardName(cardIndex)).join(', ')}
                 </p>
               )}
             </div>
@@ -458,14 +459,11 @@ export default function TarotPage() {
                         >
                           <div className="w-full h-full flex items-center justify-center relative">
                             <img 
-                              src="/tarot/cardback.png" 
-                              alt={`Card ${cardIndex}`}
+                              src={getCardImagePath(cardIndex)} 
+                              alt={`${getCardName(cardIndex)}`}
                               className="w-full h-full object-cover rounded-lg"
                               style={{ transform: 'rotateY(180deg)' }}
                             />
-                            <div className="absolute top-1 right-1 bg-black/70 text-white text-xs font-bold px-1 py-0.5 rounded">
-                              {cardIndex}
-                            </div>
                           </div>
                         </button>
                       )
@@ -493,9 +491,6 @@ export default function TarotPage() {
                             alt={`Card ${cardIndex}`}
                             className="w-full h-full object-cover rounded-lg"
                           />
-                          <div className="absolute top-1 right-1 bg-black/70 text-white text-xs font-bold px-1 py-0.5 rounded">
-                            {cardIndex}
-                          </div>
                         </div>
                       </button>
                     )
