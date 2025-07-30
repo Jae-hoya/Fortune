@@ -43,9 +43,62 @@ def main():
     chat_history = []
     thread_id = random_uuid()
     while True:
-        user_input = input("\n질문: ").strip()
-        if user_input.lower() in ['quit', 'exit', '종료']:
-            print("시스템을 종료합니다.")
+        try:
+            # 사용자 입력 받기
+            user_input = input("\n🤔 질문: ").strip()
+            
+            # 종료 명령 처리
+            if user_input.lower() in ['quit', 'exit', '종료', 'q']:
+                print("\n👋 FortuneAI를 이용해주셔서 감사합니다!")
+                print("🌟 좋은 하루 되세요! 🌟")
+                break
+            
+            # 새 세션 시작 명령 처리
+            if user_input.lower() in ['new', 'clear']:
+                session_start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                session_id = f"session_{int(time.time())}"
+                query_count = 0
+                conversation_history = []  # 대화 히스토리 초기화
+                print(f"\n🔄 새로운 대화를 시작합니다.")
+                print(f"🕐 세션 시작: {session_start_time}")
+                print(f"🆔 세션 ID: {session_id}")
+                
+                # 환영 메시지 생성
+                welcome_response = run_query_with_app("안녕하세요! FortuneAI입니다. 무엇을 도와드릴까요?", app, conversation_history, session_start_time, session_id)
+                print(f"🔮 FortuneAI: {welcome_response}")
+                print("-" * 60)
+                continue
+            
+            # 도움말 명령 처리
+            if user_input.lower() in ['help', 'h', '도움말', '?']:
+                print_help()
+                continue
+            
+            # 빈 입력 처리
+            if not user_input:
+                print("❓ 질문을 입력해주세요.")
+                continue
+            
+            query_count += 1
+            print(f"\n⏳ 분석 중... (질문 #{query_count})")
+            
+            # 성능 분석 모드 처리
+            analysis_response = handle_debug_query(user_input, app, conversation_history, session_start_time, session_id)
+            if analysis_response:
+                print(analysis_response)
+                continue
+            
+            # 일반 쿼리 실행 - 상세 스트리밍 표시
+            start_time = time.time()
+            response = run_query_with_app(user_input, app, conversation_history, session_start_time, session_id)
+            execution_time = time.time() - start_time
+            
+            # 실행 시간 표시
+            print(f"\n⏱️  실행 시간: {execution_time:.2f}초")
+            
+        except KeyboardInterrupt:
+            print("\n\n⚠️  사용자가 중단했습니다.")
+            print("👋 FortuneAI를 이용해주셔서 감사합니다!")
             break
         if not user_input:
             continue

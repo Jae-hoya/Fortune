@@ -4,7 +4,6 @@ from dataclasses import dataclass
 import re 
 
 
-# --- 사주 관련 클래스 ---
 @dataclass
 class SajuPillar:
     heavenly_stem: str
