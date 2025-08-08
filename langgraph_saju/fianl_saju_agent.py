@@ -171,7 +171,6 @@ manse_tool_prompt = """
 전반적으로 긍정적 변화가 기대되는 시기이며, 적극적으로 도전하신다면 좋은 결과를 얻을 수 있습니다. 궁금하신 점이 있으시면 언제든 질문해 주세요.
 
 ...
-
 ---
 """
 
@@ -196,47 +195,6 @@ duck_tool = DuckDuckGoSearchResults(max_results=2)
 web_search_tools = [tavily_tool, duck_tool]
 web_search_prompt = "십신분석의 개념, 사주개념, 또는 사주 오행의 개념적 질문이 들어오면, web search를 통해 답합니다."
 web_tool_agent = create_react_agent(llm, tools=web_search_tools, prompt=web_search_prompt).with_config({"tags": ["final_answer_agent"]})
-
-
-# general qa
-# @tool
-# def general_qa_tool(query: str) -> str:
-#     """
-#     일반적인 질문이나 상식적인 내용에 대해 사용자의 사주에 대한 정보를 포함해 답변합니다. 
-#     """
-#     google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
-#     return google_llm.invoke(query)
-
-# @tool
-# def general_qa_tool(query: str) -> str:
-#     """
-#     일반적인 질문이나 상식적인 내용에 대해 사용자의 사주에 대한 정보를 포함해 답변합니다. 
-#     """
-#     gpt_llm = ChatOpenAI(model="gpt-4.1-mini")
-#     return gpt_llm.invoke(query)
-
-
-# @tool
-# def general_qa_tool(state):
-#     """
-#     state에서 query, birth_info, saju_result를 추출해 프롬프트를 생성합니다.
-#     """
-#     google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
-#     query = state.get["messages"][-1].content
-#     birth_info = state.get("birth_info")
-#     saju_result = state.get("saju_result")
-#     context = state.get("messages").content
-#     prompt = f"""아래는 사용자의 질문과 사주 정보입니다.
-
-#     질문: {query}
-#     사주 정보: {birth_info}
-#     사주 해석: {saju_result}
-#     대화 기록: {context}
-
-#     위 정보를 반드시 참고해서, 사주 특성을 녹여서 친절하고 존댓말로 답변해 주세요.
-#     맥락에 맞는 답변만 해야합니다.
-#     """
-#     return google_llm.invoke(prompt)
 
 @tool
 def general_qa_tool(state):
@@ -468,8 +426,7 @@ supervisor_system_prompt = (
     "**이미 state에 출생 정보(birth_info, saju_result 등)가 저장되어 있으면,  "
     "질문에 새로운 출생 정보가 명확하게 포함되지 않는 한 manse로 분기하지 마세요.**  "
     "(즉, 운세/해석/미래/궁합/시련 등 모든 질문은 기존 출생 정보가 있을 때 반드시 general_qa로 분기합니다."
-
-
+    "특정 운세에 대해서 자세히 알려달라고 하면 다시 manse로 분기합니다."
     "※ **사주 개념·용어·이론 설명, 일상 메뉴, 잡담, 선택, 고민 등은 manse로 보내지 않습니다.**\n"
     "※ 용어/개념/정의/설명/이론 질문(예: '겁재가 뭐야?', '오행 설명', '십신 의미' 등)은 절대 manse에서 처리하지 않습니다.\n\n"
 
@@ -511,8 +468,6 @@ supervisor_prompt = ChatPromptTemplate.from_messages(
               ),
     ]
 )
-#   - 연속해서 manse로 넘기지 마세요. 다만, 생년월일이 있을 경우에는 manse로 넘길 수 있습니다.
-#   - 한 분기를 갔으면, manse로 넘기지 마세요. 다만, 생년월일이 있을 경우에는 manse로 넘길 수 있습니다.
 
 # 7. LangGraph 워크플로우 생성
 def supervisor_agent(state):
@@ -537,37 +492,6 @@ def supervisor_agent(state):
     route_response = supervisor_chain.invoke(state)
     return {"next": route_response.next}
 
-    # 3️⃣ 생년월일 정보가 있는지 확인하여 라우팅 결정
-    # if route_response.next == "manse":
-    #     if birth_info and all(key in birth_info and birth_info[key] is not None for key in ["year", "month", "day"]):
-    #         # 생년월일 정보가 있으면 manse로 진행
-    #         return {"next": "manse"}
-    #     else:
-    #         # 생년월일 정보가 없으면 사용자에게 안내하고 general_qa로 유도
-    #         state["messages"].append(
-    #             AIMessage(
-    #                 content=(
-    #                     "사주 분석을 위해서는 생년월일, 태어난 시간, 성별 정보가 필요합니다.\n"
-    #                     "예: **1990년 3월 5일 오후 3시, 남자**\n\n"
-    #                     "생년월일 정보를 알려주시면 정밀한 운세를 안내해 드릴게요 🙂"
-    #                 ),
-    #                 name="Supervisor",
-    #             )
-    #         )
-    #         return {"next": "general_qa"}
-    
-    # # 4️⃣ manse가 아닌 경우, search와 general_qa를 더 정확히 구분
-    # if route_response.next == "search":
-    #     # search는 정보성 질문만 처리
-    #     info_keywords = ["정의", "의미", "설명", "개념", "이론", "분류", "종류", "공식"]
-    #     if any(keyword in user_input for keyword in info_keywords):
-    #         return {"next": "search"}
-    #     else:
-    #         # 정보성 질문이 아니면 general_qa로
-    #         return {"next": "general_qa"}
-    
-    # # general_qa는 기본값
-    # return {"next": route_response.next}
 
 # 워크플로우 생성
 
@@ -619,6 +543,7 @@ def main():
         "금전운알려줘",
         "정관이 뭐야? 상세히 설명해줘",
         "사주의 개념에 대해서 알려줘"
+        "궁합운이 2개의 생년월일과 함께, 궁합운을 봐달라고 하세요!"
     ]
     print("\n사용 가능한 예시 질문:")
     for i, question in enumerate(example_questions, 1):
