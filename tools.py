@@ -82,12 +82,29 @@ web_tools = [tavily_tool, duck_tool]
 # =============================================================================
         
 @tool
-def general_qa_tool(query: str) -> str:
+def general_qa_tool(state):
     """
-    일반적인 질문이나 상식적인 내용에 대해 답변합니다. 사주와 관련 없는 모든 질문에 사용할 수 있습니다.
+    일반적인 질문이나 상식적인 내용에 대해 사용자의 사주에 대한 정보를 포함해 답변합니다. 
     """
     google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
-    return google_llm.invoke(query)
+    messages = state.get("messages", [])
+    # 메시지 없을 때 대비
+    query = messages[-1].content if messages else ""
+    birth_info = state.get("birth_info")
+    saju_result = state.get("saju_result")
+    # 전체 메시지 content를 \n으로 연결
+    context = "\n".join([m.content for m in messages])
+
+    prompt = f"""아래는 사용자의 질문과 사주 정보입니다.
+        질문: {query}
+        사주 정보: {birth_info}
+        사주 해석: {saju_result}
+        대화 기록: {context}
+
+        위 정보를 반드시 참고해서, 사주 특성을 녹여서 친절하고 존댓말로 답변해 주세요.
+        맥락에 맞는 답변만 해야합니다.
+        """
+    return google_llm.invoke(prompt)
 
 # =============================================================================
 # 도구 그룹화 (노트북 방식과 동일)

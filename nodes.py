@@ -1,4 +1,4 @@
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 from typing import Literal
@@ -30,20 +30,50 @@ class NodeManager:
 
     def supervisor_agent_node(self, state):
         """Supervisor Agent 노드 생성"""
-        
 
         class RouteResponse(BaseModel):
             next: Literal[*options_for_next]
+
+        llm = ChatOpenAI(model="gpt-4.1", temperature=0)
+        user_input = state.get("question") or (state["messages"][0].content if state.get("messages") else "")
+
+        birth_info = parse_birth_info_with_llm(user_input, self.llm)
+        state["birth_info"] = birth_info
 
         now = self.agent_manager.now
         supervisor_prompt = PromptManager().supervisor_prompt()
 
         supervisor_chain = (
-            supervisor_prompt.partial(options=str(options_for_next), members=", ".join(members), now=now)
-            | self.llm.with_structured_output(RouteResponse)
+            supervisor_prompt.partial(
+                options=str(options_for_next), 
+                members=", ".join(members), 
+                now=now,
+                birth_info=state.get('birth_info', 'None'),
+                saju_result=state.get('saju_result', 'None'),
+            )
+            | llm.with_structured_output(RouteResponse)
         )
 
         route_response = supervisor_chain.invoke(state)
+
+        if route_response.next == "manse":
+            if birth_info and all(key in birth_info and birth_info[key] is not None for key in ["year", "month", "day"]):
+                # 생년월일 정보가 있으면 manse로 진행
+                return {"next": "manse"}
+            else:
+                # 생년월일 정보가 없으면 사용자에게 안내하고 general_qa로 유도
+                state["messages"].append(
+                    AIMessage(
+                        content=(
+                            "사주 분석을 위해서는 생년월일, 태어난 시간, 성별 정보가 필요합니다.\n"
+                            "예: **1990년 3월 5일 오후 3시, 남자**\n\n"
+                            "생년월일 정보를 알려주시면 정밀한 운세를 안내해 드릴게요 🙂"
+                        ),
+                        name="Supervisor",
+                    )
+                )
+                return {"next": "general_qa"}
+            
         return {"next": route_response.next}
 
     def create_manse_tool_agent_node(self):
@@ -60,11 +90,6 @@ class NodeManager:
         """Web Tool Agent 노드 생성"""
         web_tool_agent = self.agent_manager.create_web_tool_agent()
         return functools.partial(self._agent_node, agent=web_tool_agent, name="WebTool")
-
-    def create_general_qa_agent_node(self):
-        """General QA Agent 노드 생성"""
-        general_qa_agent = self.agent_manager.create_general_qa_agent()
-        return functools.partial(self._agent_node, agent=general_qa_agent, name="GeneralQA")
     
     def manse_agent_node(self, state):
         """Manse Tool Agent 노드 생성"""
@@ -81,6 +106,18 @@ class NodeManager:
         """
         llm_response = self.llm.invoke(prompt)
         state["messages"].append(HumanMessage(content=llm_response.content, name="ManseLLM"))
+        return state
+    
+    def general_qa_agent_node(self, state):
+        general_qa_agent = self.agent_manager.create_general_qa_agent()
+        agent_response = general_qa_agent.invoke({
+            "birth_info": state.get("birth_info"),
+            "saju_result": state.get("saju_result"),
+            "messages": state.get("messages", []),
+        })
+        state["messages"].append(
+            HumanMessage(content=agent_response["messages"][-1].content, name="GeneralQA")
+        )
         return state
     
     def search_agent_node(self, state):
@@ -121,16 +158,34 @@ def get_node_manager():
 
 def parse_birth_info_with_llm(user_input, llm):
     prompt = f"""
-아래 문장에서 출생 정보를 추출해서 JSON 형태로 반환하세요.
-필드: year, month, day, hour, minute, is_male, is_leap_month
-예시 입력: "1996년 12월 13일 남자, 10시 30분 출생"
-예시 출력: {{"year": 1996, "month": 12, "day": 13, "hour": 10, "minute": 30, "is_male": true, "is_leap_month": false}}
+    아래 문장에서 출생 정보를 추출해서 JSON 형태로 반환하세요.
+    필드: year, month, day, hour, minute, is_male, is_leap_month
+    예시 입력: "1996년 12월 13일 남자, 10시 30분 출생"
+    예시 출력: {{"year": 1996, "month": 12, "day": 13, "hour": 10, "minute": 30, "is_male": true, "is_leap_month": false}}
 
-입력: {user_input}
-"""
+    만약 출생 정보가 명확하지 않거나 부족하면 null을 반환하세요.
+    year, month, day는 필수이고, hour, minute, is_male, is_leap_month는 선택사항입니다.
+    is_male은 true(남자), false(여자)로 설정하세요.
+    is_leap_month는 윤달인 경우에만 true로 설정하세요.
+
+    입력: {user_input}
+    """
     result = llm.invoke(prompt)
     try:
-        birth_info = json.loads(result.content)
+        # JSON 문자열에서 불필요한 문자 제거
+        content = result.content.strip()
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
+        
+        birth_info = json.loads(content)
+        
+        # 필수 필드 확인
+        if not birth_info or not all(key in birth_info and birth_info[key] is not None for key in ["year", "month", "day"]):
+            return None
+            
         return birth_info
     except Exception as e:
         print("파싱 오류:", e)

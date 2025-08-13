@@ -19,23 +19,22 @@ def create_workflow():
     supervisor_agent = node_manager.supervisor_agent_node
     manse_tool_agent_node = node_manager.create_manse_tool_agent_node()
     search_agent_node = node_manager.search_agent_node
-    general_qa_agent_node = node_manager.create_general_qa_agent_node()
+    general_qa_agent_node = node_manager.general_qa_agent_node
     
     # 그래프에 노드 추가
     workflow.add_node("search", search_agent_node)
     workflow.add_node("manse", manse_tool_agent_node)
     workflow.add_node("general_qa", general_qa_agent_node)
-    workflow.add_node("Supervisor", supervisor_agent)
+    workflow.add_node("supervisor", supervisor_agent)
 
-    for member in members:
-        workflow.add_edge(member, "Supervisor")
+    workflow.add_edge("search", END)
+    workflow.add_edge("manse", END)
+    workflow.add_edge("general_qa", END)
+
     conditional_map = {k: k for k in members}
-    conditional_map["FINISH"] = END
-    
     def get_next(state):
         return state["next"]
-   
-    workflow.add_conditional_edges("Supervisor", get_next, conditional_map)
-    workflow.add_edge(START, "Supervisor")
+    workflow.add_conditional_edges("supervisor", get_next, conditional_map)
+    workflow.add_edge(START, "supervisor")
     
     return workflow.compile(checkpointer=MemorySaver())
