@@ -25,7 +25,7 @@ FortuneAI는 LangChain과 LangGraph를 활용하여 사주팔자 상담을 제�
      ↓           ↓              ↓            ↓
    질문 분석   라우팅 결정    전문 작업 수행   통합 답변
                 ↓
-        ┌─── SajuExpert (사주계산)
+        ┌─── Manse (사주계산)
         ├─── Search (RAG + 웹검색)  
         └─── GeneralAnswer (일반상담)
 ```
@@ -33,7 +33,7 @@ FortuneAI는 LangChain과 LangGraph를 활용하여 사주팔자 상담을 제�
 ### 핵심 에이전트
 
 1. **Supervisor**: 질문 분석 및 라우팅 담당
-2. **SajuExpert**: 사주팔자 계산 및 해석 전담
+2. **Manse**: 사주팔자 계산 및 해석 전담 (만세력 기반)
 3. **Search**: RAG 벡터 검색 + 웹 검색 통합
 4. **GeneralAnswer**: 일반 질문 및 상식 답변
 
@@ -84,7 +84,7 @@ poetry run python main.py
 질문: 1995년 8월 26일 오전 10시 15분 남자 사주봐주세요
 
 🔧 Supervisor 노드 실행
-→ SajuExpert로 라우팅
+→ Manse로 라우팅
 
 🔮 사주 계산 중...
 [상세한 사주팔자 해석 결과]
@@ -115,7 +115,7 @@ FortuneAI/
 ├── agents.py            # AgentManager - 에이전트 생성/관리
 ├── nodes.py             # NodeManager - 노드 생성/관리  
 ├── prompts.py           # PromptManager - 프롬프트 템플릿
-├── tools.py             # 도구 정의 (사주계산, RAG, 웹검색)
+├── tools.py             # 도구 정의 (만세력 계산, RAG, 웹검색)
 ├── models.py            # LLM 및 임베딩 모델 설정
 ├── vector_store.py      # 벡터 스토어 관리
 ├── reranker.py          # 문서 리랭킹 시스템
@@ -137,7 +137,7 @@ agent_manager = AgentManager()
 supervisor = agent_manager.create_supervisor_agent(input_state)
 
 # 전문 에이전트들
-saju_expert = agent_manager.create_saju_expert_agent()
+manse_agent = agent_manager.create_manse_agent()
 search_agent = agent_manager.create_search_agent()
 general_agent = agent_manager.create_general_answer_agent()
 ```
@@ -215,7 +215,7 @@ poetry run python -m pytest
 
 ### 1. 사주 계산 플로우
 ```
-입력 → Supervisor → 출생정보 파싱 → SajuExpert → 사주 계산 → 해석 생성
+입력 → Supervisor → 출생정보 파싱 → Manse → 사주 계산 → 해석 생성
 ```
 
 ### 2. 지식 검색 플로우  
