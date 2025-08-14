@@ -202,7 +202,7 @@ web_tool_agent = create_react_agent(llm, tools=web_search_tools, prompt=web_sear
 @tool
 def general_qa_tool(state):
     """
-    일반적인 질문이나 상식적인 내용에 대해 사용자의 사주에 대한 정보를 포함해 답변합니다. 
+    일반적인 질문이나 상식적인 내용에 대해서 사용자의 사주에 대한 정보와 관련된 답변을 합니다. 
     """
     google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
     messages = state.get("messages", [])
@@ -425,7 +425,6 @@ supervisor_system_prompt = (
     "※ 일상, 고민, 메뉴, 추천, 잡담 등에는 절대 사용하지 않습니다.\n\n"
 
     "2. **manse**: "
-#####
 """    
     **이미 state에 출생 정보(birth_info, saju_result 등)가 저장되어 있으면,  
     질문에 새로운 출생 정보가 명확하게 포함되지 않는 한 manse로 분기하지 마세요.**  
