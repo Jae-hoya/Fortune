@@ -6,6 +6,9 @@ authors = ["MinhyeongL <minhyung0123@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 package-mode = false
+packages = [
+    { include = "tarot", from = "." }
+]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"

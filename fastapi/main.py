@@ -31,7 +31,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s %(levelname)-8s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    filename="app_250729_2.log",  # ← writes all logs to this file
+    filename="app_250820_1.log",  # ← writes all logs to this file
     filemode="w",  # ← "w" to overwrite each run, "a" to append
 )
 
@@ -191,8 +191,8 @@ def safe_import_tarot_modules(app, debug_log):
     """안전한 모듈 임포트 - Tarot"""
     debug_log("📦 Tarot 모듈 임포트 시작...")
     try:
-        from Fortune.parser.tarot_agent.agent import create_optimized_tarot_graph
-        from Fortune.parser.tarot_agent.utils.tools import initialize_rag_system
+        from Fortune.tarot.tarot_agent.agent import create_optimized_tarot_graph
+        from Fortune.tarot.tarot_agent.utils.tools import initialize_rag_system
         app.state.create_optimized_tarot_graph = create_optimized_tarot_graph
         app.state.initialize_rag_system = initialize_rag_system
         debug_log("✅ tarot_agent 모듈 임포트 성공")
@@ -332,7 +332,7 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
                 session_data["query_count"] += 1
                 session_data["messages"].append(HumanMessage(content=user_input))
                 debug_log(f"🔄 쿼리 #{session_data['query_count']} 처리 시작")
-                send_to_frontend = False
+
                 try:
                     compiled_graph = websocket.app.state.compiled_graph
                     
@@ -344,31 +344,19 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
                         subgraphs=True,
                     ):
                         kind = event["event"]
-                        debug_log(event)
-                        if kind == "on_chat_model_start":
-                            try:
-                                final_message = event["data"].get('input').get("messages")[0][-1]
-                                if json.loads(final_message.content).get("next") == "FINISH":
-                                    debug_log(f"🔄 FINISH Detected: {final_message.content}")
-                                    send_to_frontend = True
-                            except Exception as e:
-                                debug_log(f"❌ 메시지 처리 오류: {e}", "ERROR")
-                                continue
-
-                                
-                        if kind == "on_chat_model_stream" and send_to_frontend:
-                            # if (
-                            #     "manse" in event["metadata"]["langgraph_checkpoint_ns"]
-                            #     and "agent" in event["metadata"]["langgraph_checkpoint_ns"]
-                            # ) or (
-                            #     "GeneralQA" in event["metadata"]["langgraph_checkpoint_ns"]
-                            # ):
-                            data = event["data"]
-                            if data["chunk"].content:
-                                await websocket.send_json({
-                                    "type": "stream",
-                                    "content": str(data["chunk"].content)
-                                })
+                        if kind == "on_chat_model_stream":
+                            if (
+                                "manse" in event["metadata"]["langgraph_checkpoint_ns"]
+                                and "agent" in event["metadata"]["langgraph_checkpoint_ns"]
+                            ) or (
+                                "GeneralQA" in event["metadata"]["langgraph_checkpoint_ns"]
+                            ):
+                                data = event["data"]
+                                if data["chunk"].content:
+                                    await websocket.send_json({
+                                        "type": "stream",
+                                        "content": str(data["chunk"].content)
+                                    })
                     await websocket.send_json({
                         "type": "complete",
                         "content": f"✅ 완료 (질문 #{session_data['query_count']})"
@@ -616,7 +604,7 @@ def signal_handler(signum, frame):
 
 if __name__ == "__main__":
     
-    from Fortune.parser.tarot_agent.agent import create_optimized_tarot_graph
+    from Fortune.tarot.tarot_agent.agent import create_optimized_tarot_graph
     app = create_optimized_tarot_graph()
 
     # import uvicorn

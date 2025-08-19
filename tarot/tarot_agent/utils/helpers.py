@@ -311,49 +311,62 @@ def get_default_spreads() -> List[Dict[str, Any]]:
         }
    ]
 def extract_concern_keywords(user_concern: str) -> str:
-   """사용자 고민에서 타로 스프레드 검색에 적합한 키워드 추출 - 개선된 버전"""
+   """사용자 고민에서 타로 스프레드 검색에 적합한 키워드 추출 - 규칙 기반 + LLM 조합"""
+   
+   # 🔥 1단계: 규칙 기반 주제 감지 (확실한 보장)
+   user_lower = user_concern.lower()
+   topic_keywords = []
+   
+   # 주제별 키워드 매칭
+   if any(word in user_lower for word in ["성공", "이루", "달성", "목표", "꿈", "성취"]):
+       topic_keywords = ["success", "achievement", "goals"]
+   elif any(word in user_lower for word in ["돈", "재정", "투자", "벌", "수입", "월급", "부자"]):
+       topic_keywords = ["money", "financial", "wealth"]
+   elif any(word in user_lower for word in ["연애", "사랑", "남친", "여친", "결혼", "데이트", "관계"]):
+       topic_keywords = ["love", "romance", "relationship"]
+   elif any(word in user_lower for word in ["직업", "일자리", "취업", "회사", "커리어", "승진"]):
+       topic_keywords = ["career", "job", "work"]
+   elif any(word in user_lower for word in ["건강", "병", "치료", "회복", "아프", "몸"]):
+       topic_keywords = ["health", "healing", "wellness"]
+   elif any(word in user_lower for word in ["가족", "부모", "엄마", "아빠", "형제", "자식"]):
+       topic_keywords = ["family", "parents", "relationship"]
+   
+   # 2단계: LLM으로 보조 키워드 추출
    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
    prompt = f"""
-   사용자의 고민을 분석하여 타로 스프레드 검색에 적합한 키워드를 추출해주세요.
    사용자 고민: "{user_concern}"
-   **단계별 분석:**
-   1) 질문의 핵심 의도 파악:
-   - 정보 요청 (Information): 단순히 알고 싶어하는 것
-   - 결정 요청 (Decision): 선택이나 결정을 내려야 하는 상황  
-   - 상황 파악 (Situation): 현재 상황에 대한 이해
-   - 미래 예측 (Future): 앞으로 일어날 일에 대한 궁금증
-   - 감정 지원 (Emotional): 위로나 격려가 필요한 상황
-   2) 키워드 추출 (최대 6개, 우선순위 순서로):
-   **의도 키워드 (필수 1-2개):**
-   decision, choice, crossroads, dilemma, uncertainty, confusion, doubt, guidance, 
-   advice, direction, clarity, insight, understanding, future, prediction, timing,
-   information, knowledge, truth, revelation, confirmation, validation
-   **주제 키워드 (필수 1-2개):**
-   love, romance, relationship, dating, marriage, breakup, divorce, soulmate, partnership,
-   career, job, work, business, promotion, interview, unemployment, success, failure,
-   money, finance, investment, health, illness, healing, wellness, mental, physical,
-   family, parents, children, siblings, friendship, social, community, conflict,
-   spirituality, growth, purpose, destiny, travel, moving, home, education, creativity
-   **감정/상황 키워드 (선택적 1-2개):**
-   anxiety, fear, worry, stress, hope, excitement, joy, happiness, sadness, anger,
-   frustration, guilt, regret, loneliness, peace, confidence, courage, depression,
-   change, transition, transformation, crisis, challenge, obstacle, opportunity,
-   new beginning, ending, closure, reconciliation, separation, commitment
-   **분석 예시:**
-   - "나 일 구할까 말까?" → "decision choice career job uncertainty opportunity"
-   - "언제 결혼할까?" → "future timing love marriage relationship prediction"
-   - "이 관계 계속해야 할까?" → "decision choice relationship love uncertainty guidance"
-   결과를 영어 키워드로만 답해주세요 (정확히 5-6개, 공백으로 구분)
-   키워드:"""
+   
+   **이미 확정된 주제 키워드: {' '.join(topic_keywords) if topic_keywords else '없음'}**
+   
+   다음 중에서 2-3개의 보조 키워드를 선택하세요:
+   - 감정/상태: confidence, hope, fear, anxiety, happiness, worry
+   - 시간: future, timing, soon, when, prediction
+   - 행동: opportunity, potential, possibility, guidance
+   - 의도: decision, choice (정말 선택이 필요한 경우에만)
+   
+   보조 키워드만 답하세요 (2-3개, 공백으로 구분):"""
+   
    try:
        response = llm.invoke([HumanMessage(content=prompt)])
-       keywords = response.content.strip()
-       print(f"🔍 개선된 키워드 추출: '{keywords}'")
-       return keywords
+       auxiliary_keywords = response.content.strip().split()
+       
+       # 3단계: 최종 키워드 조합 (주제 우선!)
+       if topic_keywords:
+           final_keywords = topic_keywords + auxiliary_keywords[:3]
+       else:
+           # 주제를 못 찾은 경우에만 LLM 전체 결과 사용
+           final_keywords = auxiliary_keywords[:5]
+       
+       result = " ".join(final_keywords[:6])  # 최대 6개
+       print(f"🔍 개선된 키워드 추출: '{result}' (주제: {topic_keywords}, 보조: {auxiliary_keywords[:3]})")
+       return result
+       
    except Exception as e:
        print(f"🔍 키워드 추출 오류: {e}")
-       # 기본 키워드에 decision 포함
-       return "decision choice general situation guidance"
+       # 기본값에서도 주제 우선
+       if topic_keywords:
+           return " ".join(topic_keywords + ["future", "guidance"])
+       return "general situation guidance future"
 def extract_suit_from_name(card_name: str) -> str:
    """카드 이름에서 수트 추출"""
    if "Cups" in card_name:
@@ -383,10 +396,8 @@ def get_last_user_input(state: TarotState) -> str:
    return ""
 def check_if_has_specific_concern(user_input: str, conversation_context: str = "") -> bool:
    """LLM을 사용해서 사용자 입력에 구체적인 고민이 포함되어 있는지 판단"""
-   # 대화 맥락이 있으면 고민이 있는 것으로 간주
-   if conversation_context and len(conversation_context.strip()) > 0:
-       print(f"🤔 대화 맥락 감지: {conversation_context[:100]}...")
-       return True
+   # 🔧 대화 맥락만으로는 판단하지 않고, 사용자 입력을 우선 분석
+   # "고민있어", "걱정돼" 같은 단순한 감정 표현은 구체적인 고민이 아님
    
    # 단순한 타로 요청만 있는지 빠른 체크
    if user_input.strip() in ["타로 봐줘", "타로봐줘", "타로 상담", "점 봐줘", "운세 봐줘"]:
@@ -397,16 +408,24 @@ def check_if_has_specific_concern(user_input: str, conversation_context: str = "
        model_kwargs={"response_format": {"type": "json_object"}}
    )
    prompt = f"""
-   사용자 입력을 분석해서 구체적인 고민이나 상황이 언급되어 있는지 판단해주세요.
+   사용자 입력을 분석해서 **구체적이고 상세한** 고민이나 상황이 언급되어 있는지 판단해주세요.
    **사용자 입력:** "{user_input}"
-   **판단 기준:**
-   - 구체적인 고민이 있음: "연애 고민이 있어서 타로 봐줘", "취업 때문에 스트레스받아", "일 할까 말까 고민돼"
-   - 구체적인 고민이 없음: "타로 봐줘", "타로 상담 받고 싶어", "점 봐줘"
-   **고민이 있다고 판단되는 경우:**
-   1. 구체적인 주제가 언급됨 (연애, 직업, 건강, 가족, 돈 등)
-   2. 감정 상태가 언급됨 (걱정, 스트레스, 우울, 불안 등)
-   3. 의사결정 상황이 언급됨 (할까 말까, 어떻게 해야 할지 등)
-   4. 문제 상황이 구체적으로 서술됨
+   
+   **구체적인 고민이 있음 (TRUE):**
+   - "연애 고민이 있어서 타로 봐줘", "취업 때문에 스트레스받아", "일 할까 말까 고민돼"
+   - "남자친구와 헤어질까 생각 중이야", "이직을 해야 할지 모르겠어"
+   - "부모님과의 관계가 힘들어", "돈 문제로 고생하고 있어"
+   
+   **구체적인 고민이 없음 (FALSE):**
+   - "타로 봐줘", "타로 상담 받고 싶어", "점 봐줘"
+   - **"고민있어", "걱정돼", "힘들어", "우울해"** (단순한 감정 표현만)
+   - "뭔가 불안해", "기분이 안 좋아" (구체적인 상황 없음)
+   
+   **핵심 판단 기준:**
+   1. 구체적인 주제/상황이 명시되어야 함 (연애, 직업, 건강, 가족, 돈 등의 **구체적 내용**)
+   2. 단순한 감정 표현만으로는 FALSE
+   3. 의사결정이나 문제 상황이 **구체적으로** 서술되어야 함
+   
    다음 JSON 형식으로 답변:
    {{
        "has_specific_concern": true/false,
@@ -493,9 +512,9 @@ def determine_target_handler(state: TarotState) -> str:
             "simple_card": "simple_card_handler"
         }.get(intent, "unknown_handler")
 def perform_multilayer_spread_search(keywords: str, user_input: str, requested_topic: str = None) -> List[Dict]:
-    """다층적 스프레드 검색 - 개선된 버전"""
+    """다층적 스프레드 검색 - 동적 주제 우선 검색"""
     global rag_system
-    from Fortune.parser.tarot_agent.utils.tools import rag_system
+    from Fortune.tarot.tarot_agent.utils.tools import rag_system
     
     print(f"🔍 다층적 스프레드 검색 시작: keywords='{keywords}', user_input='{user_input}', requested_topic='{requested_topic}'")
     
@@ -509,7 +528,8 @@ def perform_multilayer_spread_search(keywords: str, user_input: str, requested_t
             "연애": "love romance relationship heart dating",
             "직업": "career job work business profession",
             "건강": "health medical wellness healing",
-            "가족": "family parent child sibling"
+            "가족": "family parent child sibling",
+            "성공": "success achievement accomplishment goals ambition confidence"
         }
         
         if requested_topic in topic_enhancement:
@@ -518,14 +538,26 @@ def perform_multilayer_spread_search(keywords: str, user_input: str, requested_t
             keywords = enhanced_keywords
     
     try:
-        # 기존 검색 레이어들
-        search_layers = [
-            keywords,  # 1차: 전체 키워드
-            " ".join(keywords.split()[:4]),  # 2차: 앞 4개 키워드
-            " ".join(keywords.split()[:3]),  # 3차: 앞 3개 키워드
-            " ".join([k for k in keywords.split() if k in ["decision", "choice", "uncertainty", "guidance"]]),  # 4차: 의도 키워드만
-            " ".join([k for k in keywords.split() if k in ["career", "money", "love", "health", "family"]])  # 5차: 주제 키워드만
-        ]
+        # 🔥 동적 검색 레이어 - 주제 우선!
+        keyword_list = keywords.split()
+        
+        # 1단계: 주제별 직접 검색 (가장 중요!)
+        topic_searches = []
+        for kw in keyword_list:
+            if kw in ["success", "achievement", "accomplishment", "goals", "ambition", "money", "financial", "wealth", "love", "romance", "relationship", "career", "job", "work", "health", "family"]:
+                topic_searches.append(f"{kw} spread")
+                topic_searches.append(f"{kw} tarot")
+        
+        # 2단계: 기존 검색 레이어들 (의도 키워드는 후순위)
+        search_layers = (
+            topic_searches +  # 주제별 검색 최우선!
+            [
+                keywords,  # 전체 키워드
+                " ".join(keyword_list[:3]),  # 앞 3개 키워드 (주제 중심)
+                " ".join(keyword_list[:2]),  # 앞 2개 키워드 (핵심 주제)
+                " ".join([k for k in keyword_list if k in ["decision", "choice", "uncertainty", "guidance", "future", "prediction", "timing"]])  # 의도 키워드는 마지막
+            ]
+        )
         
         # 🆕 특정 주제 요청 시 주제별 검색 레이어 추가
         if requested_topic:
@@ -534,7 +566,8 @@ def perform_multilayer_spread_search(keywords: str, user_input: str, requested_t
                 "연애": ["love spread", "romance spread", "relationship spread", "heart spread"],
                 "직업": ["career spread", "job spread", "work spread", "profession spread"],
                 "건강": ["health spread", "medical spread", "wellness spread", "healing spread"],
-                "가족": ["family spread", "parent spread", "relationship family"]
+                "가족": ["family spread", "parent spread", "relationship family"],
+                "성공": ["success spread", "achievement spread", "goals spread", "accomplishment spread", "ambition spread"]
             }
             
             if requested_topic in topic_specific_queries:
@@ -543,10 +576,17 @@ def perform_multilayer_spread_search(keywords: str, user_input: str, requested_t
                 search_layers = topic_queries + search_layers
                 print(f"🎯 주제별 검색 레이어 추가: {len(topic_queries)}개")
         
-        # 검색 실행
+        # 검색 실행 (조기 종료 최적화)
+        sufficient_results_threshold = 8  # 충분한 결과 기준
+        
         for i, query in enumerate(search_layers, 1):
             if not query.strip():
                 continue
+                
+            # 🚀 조기 종료: 충분한 고품질 결과가 있으면 후속 검색 생략
+            if len(recommended_spreads) >= sufficient_results_threshold and i > 4:
+                print(f"🚀 조기 종료: {len(recommended_spreads)}개 결과로 충분함 (검색층 {i} 생략)")
+                break
                 
             try:
                 print(f"🔍 {i}차 검색: {query}")
@@ -650,10 +690,10 @@ def perform_multilayer_spread_search(keywords: str, user_input: str, requested_t
     mixed_spreads = []
     
     for spread in recommended_spreads:
-        if spread['search_layer'] == 3:
-            intent_spreads.append(spread)
-        elif spread['search_layer'] == 4:
-            topic_spreads.append(spread)
+        if spread['search_layer'] == 4:
+            topic_spreads.append(spread)  # 4차: 주제 스프레드
+        elif spread['search_layer'] == 5:
+            intent_spreads.append(spread)  # 5차: 의도 스프레드
         else:
             mixed_spreads.append(spread)
     
@@ -661,14 +701,16 @@ def perform_multilayer_spread_search(keywords: str, user_input: str, requested_t
     
     final_spreads = []
     
-    if intent_spreads:
-        final_spreads.append(intent_spreads[0])
-        print(f"✅ 의도 스프레드 포함: {intent_spreads[0]['spread_name']}")
+    # 🔧 주제 스프레드를 먼저 선택 (더 구체적이고 유용함)
+    if topic_spreads:
+        final_spreads.append(topic_spreads[0])
+        print(f"✅ 주제 스프레드 포함: {topic_spreads[0]['spread_name']}")
     
-    available_topic = [s for s in topic_spreads if s not in final_spreads]
-    if available_topic:
-        final_spreads.append(available_topic[0])
-        print(f"✅ 주제 스프레드 포함: {available_topic[0]['spread_name']}")
+    # 그 다음 의도 스프레드 (필요시에만)
+    available_intent = [s for s in intent_spreads if s not in final_spreads]
+    if available_intent and len(final_spreads) < 2:
+        final_spreads.append(available_intent[0])
+        print(f"✅ 의도 스프레드 포함: {available_intent[0]['spread_name']}")
     
     remaining = [s for s in recommended_spreads if s not in final_spreads]
     if remaining:
@@ -897,7 +939,7 @@ def handle_tarot_related_question(state: TarotState, user_input: str, recent_ai_
     if recent_ai_content:
         # 🔧 개별 해석 완료의 확실한 신호만 확인
         individual_completion_signals = [
-            "## 🔮 **카드 해석**",  # 개별 해석의 실제 시작
+            "## �� **카드 해석**",  # 개별 해석의 실제 시작
             "🔮 **이제 종합적으로 말해줄게요**",  # 개별 해석 내 종합 부분
             "## 💡 **상세한 실용적 조언**",  # 개별 해석의 마지막 부분
             "상담이 완료되었습니다!",  # 개별 해석 완료 후 메시지
@@ -932,10 +974,22 @@ def handle_tarot_related_question(state: TarotState, user_input: str, recent_ai_
 
 "도움이 되셨나요? 추가로 궁금한 점이 있으시면 언제든 말씀해주세요! 새로운 고민 상담을 하려면 \"새로 봐줘\"라고 해주세요.😊" """
     else:
-        ending_instruction = """자연스럽고 도움이 되는 답변을 해주세요.
+        # 🔧 상담 상태 확인해서 적절한 안내 제공
+        consultation_data = state.get("consultation_data", {})
+        consultation_status = consultation_data.get("status", "") if consultation_data else ""
+        
+        if consultation_status == "summary_shown":
+            # 종합 분석은 나왔지만 상세 해석은 안 나온 상태
+            ending_instruction = """자연스럽고 도움이 되는 답변을 해주세요.
 **반드시 마지막에 다음 문구를 추가**:
 
-"설명이 도움이 되셨을까요? 더 자세한 해석을 보고 싶으시다면 \"상세 해석\"이라고 말해주세요! 새로운 고민 상담을 하려면 \"새로 봐줘\"라고 해주세요. 😊" """
+"📖 **자세한 해석**을 보고 싶으시면 '상세 해석'이라고 말씀해주세요! 🔮 **새로운 고민 상담**을 원하시면 '새로 봐줘'라고 해주세요!" """
+        else:
+            # 일반적인 경우
+            ending_instruction = """자연스럽고 도움이 되는 답변을 해주세요.
+**반드시 마지막에 다음 문구를 추가**:
+
+"🔮 **카드 한 장으로 간단한 조언**을 원하시면 '네'를, **여러 장으로 깊은 상담**을 원하시면 '타로 봐줘'라고 말씀해주세요!" """
     prompt = f"""
     당신은 타로 상담사입니다. 사용자가 방금 전 답변에 대해 추가 질문을 했습니다. 
 

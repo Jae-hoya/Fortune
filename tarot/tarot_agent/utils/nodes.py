@@ -88,7 +88,7 @@ def state_classifier_node(state: TarotState) -> TarotState:
    if status == "completed":
        user_input = get_last_user_input(state)
        
-       # 🔧 먼저 새로운 상담 요청인지 확인
+       # 🔧 새로운 상담 요청인지 확인
        is_new_consultation = any(trigger in user_input.lower() for trigger in NEW_CONSULTATION_TRIGGERS)
        
        if is_new_consultation:
@@ -97,8 +97,9 @@ def state_classifier_node(state: TarotState) -> TarotState:
                "routing_decision": "NEW_SESSION",
                "needs_llm": False
            }
-       elif is_simple_followup(user_input):  # 간단한 패턴 매칭
-           print(f"🚀 Fast Track: FOLLOWUP_QUESTION")
+       else:
+           # 🔧 "새로 봐줘"가 아닌 모든 경우는 꼬리 질문으로 처리
+           print(f"🚀 Fast Track: FOLLOWUP_QUESTION (completed 상태)")
            return {
                "routing_decision": "FOLLOWUP_QUESTION", 
                "target_handler": "context_reference_handler",
@@ -305,11 +306,32 @@ def consultation_handler(state: TarotState) -> TarotState:
                 recent_concern = recent_msg
                 print(f"🔧 대화 히스토리에서 고민 발견: '{recent_concern}'")
                 break
-    # 고민이 없으면 물어보기
+    # 🔧 "타로 봐줘" 트리거는 이전 대화에서 고민을 더 넓게 찾기
     if user_input.strip() in simple_triggers and not has_specific_concern and not recent_concern:
-        print("🔧 단순 트리거 감지 - 고민 문의")
-        return {
-            "messages": [AIMessage(content="""🔮 
+        # 🆕 더 넓은 범위에서 고민 찾기 (최근 5개 메시지)
+        extended_concern = None
+        user_messages = []
+        for msg in reversed(messages):
+            if isinstance(msg, HumanMessage):
+                user_messages.append(msg.content)
+                if len(user_messages) >= 5:  # 범위 확장
+                    break
+        
+        # 더 관대한 기준으로 고민 찾기
+        for recent_msg in user_messages:
+            # 🔧 단순 감정 표현도 고민으로 인정 ("고민있어", "힘들어" 등)
+            if len(recent_msg.strip()) > 3 and not recent_msg.strip() in simple_triggers:
+                extended_concern = recent_msg
+                print(f"🔧 확장 검색에서 고민 발견: '{extended_concern}'")
+                break
+        
+        if extended_concern:
+            print(f"🔧 확장된 고민으로 상담 시작: '{extended_concern}'")
+            state["user_input"] = extended_concern  # 확장된 고민으로 교체
+        else:
+            print("🔧 단순 트리거 감지 - 고민 문의")
+            return {
+                "messages": [AIMessage(content="""🔮 
 어떤 고민이나 궁금한 점이 있으신가요? 편하게 말씀해주세요.
 
 예를 들어:
@@ -325,10 +347,10 @@ def consultation_handler(state: TarotState) -> TarotState:
 • 중요한 결정을 앞둔 상황
 
 무엇이든 편하게 이야기해주시면, 가장 적합한 타로 스프레드로 답을 찾아드릴게요! ✨""")],
-            "consultation_data": {
-                "status": "waiting_for_concern"
+                "consultation_data": {
+                    "status": "waiting_for_concern"
+                }
             }
-        }
     # 🔧 원래 사용자 질문이 있으면 그것을 사용해서 상담 시작
     if original_user_question:
         print(f"🔧 원래 사용자 질문으로 상담 시작: '{original_user_question}'")
@@ -408,38 +430,111 @@ def general_handler(state: TarotState) -> TarotState:
    # 일반 질문 처리
    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
 
-   # 🆕 일상 대화 감지 및 자연스러운 응답
-
-   casual_keywords = ["먹", "날씨", "안녕", "뭐해", "어때", "좋아", "싫어", "피곤", "행복"]
-
-   is_casual_chat = any(keyword in user_input.lower() for keyword in casual_keywords)
-
-   if is_casual_chat:
+   # 🆕 supervisor 분석 결과 활용 - 감정 상태 기반 응답
+   supervisor_decision = state.get("supervisor_decision", {})
+   confidence = supervisor_decision.get("confidence", "medium")
+   reasoning = supervisor_decision.get("reasoning", "")
+   emotion_type = supervisor_decision.get("emotion_type", "general")
+   support_needed = supervisor_decision.get("support_needed", "low")
+   
+   print(f"🎯 Supervisor 분석 활용: emotion_type={emotion_type}, support_needed={support_needed}")
+   print(f"🎯 Reasoning: {reasoning}")
+   
+   if emotion_type == "greeting":
+       # 간단한 인사 - 고민 유도
        prompt = f"""
-       사용자가 일상적인 대화를 시작했습니다: "{user_input}"
-       타로 상담사로서 친근하고 자연스럽게 응답해주세요. 
+       사용자가 간단한 인사를 했습니다: "{user_input}"
+       타로 상담사로서 친근하게 인사를 받고 고민을 말해달라고 유도해주세요.
+       
+       **응답 규칙:**
+       - 2-3줄 정도의 따뜻한 인사
+       - 친근하고 따뜻한 톤
+       - 이모지 적절히 사용
+       - 자연스럽게 고민이나 궁금한 점을 말해달라고 유도
+       
+       **중요한 호칭 규칙:**
+       - 사용자를 지칭할 때는 '내담자님'으로만 하세요
+       - 어미는 '~이에요/~해요' 등 친근한 어미 사용
+       """
+   elif emotion_type == "emotional_concern":
+       # 감정적 고민 - 공감과 지원 중심
+       prompt = f"""
+       사용자가 감정적 고민을 표현했습니다: "{user_input}"
+       타로 상담사로서 공감하고 지원하는 답변을 해주세요.
+       
+       **응답 규칙:**
+       - 먼저 사용자의 감정을 인정하고 공감
+       - 따뜻하고 위로가 되는 톤
+       - 구체적인 고민을 더 말해달라고 자연스럽게 유도
+       - 타로 상담 제안은 하지 말고, 먼저 더 자세한 이야기를 들어보겠다는 의지 표현
 
-       **중요**: 이미 진행 중인 대화라면 "안녕하세요" 같은 인사말은 생략하고 자연스럽게 답변하세요.
+       **중요한 호칭 규칙:**
+       - 사용자를 지칭할 때는 '내담자님'으로만 하세요
+       - 어미는 '~이에요/~해요' 등 친근한 어미 사용
+       """
+   elif emotion_type == "specific_concern":
+       # 구체적 고민 - 바로 타로 상담 제안
+       prompt = f"""
+       사용자가 구체적인 고민을 표현했습니다: "{user_input}"
+       타로 상담사로서 공감하고 도움이 되는 답변을 해주세요.
+       
+       **응답 규칙:**
+       - 사용자의 고민에 공감하고 이해한다는 메시지
+       - 따뜻하고 전문적인 톤
+       - 마지막에 반드시 다음 문구를 포함: "🔮 **카드 한 장으로 간단한 조언**을 원하시면 '네'를, **여러 장으로 깊은 상담**을 원하시면 '타로 봐줘'라고 말씀해주세요!"
 
-**중요한 호칭 규칙:**
-- 사용자를 지칭할 때는 '내담자님'으로만 하세요 ('당신', '사용자님', '고객님' 금지)
-- 한국어 특성상 주어를 자연스럽게 생략할 수 있는 곳에서는 생략해도 됩니다
-- 어미는 '~입니다' 대신 '~이에요/~해요' 등 친근한 어미로 말해주세요
-       타로적 관점을 살짝 섞되, 과하지 않게 일상 대화처럼 답변하세요.
-       마지막에 "🔮 **카드 한 장으로 간단한 조언**을 원하시면 '네'를, **여러 장으로 깊은 상담**을 원하시면 '타로 봐줘'라고 말씀해주세요!"라고 명확하게 제안해주세요.
-       😊 친근하고 따뜻한 톤으로 답변하세요.
+       **중요한 호칭 규칙:**
+       - 사용자를 지칭할 때는 '내담자님'으로만 하세요
+       - 어미는 '~이에요/~해요' 등 친근한 어미 사용
+       """
+   elif emotion_type == "consultation_inquiry":
+       # 상담 관련 문의 - 타로 제안 없이 간단한 답변
+       prompt = f"""
+       사용자가 상담 관련 질문을 했습니다: "{user_input}"
+       타로 상담사로서 친근하고 도움이 되는 답변을 해주세요.
+       
+       **응답 규칙:**
+       - 상담 가능하다는 긍정적인 답변
+       - 친근하고 따뜻한 톤 유지
+       - 2-3문장 정도의 간단한 응답
+       - 타로 상담 제안은 하지 말고, 자연스럽게 고민을 말해달라고 유도
+
+       **중요한 호칭 규칙:**
+       - 사용자를 지칭할 때는 '내담자님'으로만 하세요
+       - 어미는 '~이에요/~해요' 등 친근한 어미 사용
+       """
+   elif emotion_type == "gratitude":
+       # 감사 표현 - 타로 제안 없이 따뜻한 답변
+       prompt = f"""
+       사용자가 감사 인사를 했습니다: "{user_input}"
+       타로 상담사로서 따뜻하게 받아주세요.
+       
+       **응답 규칙:**
+       - 감사 인사에 대한 따뜻한 답변
+       - 친근하고 감사한 톤 유지
+       - 2-3문장 정도의 간단한 응답
+       - 타로 상담 제안은 하지 말고, 도움이 되었다면 기쁘다는 메시지
+       - 필요시 언제든 찾아오라는 자연스러운 마무리
+
+       **중요한 호칭 규칙:**
+       - 사용자를 지칭할 때는 '내담자님'으로만 하세요
+       - 어미는 '~이에요/~해요' 등 친근한 어미 사용
        """
    else:
+       # 일반적인 대화나 질문
        prompt = f"""
-       사용자가 타로나 점술에 대한 일반적인 질문을 했습니다: "{user_input}"
-       타로 상담사로서 친근하고 도움이 되는 답변을 해주세요. 
+       사용자 입력: "{user_input}"
+       타로 상담사로서 친근하고 도움이 되는 답변을 해주세요.
+       
+       **응답 규칙:**
+       - 사용자의 입력에 적절하게 반응
+       - 친근하고 따뜻한 톤 유지
+       - 입력이 매우 짧으면 응답도 간결하게, 길면 더 자세하게
+       - 마지막에 반드시 다음 문구를 포함: "🔮 **카드 한 장으로 간단한 조언**을 원하시면 '네'를, **여러 장으로 깊은 상담**을 원하시면 '타로 봐줘'라고 말씀해주세요!"
 
-**중요한 호칭 규칙:**
-- 사용자를 지칭할 때는 '내담자님'으로만 하세요 ('당신', '사용자님', '고객님' 금지)
-- 한국어 특성상 주어를 자연스럽게 생략할 수 있는 곳에서는 생략해도 됩니다
-- 어미는 '~입니다' 대신 '~이에요/~해요' 등 친근한 어미로 말해주세요
-       마지막에 "🔮 **카드 한 장으로 간단한 조언**을 원하시면 '네'를, **여러 장으로 깊은 상담**을 원하시면 '타로 봐줘'라고 말씀해주세요!"라고 덧붙여주세요.
-       🔮 따뜻하고 전문적인 톤으로 답변하세요.
+       **중요한 호칭 규칙:**
+       - 사용자를 지칭할 때는 '내담자님'으로만 하세요
+       - 어미는 '~이에요/~해요' 등 친근한 어미 사용
        """
    
    try:
@@ -574,13 +669,13 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
         
         # 감정별 카드 선택 안내
         if emotion == "불안":
-            emotional_guidance = "🌟 마음을 진정시키고, 직감을 믿어보세요. 처음 떠오르는 숫자들이 당신에게 필요한 메시지를 담고 있을 거예요."
+            emotional_guidance = "🌟 마음을 진정시키고, 직감을 믿어보세요. 직감대로 뽑은 카드들이 내담자님께 필요한 메시지를 담고 있을 거예요."
         elif emotion == "슬픔":
-            emotional_guidance = "💙 힘든 마음이지만, 카드가 위로와 희망의 메시지를 전해줄 거예요. 마음이 이끄는 대로 숫자를 선택해보세요."
+            emotional_guidance = "💙 힘든 마음이지만, 카드가 위로와 희망의 메시지를 전해줄 거예요. 마음이 이끄는 대로 카드를 뽑아주세요. "
         elif emotion == "걱정":
-            emotional_guidance = "🌟 걱정이 많으시겠지만, 카드가 안심할 수 있는 답변을 제시해줄 거예요. 직감적으로 떠오르는 숫자들을 선택해보세요."
+            emotional_guidance = "🌟 걱정이 많으시겠지만, 카드가 안심할 수 있는 답변을 제시해줄 거예요. 직감적으로 카드를 뽑아주세요."
         else:
-            emotional_guidance = "✨ 직감을 믿고 마음이 이끄는 대로 숫자들을 선택해보세요. 카드가 당신에게 필요한 메시지를 전해줄 거예요."
+            emotional_guidance = "✨ 직감을 믿고 마음이 이끄는 대로 카드를 뽑아주세요. 카드가 내담자님께 필요한 메시지를 전해줄 거예요."
         
         card_count = selected_default_spread.get("card_count", 3)
         spread_name_kr = translate_text_with_llm(selected_default_spread['spread_name'], "spread_name")
@@ -589,17 +684,7 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
 
 {emotional_guidance}
 
-🎴 **카드 선택 방법:**
-
-타로 카드는 총 78장이 있습니다. 
-
-1부터 78 사이의 숫자를 **{card_count}장** 선택해주세요.
-
-**예시:** 7, 23, 45, 12, 56
-
-💫 **팁:** 숫자를 고민하지 마시고, 직감적으로 떠오르는 숫자들을 말씀해주세요. 
-
-내담자님의의 무의식이 이미 답을 알고 있을 거예요."""
+"""
         
         # consultation_data 업데이트
         updated_consultation_data = consultation_data.copy()
@@ -609,7 +694,7 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
         })
         
         return {
-            "messages": [AIMessage(content=card_selection_msg, additional_kwargs={"metadata": {"final_response": "yes"}})],
+            "messages": [AIMessage(content=card_selection_msg)],
             "consultation_data": updated_consultation_data
         }
     
@@ -731,6 +816,7 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
 - 사용자의 특정 주제 요청({requested_topic if requested_topic else "없음"})을 반영
 - 따뜻하고 희망적인 톤으로 작성
 - 각 스프레드가 사용자 고민에 어떻게 구체적으로 도움이 될지 명확히 설명
+- **사용자를 지칭할 때는 반드시 '내담자님'으로 호칭**
 """
             
             try:
@@ -745,7 +831,7 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
                     spread_explanations += f"   📝 {spread.get('description', '')}\n\n"
             
             # 새 스프레드 옵션 제시
-            spread_msg = f"🔮 **맞춤 스프레드를 새로 찾았습니다!**\n\n{spread_explanations}\n어떤 스프레드로 진행하시겠어요? (1, 2, 3 중 선택)"
+            spread_msg = f"🔮 **내담자님을 위한 맞춤 스프레드를 새로 찾았습니다!**\n\n{spread_explanations}\n내담자님, 어떤 스프레드로 진행하시겠어요? (1, 2, 3 중 선택)"
             
             return {
                 "messages": [AIMessage(content=spread_msg)],
@@ -764,6 +850,15 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
         selected_number = 3
     if selected_number is None:
         return {"messages": [AIMessage(content="1, 2, 3 중에서 선택해주세요.")]}
+    
+    # 🆕 스프레드 선택 번호를 프론트엔드에서 숨기기 위해 메시지 제거
+    # 마지막 HumanMessage(스프레드 번호 입력)를 완전히 제거
+    messages = state.get("messages", [])
+    for i in range(len(messages) - 1, -1, -1):
+        if isinstance(messages[i], HumanMessage):
+            messages.pop(i)  # 메시지 완전 제거
+            break
+    
     # 선택된 스프레드 정보 (인덱스 기반으로 수정)
     recommended_spreads = consultation_data.get("recommended_spreads", [])
     if not recommended_spreads or selected_number < 1 or selected_number > len(recommended_spreads):
@@ -775,13 +870,13 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
     emotion = emotional_analysis.get('primary_emotion', '알 수 없음')
     # 감정별 카드 선택 안내
     if emotion == "불안":
-        emotional_guidance = "🌟 마음을 진정시키고, 직감을 믿어보세요. 처음 떠오르는 숫자들이 당신에게 필요한 메시지를 담고 있을 거예요."
+        emotional_guidance = "🌟 마음을 진정시키고, 직감을 믿어보세요. 직감대로 뽑은 카드들이 내담자님께 필요한 메시지를 담고 있을 거예요."
     elif emotion == "슬픔":
-        emotional_guidance = "💙 힘든 마음이지만, 카드가 위로와 희망의 메시지를 전해줄 거예요. 마음이 이끄는 대로 숫자를 선택해보세요."
+        emotional_guidance = "💙 힘든 마음이지만, 카드가 위로와 희망의 메시지를 전해줄 거예요. 마음이 이끄는 대로 카드를 뽑아주세요."
     elif emotion == "걱정":
-        emotional_guidance = "🌟 걱정이 많으시겠지만, 카드가 안심할 수 있는 답변을 제시해줄 거예요. 직감적으로 떠오르는 숫자들을 선택해보세요."
+        emotional_guidance = "🌟 걱정이 많으시겠지만, 카드가 안심할 수 있는 답변을 제시해줄 거예요. 직감적으로 카드를 뽑아주세요."
     else:
-        emotional_guidance = "✨ 직감을 믿고 마음이 이끄는 대로 숫자들을 선택해보세요. 카드가 당신에게 필요한 메시지를 전해줄 거예요."
+        emotional_guidance = "✨ 직감을 믿고 마음이 이끄는 대로 카드를 뽑아주세요. 카드가 내담자님께 필요한 메시지를 전해줄 거예요."
     card_count = selected_spread.get("card_count", 3)
     card_selection_msg = f"""
 
@@ -789,17 +884,7 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
 
 {emotional_guidance}
 
-�� **카드 선택 방법:**
-
-타로 카드는 총 78장이 있습니다. 
-
-1부터 78 사이의 숫자를 **{card_count}장** 선택해주세요.
-
-**예시:** 7, 23, 45, 12, 56
-
-💫 **팁:** 숫자를 고민하지 마시고, 직감적으로 떠오르는 숫자들을 말씀해주세요. 
-
-내담자님의 무의식이 이미 답을 알고 있을 거예요."""
+"""
     
     # 상담 데이터 업데이트
     updated_consultation_data = consultation_data.copy()
@@ -808,7 +893,7 @@ def consultation_continue_handler(state: TarotState) -> TarotState:
         "status": "card_selection"
     })
     return {
-        "messages": [AIMessage(content=card_selection_msg, additional_kwargs={"metadata": {"final_response": "yes"}})],
+        "messages": [AIMessage(content=card_selection_msg)],
         "consultation_data": updated_consultation_data
     }
 
@@ -817,14 +902,17 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
    consultation_data = state.get("consultation_data", {})
    if not consultation_data or consultation_data.get("status") != "card_selection":
        return {"messages": [AIMessage(content="카드 선택 정보가 없습니다.")]}
+   
    # 사용자가 입력한 카드 번호들 파싱
    user_input = ""
    for msg in reversed(state["messages"]):
        if isinstance(msg, HumanMessage):
            user_input = msg.content.strip()
            break
+   
    selected_spread = consultation_data.get("selected_spread", {})
    card_count = selected_spread.get("card_count", 3)
+   
    # 카드 번호 파싱 및 검증
    user_numbers = parse_card_numbers(user_input, card_count)
    if user_numbers is None:
@@ -846,18 +934,22 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 """
        return {"messages": [AIMessage(content=error_msg)]}
 
+   # 🆕 사용자 입력을 프론트엔드에서 숨기기 위해 메시지 제거
+   # 마지막 HumanMessage(카드 번호 입력)를 완전히 제거
+   messages = state.get("messages", [])
+   for i in range(len(messages) - 1, -1, -1):
+       if isinstance(messages[i], HumanMessage):
+           messages.pop(i)  # 메시지 완전 제거
+           break
+
    # 카드 선택
-
    selected_cards = select_cards_randomly_but_keep_positions(user_numbers, card_count)
-
    selected_cards = convert_numpy_types(selected_cards)
 
    # 🆕 고급 분석 실행
-
    integrated_analysis = generate_integrated_analysis(selected_cards)
 
    # 1단계: 카드 표시 + 고급 분석 요약
-
    cards_display = f"""🃏 **아래처럼 카드를 뽑으셨네요**
 
 """
@@ -869,11 +961,8 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
        cards_display += f"**{card['position']}번째 카드:** {card_name_kr} {orientation_symbol} ({orientation_kr})\n"
 
    # 🆕 고급 분석 요약 추가
-
    success_prob = integrated_analysis["success_analysis"]["success_probability"]
-
    integrated_score = integrated_analysis["integrated_score"]
-
    cards_display += f"""
 
 📊 **과학적 분석 결과**
@@ -887,56 +976,34 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 이제 뽑은 카드로 고민 해결 해드릴게요! ✨"""
    
    # 포지션 정보 추출
-
    positions = selected_spread.get("positions", [])
-
    positions_meanings = {}
-
    for pos in positions:
        if isinstance(pos, dict) and "position_num" in pos:
            positions_meanings[str(pos["position_num"])] = {
                "position": pos.get("position_name", f"Position {pos['position_num']}"),
                "meaning": pos.get("position_meaning", "")
            }
-
    # 기본 포지션이 없으면 생성
-
    if not positions_meanings:
        for i in range(1, card_count + 1):
            positions_meanings[str(i)] = {
                "position": f"Card {i}",
                "meaning": f"Position {i} in the spread"
            }
-
    # 개별 해석 생성
-
    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
-
    user_concern = consultation_data.get("concern", "")
-
    spread_name = selected_spread.get("spread_name", "")
-
    spread_name_kr = translate_text_with_llm(spread_name, "spread_name")  # 스프레드 이름 번역
-
    interpretations = []
-
    timing_info = []
-
    # 웹 검색 결과 가져오기 (있는 경우)
-
-
-
-
-
    # 웹 검색 관련 코드 제거됨
-
    # rag_system 사용 전 global 선언 및 import
-
    global rag_system
-
-   from Fortune.parser.tarot_agent.utils.tools import rag_system
+   from Fortune.tarot.tarot_agent.utils.tools import rag_system
    from concurrent.futures import ThreadPoolExecutor, as_completed
-
    def process_card(card):
        """단일 카드 처리"""
        position_index = card.get("position", "")
@@ -1101,13 +1168,9 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
        futures = [executor.submit(process_card, card) for card in selected_cards]
        for future in as_completed(futures):
            future.result()  # 완료 대기
-
    # 시기 정보 구조화
-
    timing_detailed = "**정확한 시기 정보 (절대 변경 금지):**\n"
-
    timing_by_period = {}
-
    for timing in timing_info:
        timing_data = timing['timing']
        time_frame = timing_data.get('time_frame', '알 수 없음')
@@ -1122,18 +1185,14 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
            'position': timing['position_name'],
            'card': timing['card_name']
        })
-
    timing_detailed += "\n**시기별 요약:**\n"
-
    for period, cards in timing_by_period.items():
        if len(cards) > 1:
            positions = ", ".join([card['position'] for card in cards])
            timing_detailed += f"- **{period}**: {positions}의 에너지가 함께 작용\n"
        else:
            timing_detailed += f"- **{period}**: {cards[0]['position']}의 에너지\n"
-
    # 🆕 고급 분석 상세 정보 포맷팅
-
    advanced_analysis_text = f"""
 
 ## 🔬 **과학적 타로 분석**
@@ -1175,15 +1234,10 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
 """
    
    # 4단계: 명확하고 직접적인 종합 분석 생성 (고급 분석 통합)
-
    emotional_analysis = consultation_data.get("emotional_analysis", {})
-
    emotion = emotional_analysis.get('primary_emotion', '알 수 없음')
-
    # 개별 해석 요약 (한국어 카드명과 포지션명 사용)
-
    interpretations_summary = ""
-
    for interp in interpretations:
        card_name_kr = interp.get('card_name_kr', interp['card_name'])
        orientation_kr = interp.get('orientation_kr', interp['orientation'])
@@ -1191,7 +1245,6 @@ def consultation_summary_handler(state: TarotState) -> TarotState:
        # 해석 텍스트에서 영문 카드명을 한국어로 교체
        interpretation_text = interp['interpretation']
        interpretations_summary += f"- {position_name_kr}: {card_name_kr} ({orientation_kr}) - {interpretation_text}\n"
-
    analysis_prompt = f"""
 
 사용자 고민: "{user_concern}"
@@ -1488,7 +1541,7 @@ def consultation_individual_handler(state: TarotState) -> TarotState:
 
    ---
 
-   오늘 상담이 내담자님께 조금이라도 도움이 되었으면 좋겠어요. 카드들이 전한 메시지들이 앞으로 가실 길에 작은 등불이 되기를 바라며... 혹시 이 결과에 대해 더 궁금한 점이 있거나 다른 고민이 생기시면 언제든 편하게 찾아와 주세요. 미라가 항상 여기 있을게요. ✨💫
+   오늘 상담이 내담자님께 조금이라도 도움이 되었으면 좋겠어요. 카드들이 전한 메시지들이 앞으로 가실 길에 작은 등불이 되기를 바라며... 혹시 이 결과에 대해 더 궁금한 점이 있거나 다른 고민이 생기시면 언제든 편하게 찾아와 주세요. 제가 항상 여기 있을게요. ✨💫
 
    """
    
@@ -2003,36 +2056,57 @@ def supervisor_llm_node(state: TarotState) -> TarotState:
         model_kwargs={"response_format": {"type": "json_object"}}
     )
     prompt = f"""
-    당신은 대화 흐름을 파악하는 전문가입니다.
-    **현재 상황:**
-    사용자 입력: "{user_input}"
-    {recent_context}
-    **특별 판단 규칙:**
-    만약 직전 AI 응답에 "**카드 한 장으로 간단한 조언**을 원하시면 '네'라고 답해주세요"가 포함되어 있고,
-    사용자 입력이 "네", "좋아", "그래", "응", "해줘" 등의 단순 긍정 응답이라면,
-    이는 카드 뽑기 요청이므로 새로운 주제로 판단해야 합니다.
-    **판단 기준:**
-    사용자가 방금 전 답변에 대해 추가로 궁금해하는 것인지, 
-    아니면 완전히 새로운 주제를 시작하는 것인지 판단하세요.
-    **추가 질문의 신호들:**
-    - "어떻게", "왜", "그게", "그거", "아까", "방금"
-    - 구체적 설명 요구: "더 자세히", "설명해봐"
-    - 의문 표현: "?", "하냐고", "거야"
-    - 짧고 직접적인 질문
-    **새로운 주제의 신호들:**
-    - 완전히 다른 카드나 스프레드 언급
-    - 새로운 고민이나 상황 설명
-    - 정중한 새 요청: "다른 것도", "이번엔"
-    - **🔥 타로 상담 키워드**: "타로 봐줘", "타로봐줢", "타로 상담", "점 봐줘", "운세 봐줢" 등이 포함된 경우 **무조건** 새로운 주제로 판단
-    - **중요**: 단순한 긍정 응답("네", "좋아", "그래" 등)이 직전 AI가 카드 뽑기를 제안한 후 나왔다면 새로운 주제로 판단
-    다음 JSON으로 답변:
-    {{
-        "is_followup": true/false,
-        "confidence": "high|medium|low",
-        "reasoning": "판단 근거",
-        "action": "handle_context_reference|route_to_intent"
-    }}
-    """
+   당신은 대화 흐름과 사용자 감정 상태를 파악하는 전문가입니다.
+   **현재 상황:**
+   사용자 입력: "{user_input}"
+   {recent_context}
+   
+   **1차 판단: 대화 흐름**
+   사용자가 방금 전 답변에 대해 추가로 궁금해하는 것인지, 
+   아니면 완전히 새로운 주제를 시작하는 것인지 판단하세요.
+   
+   **2차 판단: 감정 상태 및 지원 필요도**
+   사용자 입력을 다음 중 하나로 분류하세요:
+   
+   **A) greeting** - 간단한 인사말
+   - "안녕", "하이", "안뇽", "헬로", "hi", "hello" 등
+   - 3글자 이하의 단순 인사
+   
+   **B) emotional_concern** - 감정적 고민 표현
+   - "고민있어", "걱정돼", "우울해", "힘들어", "스트레스받아"
+   - 구체적 상황 없이 감정만 표현
+   
+   **C) specific_concern** - 구체적 고민 상황
+   - "연애 때문에 고민이야", "직장에서 힘들어", "돈 문제로 고생해"
+   - "투자로 돈 많이 벌 수 있을까", "취업 잘 될까" 등 구체적 질문
+   - 명확한 주제와 상황이 포함됨
+   
+   **D) consultation_inquiry** - 상담 관련 문의
+   - "상담해줄 수 있어?", "고민 들어줄 수 있어?", "도와줄 수 있어?"
+   - 상담 가능 여부나 서비스에 대한 문의
+   
+   **E) gratitude** - 감사 표현
+   - "고마워", "감사해", "고맙다", "감사합니다", "thanks", "thank you"
+   - 상담이나 도움에 대한 감사 인사
+   
+   **F) general** - 일반 질문이나 대화
+   - 정보 요청, 일상 대화, 기타 모든 경우
+   
+   **특별 판단 규칙:**
+   - 직전 AI가 카드 뽑기를 제안한 후 "네", "좋아", "그래" 등의 응답 → 새로운 주제
+   - 타로 상담 키워드("타로 봐줘" 등) → 새로운 주제
+   - 감정적 고민 표현 → 새로운 주제 + 감정 지원 필요
+   
+   다음 JSON으로 답변:
+   {{
+       "is_followup": true/false,
+       "confidence": "high|medium|low",
+       "reasoning": "판단 근거 (감정 상태 포함)",
+       "emotion_type": "greeting|emotional_concern|specific_concern|consultation_inquiry|gratitude|general|unknown",
+       "support_needed": "high|medium|low",
+       "action": "handle_context_reference|route_to_intent"
+   }}
+   """
     try:
         # 🔧 스마트한 타로 상담 키워드 체크 (공통 상수 사용)
         has_tarot_trigger = any(trigger in user_input.lower() for trigger in ALL_CONSULTATION_TRIGGERS)
@@ -2072,14 +2146,18 @@ def supervisor_llm_node(state: TarotState) -> TarotState:
         decision = json.loads(response.content)
         is_followup = decision.get("is_followup", False)
         confidence = decision.get("confidence", "medium")
+        emotion_type = decision.get("emotion_type", "general")
+        support_needed = decision.get("support_needed", "medium")
         action = "handle_context_reference" if is_followup else "route_to_intent"
-        print(f"🎯 Supervisor: {'Follow-up' if is_followup else 'New Topic'} (신뢰도: {confidence})")
+        print(f"🎯 Supervisor: {'Follow-up' if is_followup else 'New Topic'} (신뢰도: {confidence}) - 감정타입: {emotion_type}")
         return {
             "user_input": user_input,
             "supervisor_decision": {
                 "is_followup": is_followup,
                 "confidence": confidence,
                 "reasoning": decision.get("reasoning", ""),
+                "emotion_type": emotion_type,
+                "support_needed": support_needed,
                 "action": action
             }
         }
@@ -2197,7 +2275,7 @@ def spread_recommender_node(state: TarotState) -> TarotState:
     **3) {spread3_name_kr} ({recommended_spreads[2]['card_count'] if len(recommended_spreads) > 2 else 7}장)**
     - 목적: [position_meaning들을 자연스럽게 조합해서 이 스프레드가 사용자 고민에 어떻게 도움이 될지 설명]
     - 효과: [감정 상태를 고려한 따뜻한 효과 설명]
-    💫 **어떤 스프레드가 마음에 드시나요? 번호로 답해주세요 (1, 2, 3).**
+    💫 **마음에 드시는 스프레드로 타로 봐드릴게요. 하나 선택해주세요!**
     
     **반드시 다음 안내 문구를 마지막에 그대로 추가해주세요:**
     
