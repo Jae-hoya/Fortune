@@ -1,7 +1,7 @@
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from typing import List
-from Fortune.models import get_bge_embeddings
+from models import get_bge_embeddings
 
 def load_vector_store(db_path: str):
     """

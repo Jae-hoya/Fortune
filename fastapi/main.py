@@ -93,6 +93,7 @@ async def lifespan(app: FastAPI):
     debug_log("2️⃣ 단계 2: 메모리 초기화")
     try:
         from langgraph.checkpoint.memory import MemorySaver
+
         app.state.memory = MemorySaver()
         debug_log(f"✅ 메모리 초기화 성공: {type(app.state.memory)}")
     except Exception as e:
@@ -121,10 +122,14 @@ async def lifespan(app: FastAPI):
     try:
         if app.state.initialize_rag_system and app.state.create_optimized_tarot_graph:
             app.state.rag_system = app.state.initialize_rag_system()
-            app.state.tarot_compiled_graph = app.state.create_optimized_tarot_graph().compile(
-                checkpointer=app.state.memory
+            app.state.tarot_compiled_graph = (
+                app.state.create_optimized_tarot_graph().compile(
+                    checkpointer=app.state.memory
+                )
             )
-            debug_log(f"✅ Tarot 시스템 초기화 성공: {type(app.state.tarot_compiled_graph)}")
+            debug_log(
+                f"✅ Tarot 시스템 초기화 성공: {type(app.state.tarot_compiled_graph)}"
+            )
         else:
             debug_log("❌ Tarot 함수들이 로드되지 않음", "ERROR")
             yield
@@ -169,6 +174,7 @@ def _debug_log(message: str, level: str = "INFO", app: FastAPI = None):
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         logger.info(f"[{timestamp}] [{level}] {message}")
 
+
 def debug_log(message: str, level: str = "INFO"):
     _debug_log(message, level)
 
@@ -177,7 +183,8 @@ def safe_import_modules(debug_log):
     """안전한 모듈 임포트 - Saju"""
     debug_log("📦 Saju 모듈 임포트 시작...")
     try:
-        from Fortune.graph import create_workflow
+        from Fortune.saju.graph import create_workflow
+
         debug_log("✅ graph 임포트 성공")
         return create_workflow, True
     except ImportError as e:
@@ -187,12 +194,14 @@ def safe_import_modules(debug_log):
         debug_log(f"❌ graph 예상치 못한 오류: {e}", "ERROR")
         return None, False
 
+
 def safe_import_tarot_modules(app, debug_log):
     """안전한 모듈 임포트 - Tarot"""
     debug_log("📦 Tarot 모듈 임포트 시작...")
     try:
         from Fortune.tarot.tarot_agent.agent import create_optimized_tarot_graph
         from Fortune.tarot.tarot_agent.utils.tools import initialize_rag_system
+
         app.state.create_optimized_tarot_graph = create_optimized_tarot_graph
         app.state.initialize_rag_system = initialize_rag_system
         debug_log("✅ tarot_agent 모듈 임포트 성공")
@@ -297,8 +306,10 @@ def generate_fallback_response(user_input: str, error_msg: Optional[str] = None)
 
     return response
 
+
 # import asyncio
 # from fastapi import WebSocket
+
 
 @app.websocket("/ws/chat/saju/{session_id}")
 async def chat_websocket_saju(websocket: WebSocket, session_id: str):
@@ -335,8 +346,7 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
 
                 try:
                     compiled_graph = websocket.app.state.compiled_graph
-                    
-                    
+
                     async for event in compiled_graph.astream_events(
                         session_data,
                         config={"configurable": {"thread_id": session_id}},
@@ -344,32 +354,39 @@ async def chat_websocket_saju(websocket: WebSocket, session_id: str):
                         subgraphs=True,
                     ):
                         kind = event["event"]
+                        debug_log(event)
                         if kind == "on_chat_model_stream":
                             if (
                                 "manse" in event["metadata"]["langgraph_checkpoint_ns"]
-                                and "agent" in event["metadata"]["langgraph_checkpoint_ns"]
+                                and "agent"
+                                in event["metadata"]["langgraph_checkpoint_ns"]
                             ) or (
-                                "GeneralQA" in event["metadata"]["langgraph_checkpoint_ns"]
+                                "general_qa"
+                                in event["metadata"]["langgraph_checkpoint_ns"]
                             ):
                                 data = event["data"]
                                 if data["chunk"].content:
-                                    await websocket.send_json({
-                                        "type": "stream",
-                                        "content": str(data["chunk"].content)
-                                    })
-                    await websocket.send_json({
-                        "type": "complete",
-                        "content": f"✅ 완료 (질문 #{session_data['query_count']})"
-                    })
-                    
+                                    await websocket.send_json(
+                                        {
+                                            "type": "stream",
+                                            "content": str(data["chunk"].content),
+                                        }
+                                    )
+                    await websocket.send_json(
+                        {
+                            "type": "complete",
+                            "content": f"✅ 완료 (질문 #{session_data['query_count']})",
+                        }
+                    )
 
-                
                 except Exception as e:
                     debug_log(f"❌ LangGraph 처리 오류: {e}", "ERROR")
-                    await websocket.send_json({
-                        "type": "error",
-                        "content": f"❌ 처리 중 오류가 발생했습니다: {str(e)}"
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "content": f"❌ 처리 중 오류가 발생했습니다: {str(e)}",
+                        }
+                    )
 
         # 두 태스크를 동시에 실행
         receive_task = asyncio.create_task(receive_messages())
@@ -417,20 +434,26 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
         # 메시지 처리 태스크
         async def process_messages():
             while True:
-                
+
                 user_input = await message_queue.get()
                 print(user_input)
-                debug_log(f"[BEFORE] session_data['messages']: {session_data['messages']}")
+                debug_log(
+                    f"[BEFORE] session_data['messages']: {session_data['messages']}"
+                )
                 # session_data["query_count"] += 1
                 try:
                     user_input_dict = json.loads(user_input)
-                    session_data["messages"].append(HumanMessage(content=user_input_dict['message']))
-                    session_data["user_input"] = user_input_dict['message']
+                    session_data["messages"].append(
+                        HumanMessage(content=user_input_dict["message"])
+                    )
+                    session_data["user_input"] = user_input_dict["message"]
                 except Exception as e:
                     debug_log(f"❌ 메시지 처리 오류: {e}", "ERROR")
                     print(e)
                     continue
-                debug_log(f"[AFTER] session_data['messages']: {session_data['messages']}")
+                debug_log(
+                    f"[AFTER] session_data['messages']: {session_data['messages']}"
+                )
                 # debug_log(f"🔄 쿼리 #{session_data['query_count']} 처리 시작 | session_id={session_id} | user_input='{user_input}'")
                 print("session_data_before:", session_data)
                 try:
@@ -438,7 +461,7 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
                     config = {"configurable": {"thread_id": session_id}}
                     current_input_only = {
                         "messages": session_data["messages"],
-                        "user_input": user_input_dict['message'], 
+                        "user_input": user_input_dict["message"],
                     }
                     async for event in tarot_compiled_graph.astream_events(
                         current_input_only,
@@ -451,12 +474,14 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
                         # debug_log(f"[EVENT] kind={kind} | metadata={event.get('metadata', {})}")
                         if kind == "on_chat_model_stream":
                             try:
-                                if event['metadata'].get('final_response') == "yes":
+                                if event["metadata"].get("final_response") == "yes":
                                     data = event.get("data", {})
                                     chunk = data.get("chunk", None)
                                     content = getattr(chunk, "content", None)
                                     if content:
-                                        await websocket.send_json({"type": "stream", "content": str(content)})
+                                        await websocket.send_json(
+                                            {"type": "stream", "content": str(content)}
+                                        )
                             except Exception as e:
                                 debug_log(f"[STREAM ERROR] {e}", "ERROR")
                                 continue
@@ -468,50 +493,60 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
                         #         content=1
                         #         await websocket.send_json({"type": "stream", "content": str(content)})
                     # 쿼리 처리 후 최종 state를 프론트로 전송
-                    
+
                     final_state = await tarot_compiled_graph.aget_state(
                         {"configurable": {"thread_id": session_id}}
                     )
                     debug_log(f"final_state: {final_state.values}")
-                    
+
                     final_messages_list = final_state.values.get("messages")
-                    
+
                     if final_state.values.get("messages"):
                         if final_messages_list[-1].additional_kwargs:
-                            if final_messages_list[-1].additional_kwargs.get("metadata").get("final_response") == "yes":
-                                await websocket.send_json({"type": "stream", "content": str(final_messages_list[-1].content)})
-                    
+                            if (
+                                final_messages_list[-1]
+                                .additional_kwargs.get("metadata")
+                                .get("final_response")
+                                == "yes"
+                            ):
+                                await websocket.send_json(
+                                    {
+                                        "type": "stream",
+                                        "content": str(final_messages_list[-1].content),
+                                    }
+                                )
+
                     if final_state and final_state.values:
                         # session_data를 최종 상태로 완전 교체
                         session_data.clear()
                         session_data.update(final_state.values)
                         debug_log(f"✅ 최종 상태 동기화 완료")
                     state = await tarot_compiled_graph.aget_state(config)
-                    
+
                     print("state:", state)
                     print("session_data:", session_data)
                     state_dict = state.values if hasattr(state, "values") else state
                     send_state = dict(state_dict)
                     send_state.pop("messages", None)
-                    
+
                     # session_data['messages'].append(AIMessage(content=final_messages[-1].content))
                     # debug_log(f"[FINAL STATE] session_id={session_id} | query_count={session_data['query_count']} | state={send_state}")
-                    await websocket.send_json({
-                        "type": "final_state",
-                        "state": send_state
-                    })
-                    await websocket.send_json({
-                        "type": "complete",
-                        "content": "✅ 완료"
-                    })
-
+                    await websocket.send_json(
+                        {"type": "final_state", "state": send_state}
+                    )
+                    await websocket.send_json(
+                        {"type": "complete", "content": "✅ 완료"}
+                    )
 
                 except Exception as e:
                     debug_log(f"❌ LangGraph 처리 오류: {e}", "ERROR")
-                    await websocket.send_json({
-                        "type": "error",
-                        "content": f"❌ 처리 중 오류가 발생했습니다: {str(e)}"
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "content": f"❌ 처리 중 오류가 발생했습니다: {str(e)}",
+                        }
+                    )
+
         # 두 태스크를 동시에 실행
         receive_task = asyncio.create_task(receive_messages())
         process_task = asyncio.create_task(process_messages())
@@ -535,6 +570,7 @@ async def chat_websocket_tarot(websocket: WebSocket, session_id: str):
 async def system_status():
     """시스템 상태 확인"""
     from fastapi import Request
+
     async def _system_status(request: Request):
         app = request.app
         return {
@@ -547,14 +583,21 @@ async def system_status():
             },
             "sessions": {
                 "saju_total": len(app.state.session_store),
-                "saju_active": len([s for s in app.state.session_store.values() if s["is_active"]]),
+                "saju_active": len(
+                    [s for s in app.state.session_store.values() if s["is_active"]]
+                ),
                 "tarot_total": len(app.state.tarot_session_store),
                 "tarot_active": len(
-                    [s for s in app.state.tarot_session_store.values() if s["is_active"]]
+                    [
+                        s
+                        for s in app.state.tarot_session_store.values()
+                        if s["is_active"]
+                    ]
                 ),
             },
             "debug_mode": app.state.debug_mode,
         }
+
     return await _system_status
 
 
@@ -562,6 +605,7 @@ async def system_status():
 async def health_check():
     """헬스 체크"""
     from fastapi import Request
+
     async def _health_check(request: Request):
         app = request.app
         return {
@@ -574,6 +618,7 @@ async def health_check():
                 "tarot_compiled_graph": app.state.tarot_compiled_graph is not None,
             },
         }
+
     return await _health_check
 
 
@@ -581,6 +626,7 @@ async def health_check():
 async def root():
     """루트 엔드포인트"""
     from fastapi import Request
+
     async def _root(request: Request):
         app = request.app
         return {
@@ -593,6 +639,7 @@ async def root():
                 "tarot": "/ws/chat/tarot/{session_id}",
             },
         }
+
     return await _root
 
 
@@ -603,8 +650,9 @@ def signal_handler(signum, frame):
 
 
 if __name__ == "__main__":
-    
+
     from Fortune.tarot.tarot_agent.agent import create_optimized_tarot_graph
+
     app = create_optimized_tarot_graph()
 
     # import uvicorn
