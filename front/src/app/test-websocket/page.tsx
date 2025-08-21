@@ -14,7 +14,7 @@ export default function TestWebSocketPage() {
 
   const connectWebSocket = () => {
     try {
-      const wsUrl = getWebSocketUrl("saju")
+      const wsUrl = getWebSocketUrl("saju", "test")
       console.log("테스트 WebSocket URL:", wsUrl)
       
       const websocket = new WebSocket(wsUrl)
@@ -125,7 +125,7 @@ export default function TestWebSocketPage() {
       <Card className="p-4 mt-4">
         <h2 className="text-lg font-semibold mb-2">환경 정보</h2>
         <div className="space-y-2 text-sm">
-          <div><strong>WebSocket URL:</strong> {getWebSocketUrl("saju")}</div>
+          <div><strong>WebSocket URL:</strong> {getWebSocketUrl("saju", "test")}</div>
           <div><strong>환경 변수:</strong> {process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8000'}</div>
           <div><strong>브라우저 WebSocket 지원:</strong> {typeof WebSocket !== 'undefined' ? '✅ 지원' : '❌ 미지원'}</div>
         </div>

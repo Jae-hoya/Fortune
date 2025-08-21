@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { v4 as uuidv4 } from "uuid"
 import { format } from "date-fns"
@@ -15,6 +15,14 @@ import { useSidebarStore } from "@/store/sidebar"
 import { SIDEBAR_WIDTH } from "@/components/layout/Sidebar"
 
 export default function SajuPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">로딩 중...</div>}>
+      <SajuPageContent />
+    </Suspense>
+  )
+}
+
+function SajuPageContent() {
   const searchParams = useSearchParams()
   const urlSessionId = searchParams.get("session_id")
   const [sessionId, setSessionId] = useState<string>("")

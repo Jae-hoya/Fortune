@@ -121,8 +121,28 @@ export class WebSocketManager {
 
 // 환경 변수에서 WebSocket URL 가져오기
 export const getWebSocketUrl = (type: string, sessionId: string): string => {
-  // ws://localhost:8000/ws/chat/{type}/{sessionId} 형식으로 반환
-  const url = `ws://localhost:8000/ws/chat/${type}/${encodeURIComponent(sessionId)}`;
-  console.log('WebSocket URL 최종:', url);
-  return url;
-} 
+  // 배포 환경에서는 NEXT_PUBLIC_WEBSOCKET_URL 사용 (예: wss://api.example.com)
+  // 미설정 시 브라우저 origin 기반으로 ws/wss 추론, 서버 사이드에선 localhost 개발 기본값 사용
+  const envBase = process.env.NEXT_PUBLIC_WEBSOCKET_URL?.trim()
+
+  let base: string
+  if (envBase && envBase.length > 0) {
+    // http/https를 ws/wss로 변환, 이미 ws(s)면 그대로 사용
+    if (envBase.startsWith('http://')) {
+      base = envBase.replace('http://', 'ws://')
+    } else if (envBase.startsWith('https://')) {
+      base = envBase.replace('https://', 'wss://')
+    } else {
+      base = envBase
+    }
+  } else if (typeof window !== 'undefined' && window.location) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    base = `${protocol}//${window.location.host}`
+  } else {
+    base = 'ws://localhost:8000'
+  }
+
+  const url = `${base}/ws/chat/${type}/${encodeURIComponent(sessionId)}`
+  console.log('WebSocket URL 최종:', url)
+  return url
+}

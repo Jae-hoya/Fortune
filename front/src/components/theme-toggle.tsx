@@ -29,7 +29,7 @@ export function ThemeToggle() {
       aria-label="테마 변경"
       onDragStart={handleDragStart}
     >
-      {isMounted && <Icon className="h-[1.2rem] w-[1.2rem]" draggable="false" onDragStart={handleDragStart} />}
+      {isMounted && <Icon className="h-[1.2rem] w-[1.2rem]" />}
       <span className="sr-only">테마 변경</span>
     </button>
   )
