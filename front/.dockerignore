@@ -1,0 +1,19 @@
+# Node / Next.js
+node_modules
+.next
+npm-debug.log*
+yarn-error.log*
+
+# Git / editor
+.git
+.gitignore
+.vscode
+.DS_Store
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Build artifacts
+out
+coverage
